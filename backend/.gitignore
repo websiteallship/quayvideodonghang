@@ -1,0 +1,12 @@
+# Environment and secrets
+.dev.vars
+*.pem
+*-service-account*.json
+quayvideo-*.json
+
+# Dependencies
+node_modules/
+
+# Cloudflare
+.wrangler/
+dist/

@@ -1,0 +1,22 @@
+# Environment and secrets
+.dev.vars
+.env
+.env.local
+*.pem
+*-service-account*.json
+quayvideo-*.json
+client_secret*.json
+credentials*.json
+*.token.json
+token.json
+client.txt
+token.txt
+*.secret*
+.agents/skills-old/
+
+# Dependencies
+node_modules/
+
+# Cloudflare & Build
+.wrangler/
+dist/

@@ -1,0 +1,21 @@
+name = "quayvideo-api"
+main = "src/index.ts"
+compatibility_date = "2024-09-14"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "DB"
+database_name = "quayvideo-db"
+database_id = "local-quayvideo-db"
+
+# Environment variables (non-secret)
+[vars]
+ALLOWED_ORIGINS = "https://quayvideo.pages.dev,http://localhost:5173,https://localhost:5173"
+JWT_EXPIRES_IN = "86400"
+# Variables are loaded from .dev.vars or Cloudflare Secrets
+UPLOAD_CHUNK_SIZE = "5242880"
+JWT_SECRET = "dev-secret-key-quayvideo-warehouse-local-testing-at-least-32-chars"
+
+# Cron trigger (dọn dẹp định kỳ 2h sáng)
+[triggers]
+crons = ["0 2 * * *"]
