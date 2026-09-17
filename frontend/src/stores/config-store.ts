@@ -1,5 +1,8 @@
 import { create } from 'zustand';
 import { ThietBiType } from '../types';
+import { KhoHang } from '../types/kho-hang';
+import { apiClient } from '../services/api-client';
+import { API_ENDPOINTS } from '../config/api';
 
 export type AppTheme = 'light' | 'dark';
 
@@ -8,6 +11,9 @@ interface ConfigState {
   deviceType: ThietBiType;
   theme: AppTheme;
   warehouseName: string;
+  warehouseId: string;
+  warehouses: KhoHang[];
+  warehousesLoading: boolean;
   /** Global flag: true when video recording is actively in progress */
   isRecordingActive: boolean;
   /** Desktop sidebar collapse state */
@@ -16,7 +22,9 @@ interface ConfigState {
   setDeviceType: (deviceType: ThietBiType) => void;
   setTheme: (theme: AppTheme) => void;
   toggleTheme: () => void;
-  setWarehouseName: (name: string) => void;
+  setWarehouseName: (name: string, id?: string) => void;
+  setWarehouse: (warehouse: KhoHang) => void;
+  fetchWarehouses: () => Promise<void>;
   setIsRecordingActive: (active: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
@@ -37,6 +45,13 @@ const getInitialWarehouseName = (): string => {
   return '';
 };
 
+const getInitialWarehouseId = (): string => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('warehouse_id') || '';
+  }
+  return '';
+};
+
 const getInitialSidebarCollapsed = (): boolean => {
   if (typeof window !== 'undefined') {
     return localStorage.getItem('sidebar_collapsed') === 'true';
@@ -49,10 +64,13 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   deviceType: 'pc_webcam',
   theme: getInitialTheme(),
   warehouseName: getInitialWarehouseName(),
+  warehouseId: getInitialWarehouseId(),
+  warehouses: [],
+  warehousesLoading: false,
   isRecordingActive: false,
   sidebarCollapsed: getInitialSidebarCollapsed(),
 
-  setIsOnline: (isOnline: boolean) => set({ isOnline }),
+  setIsOnline: (online: boolean) => set({ isOnline: online }),
   setDeviceType: (deviceType: ThietBiType) => set({ deviceType }),
 
   setTheme: (theme: AppTheme) => {
@@ -74,11 +92,64 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
     get().setTheme(next);
   },
 
-  setWarehouseName: (name: string) => {
+  setWarehouseName: (name: string, id?: string) => {
     if (typeof window !== 'undefined') {
       localStorage.setItem('warehouse_name', name);
+      if (id) {
+        localStorage.setItem('warehouse_id', id);
+      }
     }
-    set({ warehouseName: name });
+    set((state) => ({
+      warehouseName: name,
+      warehouseId: id !== undefined ? id : state.warehouseId
+    }));
+  },
+
+  setWarehouse: (warehouse: KhoHang) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('warehouse_name', warehouse.ten);
+      localStorage.setItem('warehouse_id', warehouse.id);
+    }
+    set({
+      warehouseName: warehouse.ten,
+      warehouseId: warehouse.id
+    });
+  },
+
+  fetchWarehouses: async () => {
+    set({ warehousesLoading: true });
+    try {
+      const res = await apiClient
+        .get(API_ENDPOINTS.CONFIG.KHO_HANG)
+        .json<{ success: boolean; data: { items: KhoHang[] } }>();
+
+      if (res.success && Array.isArray(res.data?.items)) {
+        const items = res.data.items;
+        set({ warehouses: items });
+
+        const currentName = get().warehouseName;
+        const currentId = get().warehouseId;
+
+        // Nếu máy chưa có kho hoặc kho cũ không còn tồn tại
+        const matched = items.find(
+          (k) => (currentId && k.id === currentId) || (currentName && k.ten === currentName)
+        );
+
+        if (matched) {
+          get().setWarehouse(matched);
+        } else {
+          // Tự động gán kho mặc định nếu có
+          const defaultWarehouse = items.find((k) => k.la_mac_dinh);
+          if (defaultWarehouse) {
+            get().setWarehouse(defaultWarehouse);
+          }
+        }
+      }
+    } catch {
+      // Offline fallback: giữ nguyên giá trị đã lưu
+    } finally {
+      set({ warehousesLoading: false });
+    }
   },
 
   setIsRecordingActive: (active: boolean) => set({ isRecordingActive: active }),

@@ -25,6 +25,29 @@ export const API_ENDPOINTS = {
     STATS: `${BASE_URL}/api/dashboard/stats`
   },
   CONFIG: {
-    PUBLIC: `${BASE_URL}/api/config`
+    PUBLIC: `${BASE_URL}/api/config`,
+    KHO_HANG: `${BASE_URL}/api/config/kho-hang`,
+  },
+  ADMIN: {
+    NHAN_VIEN: {
+      LIST: `${BASE_URL}/api/admin/nhan-vien`,
+      CREATE: `${BASE_URL}/api/admin/nhan-vien`,
+      UPDATE: (ma: string) => `${BASE_URL}/api/admin/nhan-vien/${ma}`,
+      DELETE: (ma: string) => `${BASE_URL}/api/admin/nhan-vien/${ma}`,
+      RESET_PIN: (ma: string) => `${BASE_URL}/api/admin/nhan-vien/${ma}/reset-pin`,
+    },
+    CAU_HINH: {
+      GET: `${BASE_URL}/api/admin/cau-hinh`,
+      UPDATE: `${BASE_URL}/api/admin/cau-hinh`,
+      BATCH: `${BASE_URL}/api/admin/cau-hinh/batch`,
+      TEST_DRIVE: `${BASE_URL}/api/admin/cau-hinh/test-drive`,
+    },
+    KHO_HANG: {
+      LIST: `${BASE_URL}/api/admin/kho-hang`,
+      CREATE: `${BASE_URL}/api/admin/kho-hang`,
+      UPDATE: (id: string) => `${BASE_URL}/api/admin/kho-hang/${id}`,
+      DELETE: (id: string) => `${BASE_URL}/api/admin/kho-hang/${id}`,
+      SET_DEFAULT: (id: string) => `${BASE_URL}/api/admin/kho-hang/${id}/set-default`,
+    },
   }
 } as const;

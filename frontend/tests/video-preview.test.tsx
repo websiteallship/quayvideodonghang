@@ -26,10 +26,32 @@ describe('VideoPreview Component', () => {
       />
     );
 
-    expect(screen.getByText('GHN123456789')).toBeTruthy();
+    expect(screen.getAllByText('GHN123456789').length).toBeGreaterThanOrEqual(1);
     expect(screen.getByText('Đóng gói')).toBeTruthy();
     expect(screen.getByText('GHN')).toBeTruthy();
     expect(screen.getByText('00:12')).toBeTruthy();
+    expect(screen.getByText('Mã vận đơn đã quét (1 đơn)')).toBeTruthy();
+  });
+
+  it('renders continuous session summary when sessionCodes has multiple items', () => {
+    render(
+      <VideoPreview
+        blob={mockBlob}
+        previewUrl={mockUrl}
+        duration={12}
+        overlayInfo={mockOverlay}
+        onSaveAndContinue={vi.fn()}
+        onDiscardAndRetry={vi.fn()}
+        sessionCodes={['CODE01', 'CODE02', 'GHN123456789']}
+      />
+    );
+
+    expect(screen.getByText('Phiên quét liên tục (3 đơn)')).toBeTruthy();
+    expect(screen.getByText('2 đơn trước đã lưu')).toBeTruthy();
+    expect(screen.getByText('CODE01')).toBeTruthy();
+    expect(screen.getByText('CODE02')).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Lưu đơn cuối & Kết thúc \(3 đơn\)/i })).toBeTruthy();
+    expect(screen.getByRole('button', { name: /Hủy đơn cuối này/i })).toBeTruthy();
   });
 
   it('calls onSaveAndContinue when save button is clicked', () => {

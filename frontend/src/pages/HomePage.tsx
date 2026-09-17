@@ -10,6 +10,7 @@ import {
   Barcode as BarcodeIcon,
   Package,
   PackageOpen,
+  Info,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
@@ -24,6 +25,7 @@ import { useBarcode } from '@/hooks/use-barcode';
 import { useBarcodeGun } from '@/hooks/use-barcode-gun';
 import { useCheckBarcode } from '@/hooks/use-check-barcode';
 import { useRecordingGuard } from '@/hooks/use-recording-guard';
+import { useContinuousSession } from '@/hooks/use-continuous-session';
 import { CameraPreview } from '@/components/camera/CameraPreview';
 import { CameraSelector } from '@/components/camera/CameraSelector';
 import { ScannerOverlay } from '@/components/scanner/ScannerOverlay';
@@ -33,11 +35,13 @@ import { RecordingView, VideoPreview } from '@/components/recording';
 import { useWorkModeStore } from '@/stores/work-mode-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useConfigStore } from '@/stores/config-store';
+import { useUserSettingsStore } from '@/stores/user-settings-store';
 import { useMediaRecorder, type OverlayInfo } from '@/hooks/use-media-recorder';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { idbService } from '@/services/idb-service';
 import { feedbackSuccess } from '@/utils/barcode-feedback';
 import { formatDuration } from '@/utils/format';
+import { detectCarrier } from '@/utils/detect-carrier';
 import type { BarcodeResult, DonViVanChuyen, LoaiBienBan } from '@/types';
 
 export const HomePage: React.FC = () => {
@@ -61,6 +65,17 @@ export const HomePage: React.FC = () => {
   const [activeOverlayInfo, setActiveOverlayInfo] = useState<OverlayInfo | null>(null);
   const [recordedBlob, setRecordedBlob] = useState<Blob | null>(null);
   const [recordedDuration, setRecordedDuration] = useState(0);
+
+  // Phiên quét liên tục (Continuous Auto-Scan)
+  const {
+    sessionCodes,
+    startSession,
+    addCodeToSession,
+    endSession,
+  } = useContinuousSession();
+
+  const recordDurationRef = useRef(0);
+  const isTransitioningRef = useRef(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -96,6 +111,9 @@ export const HomePage: React.FC = () => {
     },
   });
 
+  // Đồng bộ thời lượng ghi hình vào ref để tránh re-trigger callback liên tục
+  recordDurationRef.current = recordDuration;
+
   // Step 2.1b — Geolocation (single-shot GPS)
   const { requestLocation } = useGeolocation();
 
@@ -129,6 +147,7 @@ export const HomePage: React.FC = () => {
       if (isRecording) {
         await stopRecording();
       }
+      endSession();
       discardRecording();
       stopCamera();
       setRecordedBlob(null);
@@ -156,19 +175,36 @@ export const HomePage: React.FC = () => {
     isDuplicate,
     duplicateInfo,
     checkCode,
+    error: checkError,
     reset: resetCheck,
   } = useCheckBarcode();
+
+  const { autoRecordAfterScan } = useUserSettingsStore();
+  const [autoScanCountdown, setAutoScanCountdown] = useState<number | null>(null);
 
   // Handle barcode detected (from camera, USB gun, or manual input)
   const handleBarcodeDetected = useCallback(
     async (result: BarcodeResult) => {
       feedbackSuccess();
+      
+      // Nếu bật Auto-scan, ta tạm thời LƯU KẾT QUẢ, nhưng CHƯA set activeBarcode để KHÔNG hiện popup
+      // Popup chỉ hiện khi thực sự là mã trùng hoặc Auto-scan tắt.
+      // Dùng một state ẩn hoặc chỉ cần không mở Dialog.
+      // Tuy nhiên Dialog đang gắn với activeBarcode. Để ko mở Dialog, ta lưu vào 1 ref hoặc state riêng.
+      
+      // Thay vì sửa cấu trúc nhiều, ta set activeBarcode để render ScanResult NẾU không auto scan
+      // NẾU auto scan, ta sẽ chờ kết quả checkCode.
+      
+      // We need a way to track the current scan without opening the Dialog if it's a valid auto-scan
+      // For now, let's just use activeBarcode but modify the Dialog open condition.
       setActiveBarcode(result);
+      
       // Check duplicate from backend API + local IndexedDB (filtered by loai_bien_ban)
       await checkCode(result.rawValue, workMode ?? 'dong_goi');
     },
     [checkCode, workMode]
   );
+
 
   // Sprint 1.2 — Barcode scanner hook with direct onDetected callback
   const {
@@ -178,9 +214,200 @@ export const HomePage: React.FC = () => {
     reset: resetBarcode,
   } = useBarcode(videoRef, handleBarcodeDetected);
 
+  // Sprint 2.1 — Prepare recording session (set state, camera on)
+  // KHÔNG gọi startRecording() trực tiếp ở đây — useEffect bên dưới sẽ đảm nhận
+  // khi stream + overlayInfo đã sẵn sàng (fix race condition).
+  const handleStartRecording = useCallback(async (data: {
+    maVanDon: string;
+    donViVc: DonViVanChuyen;
+    loaiBienBan: LoaiBienBan;
+    overwrite?: boolean;
+  }) => {
+    // Bắt đầu phiên mới với mã đơn đầu tiên
+    startSession(data.maVanDon);
+
+    // Nếu ghi đè: xóa tất cả video cũ cùng mã + loại biên bản trong IndexedDB
+    if (data.overwrite) {
+      try {
+        const deletedCount = await idbService.deleteByMaVanDonAndLoaiBienBan(
+          data.maVanDon,
+          data.loaiBienBan
+        );
+        if (deletedCount > 0) {
+          console.log(`Đã xóa ${deletedCount} video cũ cho mã ${data.maVanDon} (${data.loaiBienBan})`);
+          await loadQueue();
+        }
+      } catch (err) {
+        console.error('Lỗi xóa video cũ:', err);
+      }
+    }
+
+    stopScanning();
+    setActiveBarcode(null);
+    setAutoScanCountdown(null);
+
+    // Step 2.1b — Get GPS location (non-blocking, best-effort)
+    const geoResult = await requestLocation();
+
+    const info: OverlayInfo = {
+      maVanDon: data.maVanDon,
+      donViVc: data.donViVc,
+      loaiBienBan: data.loaiBienBan,
+      maNhanVien: user?.ma_nhan_vien || 'NV001',
+      gpsCoords: geoResult ? { lat: geoResult.lat, lng: geoResult.lng } : null,
+      gpsAddress: geoResult?.address,
+      warehouseName: warehouseName || undefined,
+    };
+    setActiveOverlayInfo(info);
+
+    // Đảm bảo camera đang chạy — startCamera() set stream state nội bộ
+    if (!stream) {
+      await startCamera();
+    }
+
+    // Chuyển view → useEffect `autoStartRecordingEffect` sẽ gọi startRecording()
+    // khi stream + overlayInfo đã sẵn sàng trong React render cycle tiếp theo
+    setCurrentView('recording');
+  }, [user, warehouseName, stream, startCamera, stopScanning, requestLocation, loadQueue, startSession]);
+
+  // Fix Bug 1 & 2: useEffect gọi startRecording() chỉ khi tất cả state đã sẵn sàng
+  // (stream có giá trị, overlayInfo đã set, view là recording, và chưa đang quay)
+  useEffect(() => {
+    if (currentView === 'recording' && stream && activeOverlayInfo && !isRecording && !isTransitioningRef.current) {
+      void startRecording();
+    }
+  }, [currentView, stream, activeOverlayInfo, isRecording, startRecording]);
+
+  // Chuyển tiếp đơn hàng tiếp theo trong phiên quét liên tục
+  const handleContinuousScanNext = useCallback(async (data: {
+    maVanDon: string;
+    donViVc: DonViVanChuyen;
+    loaiBienBan: LoaiBienBan;
+  }) => {
+    isTransitioningRef.current = true;
+    try {
+      stopScanning();
+      setActiveBarcode(null);
+      setAutoScanCountdown(null);
+
+      // 1. Dừng và lưu video của đơn hiện tại vào IndexedDB
+      const durationRecorded = recordDurationRef.current;
+      const currentVideoBlob = await stopRecording();
+
+      if (currentVideoBlob && activeOverlayInfo) {
+        try {
+          await enqueue(currentVideoBlob, {
+            ma_van_don: activeOverlayInfo.maVanDon,
+            don_vi_vc: activeOverlayInfo.donViVc,
+            loai_bien_ban: activeOverlayInfo.loaiBienBan,
+            ma_nhan_vien: activeOverlayInfo.maNhanVien,
+            thiet_bi: 'pc_webcam',
+            thoi_luong_video: durationRecorded,
+          });
+          toast.success(
+            `Đã lưu đơn ${activeOverlayInfo.maVanDon} (${formatDuration(durationRecorded)}). Bắt đầu đơn ${data.maVanDon}!`,
+            { duration: 3500 }
+          );
+        } catch (err) {
+          console.error('Lỗi khi lưu video vào IndexedDB:', err);
+          toast.error(`Không thể lưu video đơn ${activeOverlayInfo.maVanDon}`);
+        }
+      }
+
+      // 2. Thêm mã mới vào danh sách phiên liên tục
+      addCodeToSession(data.maVanDon);
+
+      // 3. Chuẩn bị thông tin overlay mới
+      const geoResult = await requestLocation();
+      const info: OverlayInfo = {
+        maVanDon: data.maVanDon,
+        donViVc: data.donViVc,
+        loaiBienBan: data.loaiBienBan,
+        maNhanVien: user?.ma_nhan_vien || 'NV001',
+        gpsCoords: geoResult ? { lat: geoResult.lat, lng: geoResult.lng } : null,
+        gpsAddress: geoResult?.address,
+        warehouseName: warehouseName || undefined,
+      };
+      setActiveOverlayInfo(info);
+
+      // 4. Bắt đầu quay video cho đơn tiếp theo
+      try {
+        await startRecording();
+      } catch (err) {
+        console.error('Lỗi khởi động quay đơn tiếp theo:', err);
+        toast.error('Không thể bắt đầu quay video đơn tiếp theo');
+      }
+    } finally {
+      isTransitioningRef.current = false;
+    }
+  }, [
+    stopRecording,
+    activeOverlayInfo,
+    enqueue,
+    addCodeToSession,
+    requestLocation,
+    user,
+    warehouseName,
+    startRecording,
+    stopScanning,
+  ]);
+
+  // Handle Auto-Record Logic after check completes
+  useEffect(() => {
+    // Chỉ trigger khi: có quét mã, đang bật auto-scan, quét bằng súng, ĐÃ KIỂM TRA XONG, và KHÔNG BỊ TRÙNG, và KHÔNG CÓ LỖI API
+    if (activeBarcode && autoRecordAfterScan && activeBarcode.source === 'gun' && !isChecking) {
+      if (!isDuplicate && !checkError) {
+        // Hợp lệ và không trùng -> Đếm ngược 500ms
+        setAutoScanCountdown(500);
+        
+        const detectedCarrier = detectCarrier(activeBarcode.rawValue);
+        const timer = setTimeout(() => {
+          if (currentView === 'recording') {
+            void handleContinuousScanNext({
+              maVanDon: activeBarcode.rawValue,
+              donViVc: detectedCarrier,
+              loaiBienBan: workMode ?? 'dong_goi',
+            });
+          } else {
+            void handleStartRecording({
+              maVanDon: activeBarcode.rawValue,
+              donViVc: detectedCarrier,
+              loaiBienBan: workMode ?? 'dong_goi',
+              overwrite: false,
+            });
+          }
+        }, 500);
+
+        return () => {
+          clearTimeout(timer);
+          setAutoScanCountdown(null);
+        };
+      } else {
+        // Trùng hoặc lỗi -> Tắt HUD, hiện Dialog (Dialog sẽ tự mở do có activeBarcode)
+        setAutoScanCountdown(null);
+      }
+    } else {
+       // Đang kiểm tra, không quét, v.v..
+       setAutoScanCountdown(null);
+    }
+  }, [
+    activeBarcode,
+    autoRecordAfterScan,
+    isChecking,
+    isDuplicate,
+    checkError,
+    workMode,
+    currentView,
+    handleStartRecording,
+    handleContinuousScanNext,
+  ]);
+
   // Handle USB gun scan (maps raw code string to BarcodeResult)
   const handleGunScan = useCallback(
     (code: string) => {
+      // Fix Bug 3: Hiển thị mã vận đơn vừa quét trong ô nhập cho feedback trực quan
+      setManualCodeInput(code);
+
       if (!workMode) {
         setPendingGunScan(code);
         setModeError('Vui lòng chọn chế độ làm việc trước khi quét.');
@@ -232,6 +459,7 @@ export const HomePage: React.FC = () => {
   const handleCloseScanner = () => {
     stopScanning();
     stopCamera();
+    endSession();
     setCurrentView('idle');
     setActiveBarcode(null);
     resetCheck();
@@ -248,54 +476,7 @@ export const HomePage: React.FC = () => {
     }
   };
 
-  // Sprint 2.1 — Start recording video with composited overlay
-  const handleStartRecording = async (data: {
-    maVanDon: string;
-    donViVc: DonViVanChuyen;
-    loaiBienBan: LoaiBienBan;
-    overwrite?: boolean;
-  }) => {
-    // Nếu ghi đè: xóa tất cả video cũ cùng mã + loại biên bản trong IndexedDB
-    if (data.overwrite) {
-      try {
-        const deletedCount = await idbService.deleteByMaVanDonAndLoaiBienBan(
-          data.maVanDon,
-          data.loaiBienBan
-        );
-        if (deletedCount > 0) {
-          console.log(`Đã xóa ${deletedCount} video cũ cho mã ${data.maVanDon} (${data.loaiBienBan})`);
-          // Refresh upload queue
-          await loadQueue();
-        }
-      } catch (err) {
-        console.error('Lỗi xóa video cũ:', err);
-      }
-    }
-
-    stopScanning();
-    setActiveBarcode(null);
-
-    // Step 2.1b — Get GPS location (non-blocking, best-effort)
-    const geoResult = await requestLocation();
-
-    const info: OverlayInfo = {
-      maVanDon: data.maVanDon,
-      donViVc: data.donViVc,
-      loaiBienBan: data.loaiBienBan,
-      maNhanVien: user?.ma_nhan_vien || 'NV001',
-      gpsCoords: geoResult ? { lat: geoResult.lat, lng: geoResult.lng } : null,
-      gpsAddress: geoResult?.address,
-      warehouseName: warehouseName || undefined,
-    };
-    setActiveOverlayInfo(info);
-
-    if (!stream) {
-      await startCamera();
-    }
-
-    setCurrentView('recording');
-    await startRecording();
-  };
+  // Removed handleStartRecording from here because it was moved up to use useCallback
 
   // Stop recording and show video preview
   const handleStopRecording = async () => {
@@ -312,6 +493,10 @@ export const HomePage: React.FC = () => {
 
   // User confirms video preview: Save & continue
   const handleSaveAndContinue = async (blob: Blob, durationSeconds: number) => {
+    const isContinuous = sessionCodes.length > 1;
+    const currentCode = activeOverlayInfo?.maVanDon;
+    const totalCodes = sessionCodes.length;
+
     if (activeOverlayInfo) {
       try {
         await enqueue(blob, {
@@ -322,29 +507,52 @@ export const HomePage: React.FC = () => {
           thiet_bi: 'pc_webcam',
           thoi_luong_video: durationSeconds,
         });
-        setRecordingMessage(
-          `Đã lưu IndexedDB: ${activeOverlayInfo.maVanDon} (${formatDuration(durationSeconds)}). Sẵn sàng đồng bộ!`
-        );
+
+        if (isContinuous) {
+          toast.success(`Đã lưu đơn cuối ${currentCode}. Hoàn tất phiên ${totalCodes} đơn!`, {
+            duration: 5000,
+          });
+        } else {
+          setRecordingMessage(
+            `Đã lưu IndexedDB: ${activeOverlayInfo.maVanDon} (${formatDuration(durationSeconds)}). Sẵn sàng đồng bộ!`
+          );
+        }
       } catch (err) {
         console.error('Lỗi khi lưu video vào IndexedDB:', err);
+        toast.error(`Không thể lưu video đơn ${activeOverlayInfo.maVanDon}`);
       }
     }
     setTimeout(() => setRecordingMessage(null), 5000);
+    endSession();
     discardRecording();
     setRecordedBlob(null);
     setActiveOverlayInfo(null);
     setCurrentView('idle');
   };
 
-  // User discards video preview: Re-record
+  // User discards video preview: Re-record or cancel final order in continuous session
   const handleDiscardAndRetry = async () => {
+    const isContinuous = sessionCodes.length > 1;
+    const discardedCode = activeOverlayInfo?.maVanDon;
+    const savedCount = sessionCodes.length - 1;
+
     discardRecording();
     setRecordedBlob(null);
-    setCurrentView('scanner');
-    if (!stream) {
-      await startCamera();
+    setActiveOverlayInfo(null);
+    endSession();
+    stopScanning();
+    stopCamera();
+    resetCheck();
+    resetBarcode();
+    setActiveBarcode(null);
+    setCurrentView('idle');
+
+    if (isContinuous) {
+      toast.info(
+        `Đã hủy đơn ${discardedCode || ''}. ${savedCount} đơn trước đó đã được lưu an toàn trong hàng đợi.`,
+        { duration: 5000 }
+      );
     }
-    startScanning();
   };
 
   // Handle manual code submit (for quick testing on PC)
@@ -479,6 +687,8 @@ export const HomePage: React.FC = () => {
               error={recorderError}
               onStopRecording={handleStopRecording}
               onAttachVideoRef={attachSourceVideo}
+              nextBarcode={autoScanCountdown !== null && activeBarcode ? activeBarcode.rawValue : null}
+              sessionCount={sessionCodes.length}
             />
           )}
 
@@ -491,6 +701,7 @@ export const HomePage: React.FC = () => {
               overlayInfo={activeOverlayInfo}
               onSaveAndContinue={handleSaveAndContinue}
               onDiscardAndRetry={handleDiscardAndRetry}
+              sessionCodes={sessionCodes.length > 0 ? sessionCodes : [activeOverlayInfo.maVanDon]}
             />
           )}
 
@@ -537,6 +748,17 @@ export const HomePage: React.FC = () => {
                     stream={stream}
                     workMode={workMode}
                   />
+
+                  {/* Auto-Scan HUD Banner Overlay */}
+                  {autoScanCountdown !== null && activeBarcode && (
+                    <div className="absolute top-4 left-4 right-4 bg-primary/95 text-primary-foreground p-3 flex flex-col items-center justify-center rounded-xl shadow-xl z-50 animate-in fade-in slide-in-from-top-4 duration-300">
+                      <div className="font-bold text-lg mb-1 flex items-center gap-2">
+                        <ScanLine className="animate-pulse" />
+                        Mã: {activeBarcode.rawValue}
+                      </div>
+                      <div className="text-sm font-medium">Đang tự động quay {workMode === 'dong_goi' ? 'Đóng gói' : 'Khui hàng'}...</div>
+                    </div>
+                  )}
                 </CameraPreview>
               </div>
 
@@ -626,8 +848,9 @@ export const HomePage: React.FC = () => {
               <BarcodeIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
             </form>
 
-            <p className="text-[11px] text-muted-foreground">
-              💡 Có thể cắm súng quét barcode USB trực tiếp. Hệ thống tự động bắt mã.
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
+              <Info className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
+              <span>Có thể cắm súng quét barcode USB trực tiếp. Hệ thống tự động bắt mã.</span>
             </p>
           </div>
 
@@ -688,7 +911,13 @@ export const HomePage: React.FC = () => {
       </div>
 
       {/* Scan Result Modal Popup */}
-      <Dialog open={!!activeBarcode} onOpenChange={(open) => !open && handleRescan()}>
+      <Dialog 
+        open={
+          !!activeBarcode && 
+          (!autoRecordAfterScan || activeBarcode.source !== 'gun' || (!isChecking && (isDuplicate || !!checkError)))
+        } 
+        onOpenChange={(open) => !open && handleRescan()}
+      >
         <DialogContent className="max-w-[440px] p-0 border-none bg-transparent shadow-none" showCloseButton={false}>
           <DialogTitle className="sr-only">Kết quả quét mã vạch</DialogTitle>
           <DialogDescription className="sr-only">Hiển thị thông tin mã vạch vừa quét được.</DialogDescription>
@@ -698,6 +927,7 @@ export const HomePage: React.FC = () => {
               isDuplicate={isDuplicate}
               duplicateInfo={duplicateInfo ?? undefined}
               isChecking={isChecking}
+              error={checkError}
               initialLoaiBienBan={workMode ?? 'dong_goi'}
               onStartRecording={handleStartRecording}
               onRescan={handleRescan}

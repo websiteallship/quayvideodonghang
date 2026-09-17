@@ -9,7 +9,10 @@ import {
   NhanVienUpdateSchema,
   ResetPinSchema,
   NhanVienQuerySchema,
-  CauHinhUpdateSchema
+  CauHinhUpdateSchema,
+  CauHinhBatchUpdateSchema,
+  KhoHangCreateSchema,
+  KhoHangUpdateSchema
 } from '../types/schemas';
 import { hashPin } from '../utils/hash';
 
@@ -27,13 +30,14 @@ adminRouter.use('*', authMiddleware, requireAdminMiddleware);
 adminRouter.post('/cau-hinh/test-drive', async (c) => {
   try {
     const driveService = new DriveService(c.env.GOOGLE_SERVICE_ACCOUNT_JSON);
-    const result = await driveService.testConnection();
+    
+    // Lấy drive_folder_id từ DB để test quyền ghi
+    const configRow = await c.env.DB.prepare("SELECT gia_tri FROM cau_hinh WHERE khoa = 'drive_folder_id'").first<{ gia_tri: string }>();
+    const folderId = configRow?.gia_tri;
 
-    return successResponse(c, {
-      ket_noi_ok: true,
-      service_account_email: result.email,
-      message: 'Kết nối Google Drive thành công'
-    });
+    const result = await driveService.testConnectionDetailed(folderId);
+
+    return successResponse(c, result);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Google Drive test error';
     return errorResponse(c, 'DRIVE_CONNECTION_FAILED', message, 500);
@@ -53,7 +57,7 @@ adminRouter.get('/nhan-vien', zValidator('query', NhanVienQuerySchema), async (c
         nv.ngay_tao, nv.ngay_cap_nhat,
         (SELECT COUNT(*) FROM bien_ban bb
          WHERE bb.ma_nhan_vien = nv.ma
-           AND DATE(bb.thoi_gian_tao) = DATE('now')
+           AND DATE(bb.thoi_gian_tao, '+7 hours') = DATE('now', '+7 hours')
         ) AS so_video_hom_nay,
         (SELECT MAX(pd.thoi_gian_dang_nhap) FROM phien_dang_nhap pd
          WHERE pd.ma_nhan_vien = nv.ma
@@ -346,8 +350,12 @@ adminRouter.put('/nhan-vien/:ma/reset-pin', zValidator('json', ResetPinSchema), 
 // Lấy cấu hình hệ thống
 adminRouter.get('/cau-hinh', async (c) => {
   try {
-    const configs = await c.env.DB.prepare('SELECT khoa, gia_tri, ngay_cap_nhat FROM cau_hinh').all();
-    return successResponse(c, configs.results);
+    const configs = await c.env.DB.prepare('SELECT khoa, gia_tri FROM cau_hinh').all<{khoa: string; gia_tri: string}>();
+    const configObject = configs.results.reduce((acc, curr) => {
+      acc[curr.khoa] = curr.gia_tri;
+      return acc;
+    }, {} as Record<string, string>);
+    return successResponse(c, configObject);
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Database error';
     return errorResponse(c, 'DATABASE_ERROR', message, 500);
@@ -368,6 +376,196 @@ adminRouter.put('/cau-hinh', zValidator('json', CauHinhUpdateSchema), async (c) 
       .run();
 
     return successResponse(c, { message: `Cập nhật cấu hình [${khoa}] thành công` });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Database error';
+    return errorResponse(c, 'DATABASE_ERROR', message, 500);
+  }
+});
+
+// Cập nhật batch cấu hình hệ thống
+adminRouter.patch('/cau-hinh/batch', zValidator('json', CauHinhBatchUpdateSchema), async (c) => {
+  const { configs } = c.req.valid('json');
+
+  try {
+    const statements = Object.entries(configs).map(([khoa, gia_tri]) => {
+      return c.env.DB.prepare(
+        `INSERT INTO cau_hinh (khoa, gia_tri, ngay_cap_nhat)
+         VALUES (?, ?, datetime('now'))
+         ON CONFLICT(khoa) DO UPDATE SET gia_tri = excluded.gia_tri, ngay_cap_nhat = datetime('now')`
+      ).bind(khoa, gia_tri);
+    });
+
+    if (statements.length > 0) {
+      await c.env.DB.batch(statements);
+    }
+
+    return successResponse(c, { message: 'Cập nhật hàng loạt cấu hình thành công' });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Database error';
+    return errorResponse(c, 'DATABASE_ERROR', message, 500);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 3. Quản lý Danh mục Kho Hàng (CRUD)
+// ---------------------------------------------------------------------------
+
+// 3.1 Danh sách kho
+adminRouter.get('/kho-hang', async (c) => {
+  try {
+    const result = await c.env.DB.prepare(
+      "SELECT id, ten, dia_chi, la_mac_dinh, trang_thai, ngay_tao, ngay_cap_nhat FROM kho_hang WHERE trang_thai != 'da_xoa' ORDER BY la_mac_dinh DESC, ngay_tao DESC"
+    ).all();
+
+    const items = (result.results || []).map((row: any) => ({
+      ...row,
+      la_mac_dinh: Boolean(row.la_mac_dinh)
+    }));
+
+    return successResponse(c, { items, total: items.length });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Database error';
+    return errorResponse(c, 'DATABASE_ERROR', message, 500);
+  }
+});
+
+// 3.2 Thêm kho mới
+adminRouter.post('/kho-hang', zValidator('json', KhoHangCreateSchema), async (c) => {
+  const { ten, dia_chi, la_mac_dinh } = c.req.valid('json');
+
+  try {
+    const id = `kho-${crypto.randomUUID()}`;
+    const isDefaultInt = la_mac_dinh ? 1 : 0;
+
+    // Nếu chọn làm mặc định -> bỏ cờ mặc định của các kho khác
+    if (isDefaultInt === 1) {
+      await c.env.DB.prepare("UPDATE kho_hang SET la_mac_dinh = 0 WHERE la_mac_dinh = 1").run();
+    }
+
+    await c.env.DB.prepare(
+      `INSERT INTO kho_hang (id, ten, dia_chi, la_mac_dinh, trang_thai, ngay_tao, ngay_cap_nhat)
+       VALUES (?, ?, ?, ?, 'hoat_dong', datetime('now'), datetime('now'))`
+    )
+      .bind(id, ten, dia_chi || '', isDefaultInt)
+      .run();
+
+    return successResponse(c, {
+      id,
+      ten,
+      dia_chi: dia_chi || '',
+      la_mac_dinh: Boolean(isDefaultInt),
+      trang_thai: 'hoat_dong',
+      message: 'Tạo kho hàng thành công'
+    }, 201);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Database error';
+    return errorResponse(c, 'DATABASE_ERROR', message, 500);
+  }
+});
+
+// 3.3 Cập nhật kho
+adminRouter.put('/kho-hang/:id', zValidator('json', KhoHangUpdateSchema), async (c) => {
+  const id = c.req.param('id');
+  const { ten, dia_chi, la_mac_dinh, trang_thai } = c.req.valid('json');
+
+  try {
+    const existing = await c.env.DB.prepare(
+      "SELECT id, ten, dia_chi, la_mac_dinh, trang_thai FROM kho_hang WHERE id = ? AND trang_thai != 'da_xoa'"
+    ).bind(id).first<any>();
+
+    if (!existing) {
+      return errorResponse(c, 'NOT_FOUND', 'Kho hàng không tồn tại', 404);
+    }
+
+    // Nếu chuyển thành mặc định -> reset các kho khác
+    if (la_mac_dinh === true) {
+      await c.env.DB.prepare("UPDATE kho_hang SET la_mac_dinh = 0 WHERE id != ?").bind(id).run();
+    }
+
+    const setClauses: string[] = [];
+    const params: (string | number)[] = [];
+
+    if (ten !== undefined) {
+      setClauses.push('ten = ?');
+      params.push(ten);
+    }
+    if (dia_chi !== undefined) {
+      setClauses.push('dia_chi = ?');
+      params.push(dia_chi);
+    }
+    if (la_mac_dinh !== undefined) {
+      setClauses.push('la_mac_dinh = ?');
+      params.push(la_mac_dinh ? 1 : 0);
+    }
+    if (trang_thai !== undefined) {
+      setClauses.push('trang_thai = ?');
+      params.push(trang_thai);
+    }
+
+    setClauses.push("ngay_cap_nhat = datetime('now')");
+    params.push(id);
+
+    await c.env.DB.prepare(
+      `UPDATE kho_hang SET ${setClauses.join(', ')} WHERE id = ?`
+    ).bind(...params).run();
+
+    const updated = await c.env.DB.prepare(
+      "SELECT id, ten, dia_chi, la_mac_dinh, trang_thai, ngay_tao, ngay_cap_nhat FROM kho_hang WHERE id = ?"
+    ).bind(id).first<any>();
+
+    return successResponse(c, {
+      ...updated,
+      la_mac_dinh: Boolean(updated?.la_mac_dinh)
+    });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Database error';
+    return errorResponse(c, 'DATABASE_ERROR', message, 500);
+  }
+});
+
+// 3.4 Đặt kho làm mặc định
+adminRouter.put('/kho-hang/:id/set-default', async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const existing = await c.env.DB.prepare(
+      "SELECT id FROM kho_hang WHERE id = ? AND trang_thai != 'da_xoa'"
+    ).bind(id).first();
+
+    if (!existing) {
+      return errorResponse(c, 'NOT_FOUND', 'Kho hàng không tồn tại', 404);
+    }
+
+    // Reset tất cả các kho khác
+    await c.env.DB.prepare("UPDATE kho_hang SET la_mac_dinh = 0 WHERE id != ?").bind(id).run();
+    // Bật cờ cho kho được chọn
+    await c.env.DB.prepare("UPDATE kho_hang SET la_mac_dinh = 1, ngay_cap_nhat = datetime('now') WHERE id = ?").bind(id).run();
+
+    return successResponse(c, { message: 'Đã đặt làm kho mặc định' });
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Database error';
+    return errorResponse(c, 'DATABASE_ERROR', message, 500);
+  }
+});
+
+// 3.5 Xóa mềm kho
+adminRouter.delete('/kho-hang/:id', async (c) => {
+  const id = c.req.param('id');
+
+  try {
+    const existing = await c.env.DB.prepare(
+      "SELECT id, la_mac_dinh FROM kho_hang WHERE id = ? AND trang_thai != 'da_xoa'"
+    ).bind(id).first<any>();
+
+    if (!existing) {
+      return errorResponse(c, 'NOT_FOUND', 'Kho hàng không tồn tại', 404);
+    }
+
+    await c.env.DB.prepare(
+      "UPDATE kho_hang SET trang_thai = 'da_xoa', la_mac_dinh = 0, ngay_cap_nhat = datetime('now') WHERE id = ?"
+    ).bind(id).run();
+
+    return successResponse(c, { id, message: 'Đã xóa kho hàng' });
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Database error';
     return errorResponse(c, 'DATABASE_ERROR', message, 500);

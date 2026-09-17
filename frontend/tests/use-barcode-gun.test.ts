@@ -152,7 +152,7 @@ describe('useBarcodeGun', () => {
     it('resets buffer when time between keystrokes exceeds threshold', () => {
       let time = 0;
       vi.spyOn(performance, 'now').mockImplementation(() => {
-        time += 100; // 100ms between keys — too slow for barcode gun
+        time += 200; // 200ms between keys — too slow for barcode gun (threshold is 100ms)
         return time;
       });
 
@@ -171,7 +171,7 @@ describe('useBarcodeGun', () => {
         fireKeyDown('Enter');
       });
 
-      // Each key is >50ms apart, so buffer resets between keys.
+      // Each key is >100ms apart, so buffer resets between keys.
       // Only last char 'E' remains (length 1 < 4 minimum), so no scan emitted.
       expect(onScan).not.toHaveBeenCalled();
     });
@@ -207,14 +207,33 @@ describe('useBarcodeGun', () => {
       act(() => {
         fireKeyDown('A');
         fireKeyDown('B');
-        fireKeyDown('Shift'); // Non-printable, resets buffer
+        fireKeyDown('Escape'); // Non-printable, resets buffer
         fireKeyDown('C');
         fireKeyDown('D');
         fireKeyDown('Enter');
       });
 
-      // Buffer was reset at Shift, so only "CD" remains (< 4 chars)
+      // Buffer was reset at Escape, so only "CD" remains (< 4 chars)
       expect(onScan).not.toHaveBeenCalled();
+    });
+
+    it('does not reset buffer on Shift key (preserves barcode gun prefixes)', () => {
+      const { result } = renderHook(() => useBarcodeGun(onScan));
+
+      act(() => {
+        result.current.enable();
+      });
+
+      act(() => {
+        fireKeyDown('Shift');
+        fireKeyDown('S');
+        fireKeyDown('P');
+        fireKeyDown('X');
+        fireKeyDown('1');
+        fireKeyDown('Enter');
+      });
+
+      expect(onScan).toHaveBeenCalledWith('SPX1');
     });
   });
 

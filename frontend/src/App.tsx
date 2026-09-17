@@ -5,9 +5,14 @@ import { HomePage } from './pages/HomePage';
 import { QueuePage } from './pages/QueuePage';
 import { HistoryPage } from './pages/HistoryPage';
 import { UserSettingsPage } from './pages/UserSettingsPage';
+import { AdminSettingsPage } from './pages/AdminSettingsPage';
+import { AdminEmployeesPage } from './pages/AdminEmployeesPage';
 import { LoginPage } from './pages/LoginPage';
 import { useAuthStore } from './stores/auth-store';
 import { useConfigStore } from './stores/config-store';
+import { toast } from 'sonner';
+import { ToastContainer } from './components/ui/Toast';
+import { Toaster } from './components/ui/sonner';
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, user, verifyToken } = useAuthStore();
@@ -21,6 +26,17 @@ const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) =
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
   }
+  return <>{children}</>;
+};
+
+const AdminGuard: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const { user } = useAuthStore();
+
+  if (user?.vai_tro !== 'admin') {
+    toast.error('Bạn không có quyền truy cập trang quản trị');
+    return <Navigate to="/settings" replace />;
+  }
+
   return <>{children}</>;
 };
 
@@ -52,6 +68,22 @@ const router = createBrowserRouter([
         path: '/settings',
         element: <UserSettingsPage />,
       },
+      {
+        path: '/admin/settings',
+        element: (
+          <AdminGuard>
+            <AdminSettingsPage />
+          </AdminGuard>
+        ),
+      },
+      {
+        path: '/admin/employees',
+        element: (
+          <AdminGuard>
+            <AdminEmployeesPage />
+          </AdminGuard>
+        ),
+      },
     ],
   },
   {
@@ -72,7 +104,13 @@ export function App() {
     }
   }, [theme]);
 
-  return <RouterProvider router={router} />;
+  return (
+    <>
+      <RouterProvider router={router} />
+      <ToastContainer />
+      <Toaster />
+    </>
+  );
 }
 
 export default App;

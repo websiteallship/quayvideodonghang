@@ -83,8 +83,21 @@ export const NhanVienQuerySchema = z.object({
 });
 
 export const CauHinhUpdateSchema = z.object({
-  khoa: z.string().min(1),
-  gia_tri: z.string()
+  khoa: z.enum([
+    'drive_folder_id', 'sheet_id', 'do_phan_giai', 'bitrate_mbps',
+    'auto_scan', 'quay_lien_tuc', 'watermark', 'don_vi_vc_danh_sach', 'retention_thang'
+  ]),
+  gia_tri: z.string().min(0)
+});
+
+export const CauHinhBatchUpdateSchema = z.object({
+  configs: z.record(
+    z.enum([
+      'drive_folder_id', 'sheet_id', 'do_phan_giai', 'bitrate_mbps',
+      'auto_scan', 'quay_lien_tuc', 'watermark', 'don_vi_vc_danh_sach', 'retention_thang'
+    ]),
+    z.string()
+  )
 });
 
 export const BienBanIdParamSchema = z.object({
@@ -103,6 +116,22 @@ export const CheckMaVanDonQuerySchema = z.object({
   loai_bien_ban: z.enum(['dong_goi', 'khui_hang']).optional()
 });
 
+export const KhoHangCreateSchema = z.object({
+  ten: z.string().trim().min(2, 'Tên kho tối thiểu 2 ký tự').max(100, 'Tên kho tối đa 100 ký tự'),
+  dia_chi: z.string().trim().max(255, 'Địa chỉ tối đa 255 ký tự').optional().default(''),
+  la_mac_dinh: z.boolean().optional().default(false),
+});
+
+export const KhoHangUpdateSchema = z.object({
+  ten: z.string().trim().min(2, 'Tên kho tối thiểu 2 ký tự').max(100, 'Tên kho tối đa 100 ký tự').optional(),
+  dia_chi: z.string().trim().max(255, 'Địa chỉ tối đa 255 ký tự').optional(),
+  la_mac_dinh: z.boolean().optional(),
+  trang_thai: z.enum(['hoat_dong', 'ngung_hoat_dong', 'da_xoa']).optional(),
+}).refine(
+  data => Object.keys(data).length > 0,
+  'Phải cập nhật ít nhất 1 trường'
+);
+
 export type LoginRequestDTO = z.infer<typeof LoginRequestSchema>;
 export type UploadInitDTO = z.infer<typeof UploadInitSchema>;
 export type UploadCompleteDTO = z.infer<typeof UploadCompleteSchema>;
@@ -116,3 +145,5 @@ export type ResetPinDTO = z.infer<typeof ResetPinSchema>;
 export type NhanVienQueryDTO = z.infer<typeof NhanVienQuerySchema>;
 export type CauHinhUpdateDTO = z.infer<typeof CauHinhUpdateSchema>;
 export type CheckMaVanDonParamDTO = z.infer<typeof CheckMaVanDonParamSchema>;
+export type KhoHangCreateDTO = z.infer<typeof KhoHangCreateSchema>;
+export type KhoHangUpdateDTO = z.infer<typeof KhoHangUpdateSchema>;

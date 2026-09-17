@@ -67,11 +67,37 @@ erDiagram
         string gia_tri
         datetime ngay_cap_nhat
     }
+
+    KHO_HANG {
+        string id PK "UUID"
+        string ten "Tên chi nhánh kho"
+        string dia_chi "nullable - Địa chỉ"
+        int la_mac_dinh "0 | 1"
+        string trang_thai "hoat_dong | ngung_hoat_dong | da_xoa"
+        datetime ngay_tao
+        datetime ngay_cap_nhat
+    }
 ```
 
 ---
 
 ## 2. SQL Schema (Migration)
+
+### Bảng `kho_hang`
+
+```sql
+CREATE TABLE IF NOT EXISTS kho_hang (
+    id            TEXT PRIMARY KEY,
+    ten           TEXT NOT NULL,
+    dia_chi       TEXT,
+    la_mac_dinh   INTEGER NOT NULL DEFAULT 0 CHECK(la_mac_dinh IN (0, 1)),
+    trang_thai    TEXT NOT NULL DEFAULT 'hoat_dong' CHECK(trang_thai IN ('hoat_dong', 'ngung_hoat_dong', 'da_xoa')),
+    ngay_tao      TEXT NOT NULL DEFAULT (datetime('now')),
+    ngay_cap_nhat TEXT NOT NULL DEFAULT (datetime('now'))
+);
+CREATE INDEX IF NOT EXISTS idx_kho_hang_trang_thai ON kho_hang(trang_thai);
+CREATE INDEX IF NOT EXISTS idx_kho_hang_mac_dinh ON kho_hang(la_mac_dinh);
+```
 
 ### Bảng `nhan_vien`
 

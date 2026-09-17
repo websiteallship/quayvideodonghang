@@ -1,15 +1,16 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Camera,
-  HardDrive,
   ScanBarcode,
   Info,
   MapPin,
   LogOut,
   RefreshCw,
   Check,
-  Wifi,
-  WifiOff,
+  Building2,
+  ExternalLink,
+  Star,
 } from 'lucide-react';
 import { useCameraStore } from '@/stores/camera-store';
 import { useConfigStore } from '@/stores/config-store';
@@ -19,11 +20,17 @@ import { useGeolocation } from '@/hooks/use-geolocation';
 import { APP_CONFIG } from '@/config/constants';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { showToast } from '@/stores/toast-store';
 import { cn } from '@/lib/utils';
 
 // ---------------------------------------------------------------------------
@@ -149,10 +156,20 @@ function InfoRow({
 // Main Page: UserSettingsPage
 // ---------------------------------------------------------------------------
 export const UserSettingsPage: React.FC = () => {
+  const navigate = useNavigate();
+
   // Global & Device Stores
   const { facingMode, toggleFacing, selectedDeviceId, devices, setDevices, setDevice } =
     useCameraStore();
-  const { warehouseName, setWarehouseName, isOnline } = useConfigStore();
+  const {
+    warehouseName,
+    warehouseId,
+    warehouses,
+    warehousesLoading,
+    fetchWarehouses,
+    setWarehouse,
+    isOnline,
+  } = useConfigStore();
   const { user, logout } = useAuthStore();
   const {
     videoResolution,
@@ -171,9 +188,12 @@ export const UserSettingsPage: React.FC = () => {
     clearCache,
   } = useGeolocation();
 
-  // Local state for warehouse name input
-  const [warehouseInput, setWarehouseInput] = useState(warehouseName);
-  const [warehouseSaved, setWarehouseSaved] = useState(!!warehouseName);
+  const [warehouseSaved, setWarehouseSaved] = useState(false);
+
+  // Tải danh sách kho từ backend khi mount
+  useEffect(() => {
+    void fetchWarehouses();
+  }, [fetchWarehouses]);
 
   // Enumerate camera devices on mount
   useEffect(() => {
@@ -189,15 +209,24 @@ export const UserSettingsPage: React.FC = () => {
     void enumerate();
   }, [setDevices]);
 
-  // Warehouse name save handler
-  const handleWarehouseSave = useCallback(() => {
-    const trimmed = warehouseInput.trim();
-    setWarehouseName(trimmed);
-    if (trimmed) {
-      setWarehouseSaved(true);
-      setTimeout(() => setWarehouseSaved(false), 2000);
-    }
-  }, [warehouseInput, setWarehouseName]);
+  // Xử lý chọn kho từ danh sách có sẵn
+  const handleWarehouseSelect = useCallback(
+    (selectedId: string) => {
+      const found = warehouses.find((w) => w.id === selectedId);
+      if (found) {
+        setWarehouse(found);
+        setWarehouseSaved(true);
+        showToast.success('Đã lưu cài đặt', `Đã chọn kho làm việc: ${found.ten}`);
+        setTimeout(() => setWarehouseSaved(false), 2000);
+      }
+    },
+    [warehouses, setWarehouse]
+  );
+
+  // Kho đang được chọn
+  const currentWarehouse = useMemo(() => {
+    return warehouses.find((w) => w.id === warehouseId || w.ten === warehouseName);
+  }, [warehouses, warehouseId, warehouseName]);
 
   // User info
   const userName = user?.ten ?? 'Nhân viên';
@@ -256,24 +285,16 @@ export const UserSettingsPage: React.FC = () => {
         </CardContent>
       </Card>
 
-      {/* ─── Horizontal Tabs Navigation ─── */}
-      <Tabs defaultValue="camera" className="w-full flex flex-col gap-3.5">
+      <Tabs defaultValue="camera" className="w-full flex flex-col gap-4 lg:gap-6">
         {/* Scrollable Horizontal Tabs List */}
         <div className="overflow-x-auto pb-1 -mx-4 px-4 sm:mx-0 sm:px-0">
-          <TabsList className="inline-flex h-12 w-full min-w-max sm:min-w-0 items-center justify-start sm:grid sm:grid-cols-4 rounded-2xl bg-muted/70 p-1 border border-border/50 gap-1 sm:gap-0">
+          <TabsList className="inline-flex h-12 w-full min-w-max sm:min-w-0 items-center justify-start sm:grid sm:grid-cols-3 rounded-2xl bg-muted/70 p-1 border border-border/50 gap-1 sm:gap-0">
             <TabsTrigger
               value="camera"
               className="flex items-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs min-h-[40px] shrink-0"
             >
               <Camera className="size-4 shrink-0 text-primary" aria-hidden="true" />
               <span>Ghi hình &amp; Âm thanh</span>
-            </TabsTrigger>
-            <TabsTrigger
-              value="storage"
-              className="flex items-center gap-1.5 sm:gap-2 rounded-xl px-3 sm:px-4 py-2 text-xs font-semibold data-[state=active]:bg-card data-[state=active]:text-foreground data-[state=active]:shadow-xs min-h-[40px] shrink-0"
-            >
-              <HardDrive className="size-4 shrink-0 text-emerald-500" aria-hidden="true" />
-              <span>Lưu trữ Drive</span>
             </TabsTrigger>
             <TabsTrigger
               value="barcode"
@@ -299,336 +320,360 @@ export const UserSettingsPage: React.FC = () => {
             iconColor="text-primary"
             title="Thiết bị Ghi hình & Âm thanh"
           >
-            <div className="flex flex-col gap-4 text-xs">
-              {/* Camera Select */}
-              <div>
-                <label
-                  htmlFor="settings-camera-select"
-                  className="mb-1.5 block text-xs font-semibold text-muted-foreground"
-                >
-                  Webcam quay đóng gói
-                </label>
-                <select
-                  id="settings-camera-select"
-                  value={selectedDeviceId ?? ''}
-                  onChange={(e) => {
-                    if (e.target.value) setDevice(e.target.value);
-                    else toggleFacing();
-                  }}
-                  className="h-11 w-full rounded-xl border border-border bg-muted/40 px-3 text-xs font-medium text-foreground focus:outline-none"
-                >
-                  {devices.length > 0 ? (
-                    devices.map((d) => (
-                      <option key={d.deviceId} value={d.deviceId}>
-                        {d.label || `Camera ${d.deviceId.slice(0, 8)}...`}
-                      </option>
-                    ))
-                  ) : (
-                    <option value="">
-                      {selectedCameraLabel}
+          <div className="flex flex-col gap-4 text-xs">
+            {/* Camera Select */}
+            <div>
+              <label
+                htmlFor="settings-camera-select"
+                className="mb-1.5 block text-xs font-semibold text-muted-foreground"
+              >
+                Webcam quay đóng gói
+              </label>
+              <select
+                id="settings-camera-select"
+                value={selectedDeviceId ?? ''}
+                onChange={(e) => {
+                  if (e.target.value) {
+                    setDevice(e.target.value);
+                    const found = devices.find((d) => d.deviceId === e.target.value);
+                    showToast.success('Đã lưu cài đặt', `Đã chọn: ${found?.label || 'Camera ' + e.target.value.slice(0, 8)}`);
+                  } else {
+                    toggleFacing();
+                    showToast.success('Đã lưu cài đặt', 'Đã chuyển hướng camera');
+                  }
+                }}
+                className="h-11 w-full rounded-xl border border-border bg-muted/40 px-3 text-xs font-medium text-foreground focus:outline-none"
+              >
+                {devices.length > 0 ? (
+                  devices.map((d) => (
+                    <option key={d.deviceId} value={d.deviceId}>
+                      {d.label || `Camera ${d.deviceId.slice(0, 8)}...`}
                     </option>
-                  )}
-                </select>
+                  ))
+                ) : (
+                  <option value="">
+                    {selectedCameraLabel}
+                  </option>
+                )}
+              </select>
+            </div>
+
+            {/* Resolution Toggle (User Override) */}
+            <div className="flex flex-col gap-2">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                <div>
+                  <label className="block text-xs font-semibold text-muted-foreground">
+                    Độ phân giải video ghi hình
+                  </label>
+                  <span className="text-[11px] text-muted-foreground/80">
+                    Override cục bộ trên thiết bị này
+                  </span>
+                </div>
+                <Badge variant="outline" className="w-fit font-mono text-[11px] font-semibold border-border">
+                  Đang chọn: <strong className="ml-1 text-foreground">{videoResolution}</strong>
+                </Badge>
               </div>
 
-              {/* Resolution Toggle (User Override) */}
-              <div className="flex flex-col gap-2">
-                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
-                  <div>
-                    <label className="block text-xs font-semibold text-muted-foreground">
-                      Độ phân giải video ghi hình
-                    </label>
-                    <span className="text-[11px] text-muted-foreground/80">
-                      Override cục bộ trên thiết bị này
-                    </span>
-                  </div>
-                  <Badge variant="outline" className="w-fit font-mono text-[11px] font-semibold border-border">
-                    Đang chọn: <strong className="ml-1 text-foreground">{videoResolution}</strong>
-                  </Badge>
-                </div>
-
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
-                  <Button
-                    type="button"
-                    variant={videoResolution === '1080p' ? 'default' : 'outline'}
-                    className={cn(
-                      'h-auto min-h-[52px] flex-col items-start justify-center p-3 rounded-2xl text-left transition-all',
-                      videoResolution === '1080p' && 'shadow-xs border-primary'
-                    )}
-                    onClick={() => setVideoResolution('1080p')}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="text-xs font-bold">1080p (Full HD)</span>
-                      {videoResolution === '1080p' && <Check className="size-3.5 shrink-0" />}
-                    </div>
-                    <span
-                      className={cn(
-                        'text-[11px] font-normal mt-0.5',
-                        videoResolution === '1080p'
-                          ? 'text-primary-foreground/80'
-                          : 'text-muted-foreground'
-                      )}
-                    >
-                      Khuyên dùng • Hình ảnh nét
-                    </span>
-                  </Button>
-
-                  <Button
-                    type="button"
-                    variant={videoResolution === '720p' ? 'default' : 'outline'}
-                    className={cn(
-                      'h-auto min-h-[52px] flex-col items-start justify-center p-3 rounded-2xl text-left transition-all',
-                      videoResolution === '720p' && 'shadow-xs border-primary'
-                    )}
-                    onClick={() => setVideoResolution('720p')}
-                  >
-                    <div className="flex items-center justify-between w-full">
-                      <span className="text-xs font-bold">720p (HD)</span>
-                      {videoResolution === '720p' && <Check className="size-3.5 shrink-0" />}
-                    </div>
-                    <span
-                      className={cn(
-                        'text-[11px] font-normal mt-0.5',
-                        videoResolution === '720p'
-                          ? 'text-primary-foreground/80'
-                          : 'text-muted-foreground'
-                      )}
-                    >
-                      Tiết kiệm dung lượng bộ nhớ
-                    </span>
-                  </Button>
-                </div>
-              </div>
-
-              {/* Camera facing info */}
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-2xl border border-border/60 bg-muted/30 p-3.5 text-xs">
-                <span className="text-muted-foreground">Chuyển hướng camera (Trước / Sau)</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={toggleFacing}
-                  className="gap-1.5 h-9 rounded-xl w-full sm:w-auto shrink-0 font-medium"
+                  type="button"
+                  variant={videoResolution === '1080p' ? 'default' : 'outline'}
+                  className={cn(
+                    'h-auto min-h-[52px] flex-col items-start justify-center p-3 rounded-2xl text-left transition-all',
+                    videoResolution === '1080p' && 'shadow-xs border-primary'
+                  )}
+                  onClick={() => {
+                    setVideoResolution('1080p');
+                    showToast.success('Đã lưu cài đặt', 'Độ phân giải video: 1080p (Full HD)');
+                  }}
                 >
-                  <RefreshCw className="size-3.5" aria-hidden="true" />
-                  {facingMode === 'environment' ? 'Camera sau (Mặc định)' : 'Camera trước'}
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs font-bold">1080p (Full HD)</span>
+                    {videoResolution === '1080p' && <Check className="size-3.5 shrink-0" />}
+                  </div>
+                  <span
+                    className={cn(
+                      'text-[11px] font-normal mt-0.5',
+                      videoResolution === '1080p'
+                        ? 'text-primary-foreground/80'
+                        : 'text-muted-foreground'
+                    )}
+                  >
+                    Khuyên dùng • Hình ảnh nét
+                  </span>
+                </Button>
+
+                <Button
+                  type="button"
+                  variant={videoResolution === '720p' ? 'default' : 'outline'}
+                  className={cn(
+                    'h-auto min-h-[52px] flex-col items-start justify-center p-3 rounded-2xl text-left transition-all',
+                    videoResolution === '720p' && 'shadow-xs border-primary'
+                  )}
+                  onClick={() => {
+                    setVideoResolution('720p');
+                    showToast.success('Đã lưu cài đặt', 'Độ phân giải video: 720p (HD)');
+                  }}
+                >
+                  <div className="flex items-center justify-between w-full">
+                    <span className="text-xs font-bold">720p (HD)</span>
+                    {videoResolution === '720p' && <Check className="size-3.5 shrink-0" />}
+                  </div>
+                  <span
+                    className={cn(
+                      'text-[11px] font-normal mt-0.5',
+                      videoResolution === '720p'
+                        ? 'text-primary-foreground/80'
+                        : 'text-muted-foreground'
+                    )}
+                  >
+                    Tiết kiệm dung lượng bộ nhớ
+                  </span>
                 </Button>
               </div>
             </div>
-          </SettingsCard>
-        </TabsContent>
 
-        {/* ═══ Tab 2: Google Drive Storage (Read-only) ═══ */}
-        <TabsContent value="storage" className="mt-0 focus-visible:outline-none">
-          <SettingsCard
-            icon={HardDrive}
-            iconColor="text-emerald-500"
-            title="Google Drive Storage (Cloudflare Workers)"
-            badge={
-              <Badge variant="secondary" className="text-[10px] font-bold">
-                Chỉ xem (Admin quản trị)
-              </Badge>
-            }
-          >
-            <div className="flex flex-col gap-4 text-xs">
-              {/* Notice */}
-              <div className="rounded-xl border border-border/60 bg-muted/30 p-3 text-xs text-muted-foreground">
-                Cấu hình kết nối Google Drive và hạn mức lưu trữ được thiết lập toàn cục bởi Quản trị viên. Trạm kho chỉ xem trạng thái kết nối thực tế.
-              </div>
-
-              {/* Service Account */}
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-                  Service Account kết nối
-                </label>
-                <div className="truncate rounded-xl border border-border bg-muted/50 p-3 font-mono text-[11px] text-foreground">
-                  sa-drive-uploader@warehouse-system.iam.gserviceaccount.com
-                </div>
-              </div>
-
-              {/* Drive Folder */}
-              <div>
-                <label className="mb-1.5 block text-xs font-semibold text-muted-foreground">
-                  Thư mục Drive lưu trữ (Shared Drive)
-                </label>
-                <div className="rounded-xl border border-border bg-muted/50 p-3">
-                  <span className="font-mono text-xs font-bold text-foreground">
-                    SHARED_DRIVE_KHO_TONG / {new Date().toISOString().slice(0, 7)}
-                  </span>
-                </div>
-              </div>
-
-              {/* Storage Usage */}
-              <div>
-                <div className="mb-2 flex justify-between text-xs font-semibold text-muted-foreground">
-                  <span>Dung lượng Shared Drive đã dùng</span>
-                  <span className="font-mono font-bold text-foreground">420 GB / 2 TB (21%)</span>
-                </div>
-                <Progress value={21} className="h-2.5 rounded-full" />
-              </div>
-
-              {/* Connection status */}
-              <div className="flex items-center gap-2 rounded-xl border border-border/60 bg-muted/30 p-3">
-                {isOnline ? (
-                  <Wifi className="size-4 text-emerald-500 shrink-0" aria-hidden="true" />
-                ) : (
-                  <WifiOff className="size-4 text-rose-500 shrink-0" aria-hidden="true" />
-                )}
-                <span
-                  className={cn(
-                    'text-xs font-semibold',
-                    isOnline ? 'text-emerald-600' : 'text-rose-600'
-                  )}
-                >
-                  {isOnline ? 'Máy chủ Google Drive & Cloudflare Workers kết nối ổn định' : 'Mất kết nối mạng'}
-                </span>
-              </div>
+            {/* Camera facing info */}
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-2xl border border-border/60 bg-muted/30 p-3.5 text-xs">
+              <span className="text-muted-foreground">Chuyển hướng camera (Trước / Sau)</span>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => {
+                  toggleFacing();
+                  const nextFacing = facingMode === 'environment' ? 'Camera trước' : 'Camera sau';
+                  showToast.success('Đã lưu cài đặt', `Đã chuyển sang: ${nextFacing}`);
+                }}
+                className="gap-1.5 h-9 rounded-xl w-full sm:w-auto shrink-0 font-medium"
+              >
+                <RefreshCw className="size-3.5" aria-hidden="true" />
+                {facingMode === 'environment' ? 'Camera sau (Mặc định)' : 'Camera trước'}
+              </Button>
             </div>
+          </div>
           </SettingsCard>
         </TabsContent>
 
-        {/* ═══ Tab 3: Barcode Gun Config ═══ */}
+        {/* ═══ Tab 2: Barcode Gun Config ═══ */}
         <TabsContent value="barcode" className="mt-0 focus-visible:outline-none">
           <SettingsCard
             icon={ScanBarcode}
             iconColor="text-amber-500"
             title="Cấu hình Súng quét Barcode USB"
           >
-            <div className="flex flex-col gap-3 text-xs">
-              <ToggleRow
-                id="settings-auto-record"
-                title="Tự động kích hoạt quay video sau khi quét"
-                description="Sau khi nhận mã vận đơn hợp lệ từ súng quét, hệ thống đếm ngược 1s và tự động bắt đầu ghi hình"
-                checked={autoRecordAfterScan}
-                onChange={setAutoRecordAfterScan}
-              />
-              <ToggleRow
-                id="settings-sound-beep"
-                title="Âm thanh phản hồi (Bíp)"
-                description="Phát âm thanh bíp thông báo khi quét thành công hoặc cảnh báo mã lỗi/trùng"
-                checked={soundBeepEnabled}
-                onChange={setSoundBeepEnabled}
-                showBorder
-              />
-            </div>
+          <div className="flex flex-col gap-3 text-xs">
+            <ToggleRow
+              id="settings-auto-record"
+              title="Tự động kích hoạt quay video sau khi quét"
+              description="Sau khi nhận mã vận đơn hợp lệ từ súng quét, hệ thống đếm ngược 1s và tự động bắt đầu ghi hình"
+              checked={autoRecordAfterScan}
+              onChange={(val) => {
+                setAutoRecordAfterScan(val);
+                showToast.success(
+                  'Đã lưu cài đặt',
+                  val ? 'Đã bật tự động ghi hình sau quét' : 'Đã tắt tự động ghi hình'
+                );
+              }}
+            />
+            <ToggleRow
+              id="settings-sound-beep"
+              title="Âm thanh phản hồi (Bíp)"
+              description="Phát âm thanh bíp thông báo khi quét thành công hoặc cảnh báo mã lỗi/trùng"
+              checked={soundBeepEnabled}
+              onChange={(val) => {
+                setSoundBeepEnabled(val);
+                showToast.success(
+                  'Đã lưu cài đặt',
+                  val ? 'Đã bật âm thanh phản hồi (Bíp)' : 'Đã tắt âm thanh phản hồi'
+                );
+              }}
+              showBorder
+            />
+          </div>
           </SettingsCard>
         </TabsContent>
 
-        {/* ═══ Tab 4: Station & Warehouse Info ═══ */}
-        <TabsContent value="station" className="mt-0 focus-visible:outline-none">
-          <div className="flex flex-col gap-4">
-            <SettingsCard
-              icon={Info}
-              iconColor="text-blue-500"
-              title="Thông tin Trạm làm việc & Ca trực"
-            >
-              <div className="flex flex-col gap-3 text-xs">
-                {/* Warehouse Name — Editable */}
-                <div>
+        {/* ═══ Tab 3: Station & Warehouse Info ═══ */}
+        <TabsContent value="station" className="mt-0 focus-visible:outline-none flex flex-col gap-4">
+          <SettingsCard
+            icon={Info}
+            iconColor="text-blue-500"
+            title="Thông tin Trạm làm việc & Ca trực"
+          >
+            <div className="flex flex-col gap-3 text-xs">
+              {/* Warehouse Selection — Dropdown cố định */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
                   <label
-                    htmlFor="settings-warehouse-name"
-                    className="mb-1.5 block text-xs font-semibold text-muted-foreground"
+                    htmlFor="settings-warehouse-select"
+                    className="block text-xs font-semibold text-muted-foreground"
                   >
-                    Chi nhánh kho / Tên bàn đóng gói
+                    Chi nhánh kho làm việc
                   </label>
-                  <div className="flex gap-2">
-                    <Input
-                      id="settings-warehouse-name"
-                      type="text"
-                      placeholder="VD: Kho Quận 7 - HCM"
-                      value={warehouseInput}
-                      onChange={(e) => setWarehouseInput(e.target.value)}
-                      onBlur={handleWarehouseSave}
-                      onKeyDown={(e) => e.key === 'Enter' && handleWarehouseSave()}
-                      className="h-11 flex-1 rounded-xl text-xs"
-                    />
-                    {warehouseSaved && (
-                      <Badge
-                        variant="outline"
-                        className="shrink-0 gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-600 px-3"
+                  {currentWarehouse?.la_mac_dinh && (
+                    <Badge
+                      variant="secondary"
+                      className="gap-1 text-[10px] font-medium text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/20"
+                    >
+                      <Star className="size-3 fill-amber-500 text-amber-500" aria-hidden="true" />
+                      Kho mặc định
+                    </Badge>
+                  )}
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex-1">
+                    <Select
+                      value={currentWarehouse?.id || ''}
+                      onValueChange={handleWarehouseSelect}
+                      disabled={warehousesLoading || warehouses.length === 0}
+                    >
+                      <SelectTrigger
+                        id="settings-warehouse-select"
+                        className="h-11 rounded-xl text-xs w-full bg-background"
                       >
-                        <Check className="size-3" aria-hidden="true" />
-                        Đã lưu
-                      </Badge>
-                    )}
+                        <SelectValue
+                          placeholder={
+                            warehousesLoading
+                              ? 'Đang tải danh sách kho...'
+                              : warehouses.length === 0
+                              ? 'Chưa có kho nào (Liên hệ Admin)'
+                              : 'Chọn kho làm việc...'
+                          }
+                        />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {warehouses.map((k) => (
+                          <SelectItem key={k.id} value={k.id} className="text-xs">
+                            <div className="flex items-center justify-between gap-2 w-full">
+                              <span className="font-semibold text-foreground">{k.ten}</span>
+                              {k.la_mac_dinh && (
+                                <span className="text-[10px] text-amber-600 dark:text-amber-400 bg-amber-500/10 px-1.5 py-0.5 rounded font-medium">
+                                  Mặc định
+                                </span>
+                              )}
+                            </div>
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
                   </div>
+
+                  {warehouseSaved && (
+                    <Badge
+                      variant="outline"
+                      className="shrink-0 gap-1 border-emerald-500/30 bg-emerald-500/10 text-emerald-600 px-3 h-11"
+                    >
+                      <Check className="size-3" aria-hidden="true" />
+                      Đã lưu
+                    </Badge>
+                  )}
                 </div>
 
-                <Separator />
-
-                {/* Static Info Rows */}
-                <InfoRow
-                  label="Tài khoản nhân viên"
-                  value={`${userCode} (${userRole})`}
-                />
-                <InfoRow
-                  label="Tên nhân viên"
-                  value={userName}
-                />
-
-                {/* GPS Location */}
-                <div className="flex items-center justify-between py-2 border-b border-border/60">
-                  <div className="min-w-0 flex-1 pr-3">
-                    <span className="text-xs text-muted-foreground">Vị trí GPS trạm</span>
-                    <div className="mt-0.5 text-[11px] text-muted-foreground truncate">
-                      {coords
-                        ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}${coords.address ? ` — ${coords.address}` : ''}`
-                        : gpsError
-                          ? gpsError
-                          : 'Chưa xác định'}
-                    </div>
+                {/* Selected Warehouse Address & Details */}
+                {currentWarehouse?.dia_chi && (
+                  <div className="flex items-start gap-1.5 text-[11px] text-muted-foreground bg-muted/30 p-2.5 rounded-xl border border-border/40">
+                    <MapPin className="size-3.5 text-primary shrink-0 mt-0.5" aria-hidden="true" />
+                    <span>{currentWarehouse.dia_chi}</span>
                   </div>
-                  <Button
-                    size="sm"
-                    variant="outline"
-                    onClick={() => {
-                      clearCache();
-                      void requestLocation();
-                    }}
-                    disabled={gpsLoading}
-                    className="shrink-0 gap-1.5 h-9 rounded-xl"
-                  >
-                    <MapPin className="size-3.5" aria-hidden="true" />
-                    {gpsLoading ? 'Đang lấy...' : 'Kiểm tra'}
-                  </Button>
-                </div>
+                )}
 
-                {/* Device Info */}
-                <InfoRow
-                  label="Chế độ giữ màn hình"
-                  value="Screen Wake Lock: Hoạt động"
-                />
-                <InfoRow
-                  label="Bộ nhớ đệm ngoại tuyến"
-                  value={`${APP_CONFIG.IDB_NAME} (v${APP_CONFIG.IDB_VERSION})`}
-                  mono
-                />
-                <InfoRow
-                  label="Phiên bản ứng dụng PWA"
-                  value={`v${APP_CONFIG.VERSION} (Offline-Ready)`}
-                  mono
-                  showBorder={false}
-                />
+                {/* Admin Quick Link */}
+                {user?.vai_tro === 'admin' && (
+                  <div className="flex items-center justify-between pt-1">
+                    <span className="text-[11px] text-muted-foreground">
+                      Bạn có quyền Quản trị viên
+                    </span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => navigate('/admin/settings?tab=warehouses')}
+                      className="h-7 text-xs text-primary hover:text-primary/90 gap-1 px-2 font-medium"
+                    >
+                      <Building2 className="size-3.5" aria-hidden="true" />
+                      Quản lý danh mục kho
+                      <ExternalLink className="size-3 ml-0.5" aria-hidden="true" />
+                    </Button>
+                  </div>
+                )}
               </div>
-            </SettingsCard>
 
-            {/* Logout Button */}
-            <Card className="rounded-3xl shadow-xs border-destructive/30 bg-destructive/5">
-              <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4">
-                <div className="text-xs text-muted-foreground">
-                  Đăng xuất khỏi phiên làm việc hiện tại để bảo vệ dữ liệu trạm kho
+              <Separator />
+
+              {/* Static Info Rows */}
+              <InfoRow
+                label="Tài khoản nhân viên"
+                value={`${userCode} (${userRole})`}
+              />
+              <InfoRow
+                label="Tên nhân viên"
+                value={userName}
+              />
+
+              {/* GPS Location */}
+              <div className="flex items-center justify-between py-2 border-b border-border/60">
+                <div className="min-w-0 flex-1 pr-3">
+                  <span className="text-xs text-muted-foreground">Vị trí GPS trạm</span>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground truncate">
+                    {coords
+                      ? `${coords.lat.toFixed(5)}, ${coords.lng.toFixed(5)}${coords.address ? ` — ${coords.address}` : ''}`
+                      : gpsError
+                        ? gpsError
+                        : 'Chưa xác định'}
+                  </div>
                 </div>
                 <Button
-                  variant="destructive"
-                  size="default"
-                  className="h-11 gap-2 rounded-2xl text-xs font-bold shrink-0 px-5"
-                  onClick={logout}
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    clearCache();
+                    void requestLocation();
+                  }}
+                  disabled={gpsLoading}
+                  className="shrink-0 gap-1.5 h-9 rounded-xl"
                 >
-                  <LogOut className="size-4" aria-hidden="true" />
-                  ĐĂNG XUẤT CA LÀM VIỆC
+                  <MapPin className="size-3.5" aria-hidden="true" />
+                  {gpsLoading ? 'Đang lấy...' : 'Kiểm tra'}
                 </Button>
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+
+              {/* Device Info */}
+              <InfoRow
+                label="Chế độ giữ màn hình"
+                value="Screen Wake Lock: Hoạt động"
+              />
+              <InfoRow
+                label="Bộ nhớ đệm ngoại tuyến"
+                value={`${APP_CONFIG.IDB_NAME} (v${APP_CONFIG.IDB_VERSION})`}
+                mono
+              />
+              <InfoRow
+                label="Phiên bản ứng dụng PWA"
+                value={`v${APP_CONFIG.VERSION} (Offline-Ready)`}
+                mono
+                showBorder={false}
+              />
+            </div>
+          </SettingsCard>
+
+          {/* Logout Button */}
+          <Card className="rounded-3xl shadow-xs border-destructive/30 bg-destructive/5 mt-2">
+            <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4">
+              <div className="text-xs text-muted-foreground">
+                Đăng xuất khỏi phiên làm việc hiện tại để bảo vệ dữ liệu trạm kho
+              </div>
+              <Button
+                variant="destructive"
+                size="default"
+                className="h-11 gap-2 rounded-2xl text-xs font-bold shrink-0 px-5"
+                onClick={logout}
+              >
+                <LogOut className="size-4" aria-hidden="true" />
+                ĐĂNG XUẤT CA LÀM VIỆC
+              </Button>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

@@ -265,6 +265,72 @@ export class DriveService {
   }
 
   /**
+   * Kiểm tra kết nối Google Drive, trả về chi tiết dung lượng và test quyền ghi
+   */
+  async testConnectionDetailed(folderId?: string): Promise<any> {
+    const accessToken = await this.getAccessToken();
+    const res = await fetch('https://www.googleapis.com/drive/v3/about?fields=user,storageQuota', {
+      headers: {
+        Authorization: `Bearer ${accessToken}`
+      }
+    });
+
+    if (!res.ok) {
+      const text = await res.text();
+      throw new Error(`Drive test connection failed: ${res.status} - ${text}`);
+    }
+
+    const data = await res.json() as any;
+    
+    let file_test_ok = false;
+    if (folderId) {
+      try {
+        const createRes = await fetch(
+          'https://www.googleapis.com/drive/v3/files?supportsAllDrives=true',
+          {
+            method: 'POST',
+            headers: {
+              Authorization: `Bearer ${accessToken}`,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({
+              name: 'test_write.txt',
+              parents: [folderId]
+            })
+          }
+        );
+        if (createRes.ok) {
+          const createData = await createRes.json() as { id: string };
+          await fetch(`https://www.googleapis.com/drive/v3/files/${createData.id}?supportsAllDrives=true`, {
+            method: 'DELETE',
+            headers: { Authorization: `Bearer ${accessToken}` }
+          });
+          file_test_ok = true;
+        }
+      } catch (err) {
+        console.warn('File test failed:', err);
+      }
+    }
+
+    const quota = data.storageQuota || {};
+    const usageBytes = parseInt(quota.usage || '0', 10);
+    const limitBytes = parseInt(quota.limit || '0', 10);
+    
+    const dung_luong_da_dung_gb = usageBytes / (1024 ** 3);
+    const dung_luong_tong_gb = limitBytes ? limitBytes / (1024 ** 3) : 0;
+    const dung_luong_con_lai_gb = dung_luong_tong_gb ? (dung_luong_tong_gb - dung_luong_da_dung_gb) : 0;
+
+    return {
+      ket_noi_ok: true,
+      service_account_email: data.user?.emailAddress || this.creds?.client_email,
+      dung_luong_da_dung_gb: parseFloat(dung_luong_da_dung_gb.toFixed(2)),
+      dung_luong_tong_gb: parseFloat(dung_luong_tong_gb.toFixed(2)),
+      dung_luong_con_lai_gb: parseFloat(dung_luong_con_lai_gb.toFixed(2)),
+      file_test_ok
+    };
+  }
+
+  /**
    * Tạo URL xem video trực tiếp từ Google Drive preview.
    * Cấp quyền reader tạm thời cho bất kỳ ai có link nếu cấu hình Drive thật.
    */

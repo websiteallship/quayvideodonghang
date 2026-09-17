@@ -8,13 +8,21 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
+  Shield,
+  Settings2,
+  Users,
 } from 'lucide-react';
 import { useConfigStore } from '@/stores/config-store';
 import { useUploadStore } from '@/stores/upload-store';
+import { useAuthStore } from '@/stores/auth-store';
+import { Separator } from '@/components/ui/separator';
 
 export const Sidebar: React.FC = () => {
   const { sidebarCollapsed, setSidebarCollapsed } = useConfigStore();
   const { queue } = useUploadStore();
+  const { user } = useAuthStore();
+
+  const isAdmin = user?.vai_tro === 'admin';
 
   const pendingCount = queue.filter(
     (q) => q.status === 'cho_upload' || q.status === 'dang_upload'
@@ -31,6 +39,72 @@ export const Sidebar: React.FC = () => {
     { to: '/history', label: 'Lịch sử', icon: History },
     { to: '/settings', label: 'Cài đặt', icon: Settings },
   ];
+
+  const adminItems = [
+    { to: '/admin/settings', label: 'Cấu hình hệ thống', icon: Settings2 },
+    { to: '/admin/employees', label: 'Quản lý nhân viên', icon: Users },
+  ];
+
+  const renderNavItem = (item: {
+    to: string;
+    label: string;
+    icon: React.ComponentType<{ size?: number; className?: string }>;
+    badge?: number | null;
+  }) => {
+    const Icon = item.icon;
+    return (
+      <NavLink
+        key={item.to}
+        to={item.to}
+        end={item.to === '/'}
+        title={sidebarCollapsed ? item.label : undefined}
+        className={({ isActive }) =>
+          `group relative flex items-center rounded-xl text-sm font-medium transition-all cursor-pointer ${
+            sidebarCollapsed
+              ? 'justify-center h-12 w-full px-0'
+              : 'justify-between px-3.5 py-2.5 w-full'
+          } ${
+            isActive
+              ? 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold shadow-xs'
+              : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+          }`
+        }
+      >
+        {({ isActive }) => (
+          <>
+            <div className="flex items-center gap-3 min-w-0">
+              <Icon
+                size={18}
+                className={`shrink-0 transition-colors ${
+                  isActive
+                    ? 'text-amber-500'
+                    : 'text-muted-foreground group-hover:text-foreground'
+                }`}
+              />
+              {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
+            </div>
+
+            {!sidebarCollapsed && (
+              <div className="flex items-center gap-1.5">
+                {item.badge !== null && item.badge !== undefined && (
+                  <span className="bg-amber-500 text-white font-bold text-[10px] rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
+                    {item.badge}
+                  </span>
+                )}
+                {isActive && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
+              </div>
+            )}
+
+            {sidebarCollapsed && item.badge !== null && item.badge !== undefined && (
+              <span className="absolute top-1.5 right-1.5 bg-amber-500 text-white font-bold text-[9px] rounded-full w-4 h-4 flex items-center justify-center">
+                {item.badge}
+              </span>
+            )}
+          </>
+        )}
+      </NavLink>
+    );
+  };
 
   return (
     <aside
@@ -84,61 +158,31 @@ export const Sidebar: React.FC = () => {
           </div>
         )}
 
-        {navItems.map((item) => {
-          const Icon = item.icon;
-          return (
-            <NavLink
-              key={item.to}
-              to={item.to}
-              end={item.to === '/'}
-              title={sidebarCollapsed ? item.label : undefined}
-              className={({ isActive }) =>
-                `group relative flex items-center rounded-xl text-sm font-medium transition-all cursor-pointer ${
-                  sidebarCollapsed
-                    ? 'justify-center h-12 w-full px-0'
-                    : 'justify-between px-3.5 py-2.5 w-full'
-                } ${
-                  isActive
-                    ? 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold shadow-xs'
-                    : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
-                }`
-              }
-            >
-              {({ isActive }) => (
-                <>
-                  <div className="flex items-center gap-3 min-w-0">
-                    <Icon
-                      size={18}
-                      className={`shrink-0 transition-colors ${
-                        isActive
-                          ? 'text-amber-500'
-                          : 'text-muted-foreground group-hover:text-foreground'
-                      }`}
-                    />
-                    {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
-                  </div>
+        {navItems.map(renderNavItem)}
 
-                  {!sidebarCollapsed && (
-                    <div className="flex items-center gap-1.5">
-                      {item.badge !== null && item.badge !== undefined && (
-                        <span className="bg-amber-500 text-white font-bold text-[10px] rounded-full min-w-[18px] h-[18px] flex items-center justify-center px-1">
-                          {item.badge}
-                        </span>
-                      )}
-                      {isActive && <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />}
-                    </div>
-                  )}
+        {/* Admin Section */}
+        {isAdmin && (
+          <>
+            <div className="px-1 py-2">
+              <Separator />
+            </div>
 
-                  {sidebarCollapsed && item.badge !== null && item.badge !== undefined && (
-                    <span className="absolute top-1.5 right-1.5 bg-amber-500 text-white font-bold text-[9px] rounded-full w-4 h-4 flex items-center justify-center">
-                      {item.badge}
-                    </span>
-                  )}
-                </>
-              )}
-            </NavLink>
-          );
-        })}
+            {!sidebarCollapsed && (
+              <div className="px-3 pb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-violet-500">
+                <Shield size={12} className="shrink-0" aria-hidden="true" />
+                Quản trị
+              </div>
+            )}
+
+            {sidebarCollapsed && (
+              <div className="flex justify-center py-1">
+                <Shield size={14} className="text-violet-500" aria-hidden="true" />
+              </div>
+            )}
+
+            {adminItems.map(renderNavItem)}
+          </>
+        )}
       </nav>
 
       {/* Sidebar Bottom Footer */}

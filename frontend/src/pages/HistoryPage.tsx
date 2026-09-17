@@ -9,7 +9,6 @@ import {
   HardDrive,
   User,
   Play,
-  ExternalLink,
   ChevronLeft,
   ChevronRight,
   ChevronsLeft,
@@ -20,8 +19,6 @@ import {
   SlidersHorizontal,
   Scan,
   FileVideo,
-
-  PlayCircle,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -50,7 +47,7 @@ import { useBarcodeGun } from '@/hooks/use-barcode-gun';
 import { CameraPreview } from '@/components/camera/CameraPreview';
 import { ScannerOverlay } from '@/components/scanner/ScannerOverlay';
 import { HistoryFilter } from '@/components/history/HistoryFilter';
-import { CustomVideoPlayer } from '@/components/video/CustomVideoPlayer';
+import { VideoDetailModal } from '@/components/video/VideoDetailModal';
 import { DateRange } from 'react-day-picker';
 import { subDays, format } from 'date-fns';
 import {
@@ -196,7 +193,6 @@ export const HistoryPage: React.FC = () => {
   const [videoModalItem, setVideoModalItem] = useState<BienBanItem | null>(null);
   const [viewUrl, setViewUrl] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
-  const [videoMode, setVideoMode] = useState<'native' | 'iframe'>('native');
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
 
@@ -341,7 +337,6 @@ export const HistoryPage: React.FC = () => {
     setViewUrl(null);
     setStreamUrl(null);
     setVideoError(null);
-    setVideoMode('native');
     setIsVideoLoading(true);
 
     const res = await fetchBienBanViewUrl(item.id);
@@ -1141,143 +1136,27 @@ export const HistoryPage: React.FC = () => {
       )}
 
       {/* ================================================================== */}
-      {/* Video Preview Dialog */}
+      {/* Video Detail Modal */}
       {/* ================================================================== */}
-      <Dialog
-        open={!!videoModalItem}
-        onOpenChange={(open) => { if (!open) { setVideoModalItem(null); setViewUrl(null); setStreamUrl(null); } }}
-      >
-        <DialogContent
-          showCloseButton={false}
-          className="w-[96vw] max-w-[96vw] sm:max-w-xl sm:w-full p-0 rounded-2xl overflow-hidden border-border bg-card max-h-[92vh] flex flex-col"
-        >
-          {/* Header */}
-          <DialogHeader className="px-5 py-4 border-b border-border flex flex-row items-center justify-between space-y-0 shrink-0">
-            <div>
-              <div className="flex items-center gap-2">
-                <PlayCircle size={20} className="text-amber-500" />
-                <DialogTitle className="text-sm sm:text-base font-bold text-foreground">
-                  Xem lại video: {videoModalItem?.ma_van_don}
-                </DialogTitle>
-              </div>
-              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                ĐVVC: {videoModalItem ? getCarrierLabel(videoModalItem.don_vi_vc) : ''}{' '}
-                · Thời lượng: {videoModalItem ? formatDuration(videoModalItem.thoi_luong_video) : ''}
-              </DialogDescription>
-            </div>
-            <button
-              type="button"
-              onClick={() => { setVideoModalItem(null); setViewUrl(null); setStreamUrl(null); }}
-              className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted cursor-pointer"
-            >
-              <X size={20} />
-            </button>
-          </DialogHeader>
-
-          {/* Video Player Area */}
-          <div className="p-4 flex flex-col gap-4">
-            {isVideoLoading && (
-              <div className="w-full aspect-video bg-black rounded-xl flex items-center justify-center">
-                <div className="flex flex-col items-center gap-2">
-                  <RefreshCw size={24} className="text-white animate-spin" />
-                  <span className="text-white/70 text-xs">Đang tải video...</span>
-                </div>
-              </div>
-            )}
-
-            {videoError && (
-              <div className="w-full aspect-video bg-black rounded-xl flex flex-col items-center justify-center gap-3 p-6">
-                <AlertCircle size={32} className="text-rose-400" />
-                <p className="text-white/80 text-sm text-center">{videoError}</p>
-                {viewUrl && (
-                  <a
-                    href={viewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1.5 text-amber-400 hover:text-amber-300 text-xs font-semibold"
-                  >
-                    <ExternalLink size={14} />
-                    <span>Mở trên Google Drive</span>
-                  </a>
-                )}
-              </div>
-            )}
-
-            {!isVideoLoading && !videoError && streamUrl && (
-              <div className="w-full aspect-video bg-black rounded-xl overflow-hidden relative">
-                {videoMode === 'native' ? (
-                  <CustomVideoPlayer
-                    src={streamUrl}
-                    expectedDuration={videoModalItem?.thoi_luong_video}
-                    title={videoModalItem ? `${videoModalItem.ma_van_don} | ${formatDateTimeVN(videoModalItem.thoi_gian_tao)}` : undefined}
-                    onError={() => {
-                      setVideoMode('iframe');
-                    }}
-                  />
-                ) : viewUrl ? (
-                  <>
-                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-xs text-[11px] font-mono text-white/90 z-10 pointer-events-none select-none">
-                      {videoModalItem?.ma_van_don} | {videoModalItem ? formatDateTimeVN(videoModalItem.thoi_gian_tao) : ''}
-                    </div>
-                    <iframe
-                      src={viewUrl}
-                      className="w-full h-full border-0"
-                      allow="autoplay; encrypted-media"
-                      allowFullScreen
-                      title="Video preview"
-                    />
-                  </>
-                ) : null}
-              </div>
-            )}
-
-            {!isVideoLoading && !videoError && !streamUrl && viewUrl && (
-              <div className="w-full aspect-video bg-black rounded-xl overflow-hidden relative">
-                <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-xs text-[11px] font-mono text-white/90 z-10 pointer-events-none select-none">
-                  {videoModalItem?.ma_van_don} | {videoModalItem ? formatDateTimeVN(videoModalItem.thoi_gian_tao) : ''}
-                </div>
-                <iframe
-                  src={viewUrl}
-                  className="w-full h-full border-0"
-                  allow="autoplay; encrypted-media"
-                  allowFullScreen
-                  title="Video preview"
-                />
-              </div>
-            )}
-
-            {/* Footer actions */}
-            <div className="flex justify-between items-center text-xs text-muted-foreground flex-wrap gap-2">
-              <div className="flex items-center gap-2 flex-wrap">
-                {videoModalItem?.drive_file_id && (
-                  <span className="font-mono text-[11px]">
-                    Drive: {videoModalItem.drive_file_id.substring(0, 12)}...
-                  </span>
-                )}
-                {viewUrl && (
-                  <a
-                    href={viewUrl}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline font-semibold text-[11px]"
-                  >
-                    <ExternalLink size={12} />
-                    <span>Mở trên Drive</span>
-                  </a>
-                )}
-              </div>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={() => { setVideoModalItem(null); setViewUrl(null); setStreamUrl(null); }}
-                className="h-9 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
-              >
-                Đóng cửa sổ
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <VideoDetailModal
+        isOpen={!!videoModalItem}
+        onClose={() => {
+          setVideoModalItem(null);
+          setViewUrl(null);
+          setStreamUrl(null);
+          setVideoError(null);
+        }}
+        item={videoModalItem}
+        viewUrl={viewUrl}
+        streamUrl={streamUrl}
+        isVideoLoading={isVideoLoading}
+        videoError={videoError}
+        onRetry={() => {
+          if (videoModalItem) {
+            void handleOpenVideo(videoModalItem);
+          }
+        }}
+      />
 
       {/* ================================================================== */}
       {/* Barcode Scanner Dialog */}

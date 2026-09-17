@@ -30,7 +30,7 @@ interface UseBarcodeGunReturn {
  * USB barcode guns type characters at ~2-10ms intervals.
  * Manual typing is typically >100ms between keystrokes.
  */
-const MAX_KEYSTROKE_INTERVAL_MS = 50;
+const MAX_KEYSTROKE_INTERVAL_MS = 100;
 
 /** Minimum barcode length to accept (avoid false positives from keyboard shortcuts) */
 const MIN_BARCODE_LENGTH = 4;
@@ -90,6 +90,8 @@ export function useBarcodeGun(
 
     // Only buffer single printable characters
     if (event.key.length !== 1) {
+      if (event.key === 'Shift') return; // Ignore Shift key without resetting buffer
+
       // Non-printable key resets buffer
       bufferRef.current = '';
       lastKeystrokeRef.current = 0;

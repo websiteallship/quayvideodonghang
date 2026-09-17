@@ -1,9 +1,14 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 import { render, screen, fireEvent } from '@testing-library/react';
+import { MemoryRouter } from 'react-router-dom';
 import { UserSettingsPage } from '../src/pages/UserSettingsPage';
 import { useUserSettingsStore } from '../src/stores/user-settings-store';
 import { useAuthStore } from '../src/stores/auth-store';
 import { useCameraStore } from '../src/stores/camera-store';
+
+const renderWithRouter = (ui: React.ReactElement) => {
+  return render(<MemoryRouter>{ui}</MemoryRouter>);
+};
 
 describe('UserSettingsPage Component', () => {
   beforeEach(() => {
@@ -31,18 +36,17 @@ describe('UserSettingsPage Component', () => {
     fireEvent.mouseDown(tab, { button: 0, ctrlKey: false });
   }
 
-  it('renders page header and 4 tabs', () => {
-    render(<UserSettingsPage />);
+  it('renders page header and 3 tabs', () => {
+    renderWithRouter(<UserSettingsPage />);
 
     expect(screen.getByText('Cài đặt trạm làm việc')).toBeTruthy();
     expect(screen.getByRole('tab', { name: /Ghi hình & Âm thanh/ })).toBeTruthy();
-    expect(screen.getByRole('tab', { name: /Lưu trữ Drive/ })).toBeTruthy();
     expect(screen.getByRole('tab', { name: /Súng quét Barcode/ })).toBeTruthy();
     expect(screen.getByRole('tab', { name: /Thông tin Trạm/ })).toBeTruthy();
   });
 
   it('allows user to change video resolution override', () => {
-    render(<UserSettingsPage />);
+    renderWithRouter(<UserSettingsPage />);
 
     const res1080Btn = screen.getByRole('button', { name: /1080p/ });
     const res720Btn = screen.getByRole('button', { name: /720p/ });
@@ -57,17 +61,8 @@ describe('UserSettingsPage Component', () => {
     expect(useUserSettingsStore.getState().videoResolution).toBe('720p');
   });
 
-  it('renders read-only notice in Storage tab', async () => {
-    render(<UserSettingsPage />);
-
-    clickTab(/Lưu trữ Drive/);
-
-    expect(await screen.findByText('Chỉ xem (Admin quản trị)')).toBeTruthy();
-    expect(screen.getByText(/sa-drive-uploader@warehouse-system.iam.gserviceaccount.com/)).toBeTruthy();
-  });
-
   it('allows user to toggle autoRecordAfterScan and soundBeep in Barcode tab', async () => {
-    render(<UserSettingsPage />);
+    renderWithRouter(<UserSettingsPage />);
 
     clickTab(/Súng quét Barcode/);
 
@@ -88,7 +83,7 @@ describe('UserSettingsPage Component', () => {
     const mockLogout = vi.fn();
     useAuthStore.setState({ logout: mockLogout });
 
-    render(<UserSettingsPage />);
+    renderWithRouter(<UserSettingsPage />);
 
     clickTab(/Thông tin Trạm/);
 

@@ -8,6 +8,8 @@ import {
   Clock,
   Repeat,
   Play,
+  Layers,
+  Info,
 } from 'lucide-react';
 import type { OverlayInfo } from '../../hooks/use-media-recorder';
 import { formatBytes, formatDuration } from '../../utils/format';
@@ -25,6 +27,8 @@ interface VideoPreviewProps {
   onSaveAndContinue: (blob: Blob, duration: number) => void;
   /** Called when user discards the video and wants to re-record */
   onDiscardAndRetry: () => void;
+  /** Danh sách các mã trong phiên quét liên tục (nếu có) */
+  sessionCodes?: string[];
 }
 
 export function VideoPreview({
@@ -34,7 +38,10 @@ export function VideoPreview({
   overlayInfo,
   onSaveAndContinue,
   onDiscardAndRetry,
+  sessionCodes,
 }: VideoPreviewProps) {
+  const codes = sessionCodes && sessionCodes.length > 0 ? sessionCodes : [overlayInfo.maVanDon];
+  const isContinuous = codes.length > 1;
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const [playbackMode, setPlaybackMode] = useState<'last5s' | 'full'>('last5s');
   const startLast5sTime = Math.max(0, duration - 5);
@@ -51,7 +58,7 @@ export function VideoPreview({
       try {
         const playPromise = vid.play();
         if (playPromise && typeof playPromise.catch === 'function') {
-          playPromise.catch(() => {});
+          playPromise.catch(() => { });
         }
       } catch {
         // Autoplay policy fallback
@@ -191,6 +198,62 @@ export function VideoPreview({
         </button>
       </div>
 
+      {/* Session Summary (Hiển thị danh sách mã đơn đã quét trong phiên) */}
+      {codes.length > 0 && (
+        <div className="rounded-xl border border-border/80 bg-muted/30 p-3.5 flex flex-col gap-2.5 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-bold flex items-center gap-1.5 text-foreground">
+              <Layers size={15} className="text-primary" />
+              <span>
+                {isContinuous
+                  ? `Phiên quét liên tục (${codes.length} đơn)`
+                  : 'Mã vận đơn đã quét (1 đơn)'}
+              </span>
+            </span>
+            <span
+              className={`text-[11px] font-semibold px-2.5 py-0.5 rounded-full ${isContinuous
+                  ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10'
+                  : 'text-blue-600 dark:text-blue-400 bg-blue-500/10'
+                }`}
+            >
+              {isContinuous ? `${codes.length - 1} đơn trước đã lưu` : 'Đang xem trước'}
+            </span>
+          </div>
+
+          <div className="flex flex-wrap gap-1.5 max-h-24 overflow-y-auto py-1">
+            {codes.map((code, idx) => {
+              const isCurrent = idx === codes.length - 1;
+              return (
+                <span
+                  key={code}
+                  className={`inline-flex items-center gap-1 px-2.5 py-1 rounded-md font-mono text-[11px] ${isCurrent
+                      ? 'bg-primary text-primary-foreground font-bold shadow-xs'
+                      : 'bg-background/80 border border-border/70 text-muted-foreground'
+                    }`}
+                >
+                  {!isCurrent && <Check size={12} className="text-emerald-500" />}
+                  {code}
+                  {isCurrent && (
+                    <span className="text-[10px] font-normal opacity-90">
+                      {isContinuous ? '(Đơn cuối)' : '(Đang xem)'}
+                    </span>
+                  )}
+                </span>
+              );
+            })}
+          </div>
+
+          <p className="text-[11px] text-muted-foreground leading-tight flex items-center gap-1.5">
+            <Info size={14} className="text-primary shrink-0" aria-hidden="true" />
+            <span>
+              {isContinuous
+                ? 'Nếu bấm Hủy đơn cuối này, chỉ video đơn hiện tại bị hủy. Các đơn trước đã lưu an toàn trong hàng đợi.'
+                : 'Bấm Lưu & Tiếp tục để đưa video vào hàng đợi tải lên Google Drive.'}
+            </span>
+          </p>
+        </div>
+      )}
+
       {/* Actions */}
       <div className="video-preview-card__actions">
         <button
@@ -199,7 +262,9 @@ export function VideoPreview({
           onClick={() => onSaveAndContinue(blob, duration)}
         >
           <Check size={20} aria-hidden="true" />
-          <span>Lưu & Tiếp tục</span>
+          <span>
+            {isContinuous ? `Lưu đơn cuối & Kết thúc (${codes.length} đơn)` : 'Lưu & Tiếp tục'}
+          </span>
         </button>
 
         <button
@@ -208,7 +273,7 @@ export function VideoPreview({
           onClick={onDiscardAndRetry}
         >
           <RotateCcw size={18} aria-hidden="true" />
-          <span>Quay lại</span>
+          <span>{isContinuous ? 'Hủy đơn cuối này' : 'Quay lại'}</span>
         </button>
       </div>
     </div>

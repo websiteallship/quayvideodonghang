@@ -4,12 +4,11 @@
 // Rules: 01-ui-ux.md (no emoji, 48px+ touch targets, lucide-react)
 // ---------------------------------------------------------------------------
 
-import { useState, useMemo, useCallback, useEffect } from 'react';
+import { useState, useMemo, useCallback } from 'react';
 import { Package, PackageOpen, Video, RotateCcw, ChevronDown, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import type { BarcodeResult, DonViVanChuyen, LoaiBienBan } from '../../types';
 import { DON_VI_VAN_CHUYEN_LIST } from '../../config/constants';
 import { detectCarrier, getCarrierLabel } from '../../utils/detect-carrier';
-import { useUserSettingsStore } from '../../stores/user-settings-store';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -29,6 +28,8 @@ interface ScanResultProps {
   };
   /** Whether check API is currently running */
   isChecking?: boolean;
+  /** Error from duplicate check API if any */
+  error?: string | null;
   /** Initial or pre-selected work mode (defaults to 'dong_goi') */
   initialLoaiBienBan?: LoaiBienBan;
   /** Called when user confirms and wants to start recording */
@@ -51,6 +52,7 @@ export function ScanResult({
   isDuplicate = false,
   duplicateInfo,
   isChecking = false,
+  error = null,
   initialLoaiBienBan = 'dong_goi',
   onStartRecording,
   onRescan,
@@ -70,25 +72,6 @@ export function ScanResult({
       overwrite,
     });
   }, [result.rawValue, selectedCarrier, loaiBienBan, onStartRecording]);
-
-  const autoRecordAfterScan = useUserSettingsStore((s) => s.autoRecordAfterScan);
-  const [autoRecordCountdown, setAutoRecordCountdown] = useState<number | null>(null);
-
-  useEffect(() => {
-    if (!autoRecordAfterScan || result.source !== 'gun' || isDuplicate || isChecking) {
-      setAutoRecordCountdown(null);
-      return;
-    }
-
-    setAutoRecordCountdown(1);
-    const timer = setTimeout(() => {
-      handleStartRecording(false);
-    }, 1000);
-
-    return () => {
-      clearTimeout(timer);
-    };
-  }, [autoRecordAfterScan, result.source, isDuplicate, isChecking, handleStartRecording]);
 
   const duplicateSourceLabel = useMemo(() => {
     if (!duplicateInfo?.source) return '';
@@ -110,10 +93,14 @@ export function ScanResult({
         </span>
       </div>
 
-      {/* Auto-record countdown banner */}
-      {autoRecordCountdown !== null && (
-        <div className="mb-3 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary font-bold text-center animate-pulse">
-          Súng quét nhận mã: Tự động bắt đầu quay sau {autoRecordCountdown}s...
+      {/* API Error Banner */}
+      {error && !isChecking && (
+        <div className="p-3 bg-destructive/10 text-destructive text-sm rounded-lg flex items-start gap-2 mb-4">
+          <AlertTriangle size={18} className="shrink-0 mt-0.5" />
+          <div className="flex flex-col">
+            <span className="font-bold">Lỗi kiểm tra trùng đơn</span>
+            <span>{error}</span>
+          </div>
         </div>
       )}
 

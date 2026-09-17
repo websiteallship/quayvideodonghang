@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import { useRef, useEffect, useState } from 'react';
-import { Square, AlertCircle } from 'lucide-react';
+import { Square, AlertCircle, ScanLine, Layers } from 'lucide-react';
 import type { OverlayInfo } from '../../hooks/use-media-recorder';
 import { RecordTimer } from './RecordTimer';
 
@@ -24,6 +24,10 @@ interface RecordingViewProps {
   onStopRecording: () => void;
   /** Ref callback to attach source video element */
   onAttachVideoRef?: (el: HTMLVideoElement | null) => void;
+  /** Barcode của đơn tiếp theo đang chuẩn bị chuyển (nếu có) */
+  nextBarcode?: string | null;
+  /** Tổng số đơn đã quét trong phiên hiện tại */
+  sessionCount?: number;
 }
 
 export function RecordingView({
@@ -34,6 +38,8 @@ export function RecordingView({
   error,
   onStopRecording,
   onAttachVideoRef,
+  nextBarcode,
+  sessionCount,
 }: RecordingViewProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -84,6 +90,22 @@ export function RecordingView({
         <div className="guide-corner guide-corner--bl" />
         <div className="guide-corner guide-corner--br" />
       </div>
+
+      {/* Top Left: Session Badge (if in continuous session) */}
+      {sessionCount && sessionCount > 1 && (
+        <div className="absolute top-5 left-5 z-10 flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white border border-white/15 text-xs font-bold shadow-lg">
+          <Layers size={14} className="text-primary" />
+          <span>Phiên: {sessionCount} đơn</span>
+        </div>
+      )}
+
+      {/* Top Center Notification: Transitioning to next barcode */}
+      {nextBarcode && (
+        <div className="absolute top-5 left-1/2 -translate-x-1/2 z-20 bg-primary/95 text-primary-foreground px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 font-bold text-sm animate-pulse border border-primary-foreground/20">
+          <ScanLine size={18} />
+          <span>Chuyển sang: {nextBarcode}...</span>
+        </div>
+      )}
 
       {/* Top Right: Record Timer */}
       <div className="absolute top-5 right-5 z-10">
