@@ -30,7 +30,11 @@ Tất cả endpoint backend (Cloudflare Workers + Hono) bắt buộc trả về 
 - **Hooks Layer**: Quản lý truy cập phần cứng (`useCamera`, `useBarcodeScanner`, `useMediaRecorder`, `useWakeLock`).
 - **Store Layer (Zustand)**: Quản lý trạng thái toàn cục ứng dụng (`authStore`, `recordingStore`, `syncQueueStore`, `deviceConfigStore`).
 - **Service Layer**: Đóng gói API calls và IndexedDB operations (`apiClient.ts`, `dbStorage.ts`, `driveUpload.ts`).
-- **Component Layer**: Giao diện thuần túy, bọc `ErrorBoundary` tại cụm Camera và Video Preview để tránh crash toàn bộ ứng dụng khi lỗi phần cứng.
+- **Component Layer**:
+  - Tái sử dụng 100% Core UI Primitives (`@/components/ui/*`) dựa trên shadcn/ui và Radix UI (`Button`, `Card`, `Input`, `Dialog`, `Badge`, `Alert`, `Sonner`, `Progress`, `Skeleton`, `Separator`, v.v.).
+  - Áp dụng triệt để Composition Pattern (`CardHeader` + `CardContent`, `DialogHeader` + `DialogTitle`, `TabsList` + `TabsContent`).
+  - Toàn bộ styling sử dụng Tailwind CSS v4 utility classes với semantic tokens; cấm viết inline styles hoặc file CSS rời rạc tự chế.
+  - Bọc `ErrorBoundary` tại cụm Camera và Video Preview để tránh crash toàn bộ ứng dụng khi lỗi phần cứng.
 
 ## 4. Giới hạn Thực thi Cloudflare Workers
 - Workers chạy trên V8 isolates: Không giữ state trong biến toàn cục (stateless giữa các request).

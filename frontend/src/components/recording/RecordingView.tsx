@@ -86,30 +86,13 @@ export function RecordingView({
       </div>
 
       {/* Top Right: Record Timer */}
-      <div style={{ position: 'absolute', top: 20, right: 20, zIndex: 10 }}>
+      <div className="absolute top-5 right-5 z-10">
         <RecordTimer duration={duration} isRecording={isRecording} />
       </div>
 
       {/* Minimal Bottom Left HUD (Matches Canvas output) */}
-      <div 
-        style={{ 
-          position: 'absolute', 
-          bottom: 120, 
-          left: 12, 
-          right: 12,
-          zIndex: 10,
-          display: 'flex', 
-          flexDirection: 'column', 
-          gap: '2px',
-          color: 'white',
-          textShadow: '1px 1px 2px rgba(0,0,0,0.9), 0 0 8px rgba(0,0,0,0.8)',
-          fontFamily: 'monospace',
-          fontSize: '11px',
-          lineHeight: '1.4',
-          pointerEvents: 'none'
-        }}
-      >
-        <div style={{ fontWeight: 'bold', fontSize: '13px' }}>
+      <div className="absolute bottom-28 left-3 right-3 z-10 flex flex-col gap-0.5 text-white font-mono text-[11px] leading-[1.4] pointer-events-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+        <div className="font-bold text-[13px]">
           [{isDongGoi ? 'ĐÓNG GÓI' : 'KHUI HÀNG'}] {overlayInfo.maVanDon}
         </div>
         <div>
@@ -120,10 +103,10 @@ export function RecordingView({
             ? `${overlayInfo.gpsCoords.lat.toFixed(5)}, ${overlayInfo.gpsCoords.lng.toFixed(5)}${overlayInfo.gpsAddress ? ` · ${overlayInfo.gpsAddress}` : ''}`
             : 'GPS: đang tìm...'}
         </div>
-        <div style={{ color: '#fbbf24' }}>
+        <div className="text-amber-400">
           {overlayInfo.warehouseName || 'Kho: chưa cấu hình'}
         </div>
-        <div style={{ opacity: 0.8 }}>
+        <div className="opacity-80">
           {now.toLocaleTimeString('vi-VN')} {now.toLocaleDateString('vi-VN')}
         </div>
       </div>
@@ -137,15 +120,7 @@ export function RecordingView({
       )}
 
       {/* Bottom Controls: Prominent STOP button */}
-      <div 
-        style={{
-          position: 'absolute',
-          bottom: 20,
-          left: '50%',
-          transform: 'translateX(-50%)',
-          zIndex: 10,
-        }}
-      >
+      <div className="absolute bottom-5 left-1/2 -translate-x-1/2 z-10">
         <button
           type="button"
           className="btn-recording-stop"

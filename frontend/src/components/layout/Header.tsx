@@ -1,121 +1,163 @@
 import React from 'react';
-import { Video, Wifi, WifiOff, LogOut, User, Sun, Moon } from 'lucide-react';
+import { useLocation, Link } from 'react-router-dom';
+import { Video, Wifi, WifiOff, LogOut, User, Sun, Moon, Settings, UploadCloud } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useConfigStore } from '@/stores/config-store';
-import { Button } from '../ui/Button';
+import { Button } from '../ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 
 export const Header: React.FC = () => {
+  const location = useLocation();
   const { user, logout, isAuthenticated } = useAuthStore();
-  const { isOnline, theme, toggleTheme } = useConfigStore();
+  const { isOnline, theme, toggleTheme, warehouseName } = useConfigStore();
+
+  const getPageTitle = (pathname: string) => {
+    switch (pathname) {
+      case '/':
+        return 'Quét & Quay Video';
+      case '/queue':
+        return 'Hàng Đợi Đồng Bộ';
+      case '/history':
+        return 'Lịch Sử Biên Bản';
+      case '/settings':
+        return 'Cài Đặt Hệ Thống';
+      default:
+        return 'Kho Vận';
+    }
+  };
 
   return (
-    <header
-      className="glass-panel"
-      style={{
-        position: 'sticky',
-        top: 0,
-        zIndex: 50,
-        height: '60px',
-        padding: '0 var(--space-4)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        borderRadius: 0,
-        borderLeft: 'none',
-        borderRight: 'none',
-        borderTop: 'none'
-      }}
-    >
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-        <div
-          style={{
-            width: '36px',
-            height: '36px',
-            borderRadius: 'var(--radius-md)',
-            background: 'linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-accent-500) 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            color: '#ffffff'
-          }}
-        >
-          <Video size={20} />
+    <header className="sticky top-0 z-40 h-[60px] lg:h-16 px-4 lg:px-8 flex items-center justify-between border-b border-border bg-card/40 backdrop-blur-md shrink-0">
+      {/* Mobile Brand Header */}
+      <div className="flex lg:hidden items-center gap-2.5">
+        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
+          <Video size={18} className="stroke-[2.2]" />
         </div>
-        <div>
-          <h1 style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-bold)', color: 'var(--color-text-primary)' }}>
-            Quay Video Kho
-          </h1>
-        </div>
+        <h1 className="text-sm font-bold text-foreground">Quay Video Kho</h1>
       </div>
 
-      <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-        {/* Theme Toggle Button */}
-        <button
+      {/* Desktop Breadcrumb Navigation */}
+      <nav aria-label="Breadcrumb" className="hidden lg:flex items-center gap-2 text-xs font-semibold text-muted-foreground">
+        <Link to="/" className="hover:text-foreground transition-colors">
+          Kho Vận
+        </Link>
+        <span>/</span>
+        <span className="text-foreground">{getPageTitle(location.pathname)}</span>
+      </nav>
+
+      {/* Header Right Action Controls */}
+      <div className="flex items-center gap-2.5 sm:gap-3">
+        {/* Dark / Light Mode Toggle Button */}
+        <Button
+          variant="outline"
+          size="icon"
           onClick={toggleTheme}
           title={theme === 'light' ? 'Chuyển sang giao diện tối' : 'Chuyển sang giao diện sáng'}
           aria-label="Đổi giao diện sáng/tối"
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            width: '36px',
-            height: '36px',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--color-text-secondary)',
-            backgroundColor: 'var(--color-bg-card)',
-            border: '1px solid var(--color-border)',
-            cursor: 'pointer'
-          }}
+          className="w-9 h-9 rounded-full border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted shadow-2xs"
         >
-          {theme === 'light' ? <Moon size={18} /> : <Sun size={18} />}
-        </button>
+          {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+        </Button>
 
         {/* Network Status Badge */}
         <div
           title={isOnline ? 'Đang kết nối mạng' : 'Mất kết nối — Chế độ Offline'}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '4px',
-            fontSize: 'var(--text-xs)',
-            color: isOnline ? 'var(--color-success)' : 'var(--color-error)'
-          }}
+          className={`inline-flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-full border text-xs font-semibold select-none ${
+            isOnline
+              ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/25'
+              : 'text-destructive bg-destructive/10 border-destructive/25'
+          }`}
         >
-          {isOnline ? <Wifi size={16} /> : <WifiOff size={16} />}
-          <span style={{ display: 'none' }}>{isOnline ? 'Online' : 'Offline'}</span>
+          <span
+            className={`w-2 h-2 rounded-full ${
+              isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-destructive'
+            }`}
+          />
+          {isOnline ? <Wifi size={13} className="hidden sm:inline" /> : <WifiOff size={13} />}
+          <span>{isOnline ? 'Online' : 'Offline'}</span>
         </div>
 
-        {/* User Info & Logout */}
+        {/* User Avatar & Dropdown Menu */}
         {isAuthenticated && user && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '6px',
-                padding: '4px 8px',
-                backgroundColor: 'var(--color-bg-card)',
-                borderRadius: 'var(--radius-full)',
-                fontSize: 'var(--text-xs)',
-                border: '1px solid var(--color-border)'
-              }}
-            >
-              <User size={14} color="var(--color-accent-400)" />
-              <span style={{ fontWeight: 'var(--font-semibold)', color: 'var(--color-text-primary)' }}>
-                {user.ma_nhan_vien}
-              </span>
-            </div>
-            <Button
-              variant="icon"
-              size="icon"
-              onClick={logout}
-              title="Đăng xuất"
-              aria-label="Đăng xuất"
-              style={{ width: '36px', height: '36px', minHeight: '36px' }}
-            >
-              <LogOut size={16} />
-            </Button>
-          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button
+                variant="outline"
+                size="icon"
+                title={`Tài khoản: ${user.ma_nhan_vien}`}
+                aria-label="Menu tài khoản người dùng"
+                className="w-9 h-9 rounded-full border-border bg-card hover:bg-muted text-foreground flex items-center justify-center shadow-2xs cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/30"
+              >
+                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                  <User size={15} />
+                </div>
+              </Button>
+            </DropdownMenuTrigger>
+
+            <DropdownMenuContent align="end" className="w-64 p-2 bg-card text-card-foreground border-border shadow-xl rounded-2xl">
+              {/* User profile summary */}
+              <div className="flex items-center gap-3 p-2.5 bg-muted/40 rounded-xl border border-border/60">
+                <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-amber-500 to-orange-600 text-white font-black text-xs flex items-center justify-center shadow-xs shrink-0">
+                  {user.ma_nhan_vien ? user.ma_nhan_vien.slice(0, 2).toUpperCase() : 'AD'}
+                </div>
+                <div className="min-w-0 flex-1">
+                  <div className="font-bold text-xs text-foreground truncate">
+                    {user.ten || user.ma_nhan_vien}
+                  </div>
+                  <div className="flex items-center gap-1.5 mt-0.5">
+                    <span className="text-[10px] font-mono font-bold text-muted-foreground">
+                      {user.ma_nhan_vien}
+                    </span>
+                    <span className="text-[9px] font-semibold px-1.5 py-0.2 rounded-full bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      {user.vai_tro === 'admin' ? 'Quản trị viên' : 'Nhân viên'}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Warehouse branch info */}
+              {warehouseName && (
+                <div className="px-2.5 py-1.5 mt-1 text-[11px] text-muted-foreground flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 shrink-0" />
+                  <span className="truncate">{warehouseName}</span>
+                </div>
+              )}
+
+              <DropdownMenuSeparator className="my-1.5" />
+
+              {/* Quick links */}
+              <DropdownMenuItem asChild>
+                <Link to="/settings" className="flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer w-full text-xs">
+                  <Settings size={14} className="text-muted-foreground" />
+                  <span>Cài đặt hệ thống</span>
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuItem asChild>
+                <Link to="/queue" className="flex items-center gap-2 px-2.5 py-2 rounded-lg cursor-pointer w-full text-xs">
+                  <UploadCloud size={14} className="text-muted-foreground" />
+                  <span>Hàng đợi tải lên</span>
+                </Link>
+              </DropdownMenuItem>
+
+              <DropdownMenuSeparator className="my-1.5" />
+
+              {/* Logout action */}
+              <DropdownMenuItem
+                onClick={logout}
+                className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer font-semibold text-xs"
+              >
+                <LogOut size={14} className="text-destructive" />
+                <span>Đăng xuất</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         )}
       </div>
     </header>

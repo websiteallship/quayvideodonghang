@@ -34,6 +34,7 @@ export function isValidMaVanDon(code: string): boolean {
  */
 export async function checkBarcodeDuplicate(
   maVanDon: string,
+  loaiBienBan: string,
   options?: CheckBarcodeOptions
 ): Promise<ApiResponse<CheckMaVanDonResult>> {
   const trimmedCode = maVanDon.trim();
@@ -63,7 +64,7 @@ export async function checkBarcodeDuplicate(
   }
 
   try {
-    const url = `${API_BASE}/bien-ban/check/${encodeURIComponent(trimmedCode)}`;
+    const url = `${API_BASE}/bien-ban/check/${encodeURIComponent(trimmedCode)}?loai_bien_ban=${encodeURIComponent(loaiBienBan)}`;
     const response = await apiClient.get(url, {
       signal: options?.signal,
       throwHttpErrors: false,

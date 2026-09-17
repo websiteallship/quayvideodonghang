@@ -10,12 +10,16 @@ interface ConfigState {
   warehouseName: string;
   /** Global flag: true when video recording is actively in progress */
   isRecordingActive: boolean;
+  /** Desktop sidebar collapse state */
+  sidebarCollapsed: boolean;
   setIsOnline: (online: boolean) => void;
   setDeviceType: (deviceType: ThietBiType) => void;
   setTheme: (theme: AppTheme) => void;
   toggleTheme: () => void;
   setWarehouseName: (name: string) => void;
   setIsRecordingActive: (active: boolean) => void;
+  setSidebarCollapsed: (collapsed: boolean) => void;
+  toggleSidebar: () => void;
 }
 
 const getInitialTheme = (): AppTheme => {
@@ -33,12 +37,20 @@ const getInitialWarehouseName = (): string => {
   return '';
 };
 
+const getInitialSidebarCollapsed = (): boolean => {
+  if (typeof window !== 'undefined') {
+    return localStorage.getItem('sidebar_collapsed') === 'true';
+  }
+  return false;
+};
+
 export const useConfigStore = create<ConfigState>((set, get) => ({
   isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
   deviceType: 'pc_webcam',
   theme: getInitialTheme(),
   warehouseName: getInitialWarehouseName(),
   isRecordingActive: false,
+  sidebarCollapsed: getInitialSidebarCollapsed(),
 
   setIsOnline: (isOnline: boolean) => set({ isOnline }),
   setDeviceType: (deviceType: ThietBiType) => set({ deviceType }),
@@ -46,6 +58,11 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   setTheme: (theme: AppTheme) => {
     if (typeof document !== 'undefined') {
       document.documentElement.setAttribute('data-theme', theme);
+      if (theme === 'dark') {
+        document.documentElement.classList.add('dark');
+      } else {
+        document.documentElement.classList.remove('dark');
+      }
       localStorage.setItem('app_theme', theme);
     }
     set({ theme });
@@ -65,5 +82,17 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   },
 
   setIsRecordingActive: (active: boolean) => set({ isRecordingActive: active }),
+
+  setSidebarCollapsed: (collapsed: boolean) => {
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('sidebar_collapsed', String(collapsed));
+    }
+    set({ sidebarCollapsed: collapsed });
+  },
+
+  toggleSidebar: () => {
+    const next = !get().sidebarCollapsed;
+    get().setSidebarCollapsed(next);
+  },
 }));
 

@@ -1,5 +1,5 @@
 # Quy định UI/UX & Design Systems (UI/UX Rules)
-*Tham chiếu và kế thừa chỉ dẫn từ các skills: `ui-ux-pro-max`, `ui-ux-designer`, `ui-component`, `ui-skills`*
+*Tham chiếu và kế thừa chỉ dẫn từ các skills: `shadcn`, `radix-ui-design-system`, `ui-ux-pro-max`, `ui-ux-designer`, `ui-component`, `ui-skills`*
 
 ---
 
@@ -10,12 +10,26 @@
 
 ---
 
-## 2. Chuẩn hóa Component & Design Tokens (`ui-component`, `ui-skills`)
-- **Cấm styling tùy tiện (No ad-hoc styles)**: Tuyệt đối không tự bịa các giá trị màu hoặc spacing tùy hứng (ví dụ: `p-[13px]`, `bg-[#1a2b3c]`). Bắt buộc dùng Design Tokens chuẩn từ [`11-ui-design-system.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/11-ui-design-system.md).
-- **Cấu trúc Component công thái học (Component Ergonomics)**:
-  - Tách bạch Primitives (Button, Badge, Input, Modal, Card) và Composite Components (CameraPreview, BarcodeScanner, ControlBar, UploadQueue).
-  - Khai báo biến thể rõ ràng qua props: `variant` (primary | secondary | danger | ghost | outline), `size` (sm | md | lg), trạng thái `isLoading`, `isDisabled`.
-  - Tích hợp trạng thái Focus Ring nổi bật (`focus-visible:ring-4 focus-visible:ring-sky-500`) hỗ trợ súng quét barcode và điều khiển bằng bàn phím.
+## 2. Chuẩn hóa Core UI Primitives (shadcn/ui & Radix UI) & Design Tokens
+- **BẮT BUỘC 100% Core UI Primitives từ `@/components/ui/*`**:
+  - `Button`: Sử dụng variants (`default`, `destructive`, `outline`, `secondary`, `ghost`, `link`) và sizes (`default`, `sm`, `lg`, `icon`). Cấm viết thẻ `<button className="...">` với style ad-hoc. Nút bấm tương tác phải luôn đảm bảo touch target ≥ 48px.
+  - `Card`, `CardHeader`, `CardTitle`, `CardDescription`, `CardContent`, `CardFooter`: Dùng làm chuẩn container thay thế hoàn toàn `.glass-panel`, `.card` div tự chế.
+  - `Input`: Dùng `Input` primitive chuẩn của shadcn, kết hợp font monospace (`font-mono`) cho ô nhập mã vận đơn.
+  - `Dialog` & `AlertDialog`: Bắt buộc thay thế custom `Modal.tsx` và `.modal-backdrop`.
+    - **A11y Rule**: BẮT BUỘC có `DialogTitle` (dùng class `sr-only` nếu muốn ẩn visual) cho trợ năng WCAG.
+    - Dùng `asChild` khi bọc component nút bấm để tránh nested button. Tận dụng focus trap và phím Escape có sẵn của Radix UI.
+  - `Alert` & `AlertDescription`: Dùng hiển thị lỗi camera, cảnh báo quét mã trùng, thông báo hệ thống.
+  - `Sonner`: Sử dụng toast notification qua `toast.success()`, `toast.error()`, `toast.warning()` từ `sonner`. Cấm tạo floating alert divs tự chế.
+  - `Badge`: Dùng hiển thị trạng thái đơn hàng (`default`, `secondary`, `destructive`, `outline`), ĐVVC, loại biên bản.
+  - `Progress`: Dùng cho dung lượng bộ nhớ (Storage Quota Bar) và tiến trình upload video.
+  - `Skeleton`: Dùng thay spinner cho các khối dữ liệu có khuôn hình định sẵn (History list, Queue list).
+  - `Separator`: Phân cách các phần tử nội dung thay cho thẻ `<hr>` hoặc border rườm rà.
+  - `Select`, `Tabs`, `Collapsible`, `ScrollArea`: Dùng cho dropdown lọc, chuyển tab chế độ, mở rộng chi tiết đơn, và cuộn danh sách.
+- **Quy tắc Styling với Tailwind & shadcn Tokens**:
+  - **Semantic Tokens Only**: Bắt buộc dùng `bg-background`, `text-foreground`, `bg-card`, `text-card-foreground`, `bg-primary`, `text-primary-foreground`, `bg-muted`, `text-muted-foreground`, `bg-destructive`, `border-border`. Cấm tự bịa mã màu hex tuỳ tiện (ví dụ: `bg-[#1a2b3c]`).
+  - **Layout Spacing**: Bắt buộc dùng `flex`/`grid` đi kèm `gap-*` (ví dụ `gap-3`, `gap-4`). Cấm dùng `space-y-*` hoặc margin hack.
+  - **Kích thước hình khối**: Dùng utility `size-*` cho các phần tử vuông (icon, avatar, button icon: `size-4`, `size-9`, `size-12`).
+  - **Ghép class động**: Bắt buộc dùng hàm tiện ích `cn(...)` (kết hợp `clsx` + `tailwind-merge`).
 
 ---
 

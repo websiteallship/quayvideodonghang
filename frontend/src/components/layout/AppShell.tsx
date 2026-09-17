@@ -2,6 +2,7 @@ import React, { useEffect } from 'react';
 import { Outlet } from 'react-router-dom';
 import { Header } from './Header';
 import { BottomNav } from './BottomNav';
+import { Sidebar } from './Sidebar';
 import { useConfigStore } from '@/stores/config-store';
 import { useUploadStore } from '@/stores/upload-store';
 
@@ -27,29 +28,19 @@ export const AppShell: React.FC = () => {
   }, [setIsOnline, loadQueue]);
 
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh',
-        backgroundColor: 'var(--color-bg-primary)',
-        color: 'var(--color-text-primary)'
-      }}
-    >
-      <Header />
-      <main
-        style={{
-          flex: 1,
-          padding: 'var(--space-4)',
-          paddingBottom: '80px', // Đệm để không bị BottomNav che
-          maxWidth: '1200px',
-          width: '100%',
-          margin: '0 auto',
-          boxSizing: 'border-box'
-        }}
-      >
-        <Outlet />
-      </main>
+    <div className="flex min-h-screen bg-background text-foreground">
+      {/* Desktop Sidebar */}
+      <Sidebar />
+
+      {/* Main Content Area */}
+      <div className="flex-1 flex flex-col min-w-0">
+        <Header />
+        <main className="flex-1 w-full max-w-7xl mx-auto px-4 lg:px-8 pt-3 lg:pt-6 pb-24 lg:pb-8 box-border">
+          <Outlet />
+        </main>
+      </div>
+
+      {/* Mobile Bottom Navigation */}
       <BottomNav />
     </div>
   );

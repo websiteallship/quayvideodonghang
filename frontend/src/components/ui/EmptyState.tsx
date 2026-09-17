@@ -15,53 +15,19 @@ export const EmptyState: React.FC<EmptyStateProps> = ({
   action
 }) => {
   return (
-    <div
-      style={{
-        display: 'flex',
-        flexDirection: 'column',
-        alignItems: 'center',
-        justifyContent: 'center',
-        textAlign: 'center',
-        padding: 'var(--space-10) var(--space-4)',
-        gap: 'var(--space-3)'
-      }}
-    >
-      <div
-        style={{
-          width: '56px',
-          height: '56px',
-          borderRadius: 'var(--radius-full)',
-          backgroundColor: 'var(--color-bg-card)',
-          border: '1px solid var(--color-border)',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'center',
-          color: 'var(--color-text-muted)'
-        }}
-      >
+    <div className="flex flex-col items-center justify-center text-center py-10 px-4 gap-3">
+      <div className="w-14 h-14 rounded-full bg-card border border-border flex items-center justify-center text-muted-foreground">
         <Icon size={28} />
       </div>
-      <div
-        style={{
-          fontSize: 'var(--text-base)',
-          fontWeight: 'var(--font-semibold)',
-          color: 'var(--color-text-primary)'
-        }}
-      >
+      <div className="text-base font-semibold text-foreground">
         {title}
       </div>
       {description && (
-        <div
-          style={{
-            fontSize: 'var(--text-sm)',
-            color: 'var(--color-text-secondary)',
-            maxWidth: '320px'
-          }}
-        >
+        <div className="text-sm text-muted-foreground max-w-[320px]">
           {description}
         </div>
       )}
-      {action && <div style={{ marginTop: 'var(--space-2)' }}>{action}</div>}
+      {action && <div className="mt-2">{action}</div>}
     </div>
   );
 };

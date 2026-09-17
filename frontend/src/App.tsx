@@ -4,7 +4,7 @@ import { AppShell } from './components/layout/AppShell';
 import { HomePage } from './pages/HomePage';
 import { QueuePage } from './pages/QueuePage';
 import { HistoryPage } from './pages/HistoryPage';
-import { SettingsPage } from './pages/SettingsPage';
+import { UserSettingsPage } from './pages/UserSettingsPage';
 import { LoginPage } from './pages/LoginPage';
 import { useAuthStore } from './stores/auth-store';
 import { useConfigStore } from './stores/config-store';
@@ -50,7 +50,7 @@ const router = createBrowserRouter([
       },
       {
         path: '/settings',
-        element: <SettingsPage />,
+        element: <UserSettingsPage />,
       },
     ],
   },
@@ -65,6 +65,11 @@ export function App() {
 
   useEffect(() => {
     document.documentElement.setAttribute('data-theme', theme);
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
   }, [theme]);
 
   return <RouterProvider router={router} />;

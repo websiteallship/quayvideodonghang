@@ -14,47 +14,40 @@ export interface ToastProps {
 
 export const Toast: React.FC<ToastProps> = ({ id, type, title, message, onDismiss }) => {
   const icon = {
-    success: <CheckCircle2 size={20} color="var(--color-success)" />,
-    warning: <AlertTriangle size={20} color="var(--color-warning)" />,
-    error: <AlertCircle size={20} color="var(--color-error)" />,
-    info: <Info size={20} color="var(--color-info)" />
+    success: <CheckCircle2 size={20} className="text-green-600" />,
+    warning: <AlertTriangle size={20} className="text-orange-600" />,
+    error: <AlertCircle size={20} className="text-red-600" />,
+    info: <Info size={20} className="text-blue-600" />
   }[type];
 
-  const borderColor = {
-    success: 'var(--color-success)',
-    warning: 'var(--color-warning)',
-    error: 'var(--color-error)',
-    info: 'var(--color-info)'
+  const borderClass = {
+    success: 'border-l-green-600',
+    warning: 'border-l-orange-600',
+    error: 'border-l-red-600',
+    info: 'border-l-blue-600'
   }[type];
 
   return (
     <div
-      className={cn('glass-panel animate-slide-down')}
-      style={{
-        display: 'flex',
-        alignItems: 'flex-start',
-        gap: 'var(--space-3)',
-        padding: 'var(--space-3) var(--space-4)',
-        borderLeft: `4px solid ${borderColor}`,
-        minWidth: '280px',
-        maxWidth: '420px',
-        pointerEvents: 'auto'
-      }}
+      className={cn(
+        'glass-panel animate-slide-down flex items-start gap-3 py-3 px-4 border-l-4 min-w-[280px] max-w-[420px] pointer-events-auto',
+        borderClass
+      )}
     >
-      <div style={{ marginTop: '2px' }}>{icon}</div>
-      <div style={{ flex: 1 }}>
-        <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'var(--font-semibold)', color: 'var(--color-text-primary)' }}>
+      <div className="mt-0.5">{icon}</div>
+      <div className="flex-1">
+        <div className="text-sm font-semibold text-foreground">
           {title}
         </div>
         {message && (
-          <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', marginTop: '2px' }}>
+          <div className="text-xs text-muted-foreground mt-0.5">
             {message}
           </div>
         )}
       </div>
       <button
         onClick={() => onDismiss(id)}
-        style={{ color: 'var(--color-text-muted)', padding: '2px', cursor: 'pointer' }}
+        className="text-muted-foreground p-0.5 cursor-pointer hover:text-foreground transition-colors"
         aria-label="Đóng thông báo"
       >
         <X size={16} />

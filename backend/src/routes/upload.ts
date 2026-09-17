@@ -133,7 +133,10 @@ uploadRouter.post('/complete', authMiddleware, zValidator('json', UploadComplete
     if ((c.env.GOOGLE_SERVICE_ACCOUNT_JSON || c.env.GOOGLE_REFRESH_TOKEN) && c.env.GOOGLE_SHEET_ID) {
       try {
         const bienBan = await c.env.DB.prepare(
-          "SELECT *, datetime(thoi_gian_tao, '+7 hours') as thoi_gian_tao_vn FROM bien_ban WHERE id = ?"
+          `SELECT b.*, datetime(b.thoi_gian_tao, '+7 hours') as thoi_gian_tao_vn, n.ten as ten_nhan_vien
+           FROM bien_ban b
+           LEFT JOIN nhan_vien n ON b.ma_nhan_vien = n.ma
+           WHERE b.id = ?`
         ).bind(id).first() as Record<string, unknown> | null;
 
         if (bienBan) {
@@ -150,12 +153,13 @@ uploadRouter.post('/complete', authMiddleware, zValidator('json', UploadComplete
 
           // Ngăn chặn ghi dữ liệu rác từ quá trình chạy integration test lên Google Sheet thật
           if (drive_file_id !== 'drive_file_abc123') {
+            const tenNV = String(bienBan.ten_nhan_vien || bienBan.ma_nhan_vien || '');
             await sheetService.appendRow({
               id,
               ma_van_don: String(bienBan.ma_van_don || ''),
               don_vi_vc: String(bienBan.don_vi_vc || ''),
               loai_bien_ban: String(bienBan.loai_bien_ban || ''),
-              ma_nhan_vien: String(bienBan.ma_nhan_vien || ''),
+              ma_nhan_vien: tenNV,
               thoi_gian_tao: String(bienBan.thoi_gian_tao_vn || ''),
               thoi_luong_video: Number(bienBan.thoi_luong_video || 0),
               kich_thuoc_bytes: Number(bienBan.kich_thuoc_bytes || 0),

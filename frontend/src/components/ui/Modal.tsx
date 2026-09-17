@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 import { X } from 'lucide-react';
-import { Button } from './Button';
+import { Button } from './button';
 
 export interface ModalProps {
   isOpen: boolean;
@@ -33,62 +33,33 @@ export const Modal: React.FC<ModalProps> = ({
 
   return (
     <div
-      style={{
-        position: 'fixed',
-        inset: 0,
-        backgroundColor: 'rgba(5, 5, 15, 0.85)',
-        backdropFilter: 'blur(8px)',
-        WebkitBackdropFilter: 'blur(8px)',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'center',
-        zIndex: 999,
-        padding: '8px'
-      }}
+      className="fixed inset-0 bg-background/80 backdrop-blur-sm flex items-center justify-center z-[999] p-2"
       onClick={onClose}
     >
       <div
         role="dialog"
         aria-modal="true"
         aria-labelledby="modal-title"
-        className="glass-panel-elevated animate-fade-in"
+        className="glass-panel-elevated animate-fade-in w-full max-h-[94vh] overflow-y-auto flex flex-col gap-4 rounded-lg bg-card border border-border shadow-lg"
         style={{
-          width: '100%',
           maxWidth,
-          maxHeight: '94vh',
-          overflowY: 'auto',
-          padding: contentPadding || '16px',
-          display: 'flex',
-          flexDirection: 'column',
-          gap: 'var(--space-4)',
-          borderRadius: 'var(--radius-lg)'
+          padding: contentPadding || '16px'
         }}
         onClick={(e) => e.stopPropagation()}
       >
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderBottom: '1px solid var(--color-border)',
-            paddingBottom: 'var(--space-3)'
-          }}
-        >
+        <div className="flex items-center justify-between border-b border-border pb-3">
           <h3
             id="modal-title"
-            style={{
-              fontSize: 'var(--text-lg)',
-              fontWeight: 'var(--font-bold)',
-              color: 'var(--color-text-primary)'
-            }}
+            className="text-lg font-bold text-foreground"
           >
             {title}
           </h3>
           <Button
-            variant="icon"
+            variant="ghost"
+            size="icon"
             onClick={onClose}
             aria-label="Đóng modal"
-            style={{ minHeight: '36px', height: '36px', width: '36px' }}
+            className="min-h-9 h-9 w-9"
           >
             <X size={18} />
           </Button>

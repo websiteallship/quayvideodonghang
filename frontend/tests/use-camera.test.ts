@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
 import { useCamera } from '../src/hooks/use-camera';
 import { useCameraStore } from '../src/stores/camera-store';
+import { useUserSettingsStore } from '../src/stores/user-settings-store';
 
 // ---------------------------------------------------------------------------
 // Mock navigator.mediaDevices
@@ -37,7 +38,8 @@ beforeEach(() => {
   mockTrackStop.mockReset();
   mockTrackAddEventListener.mockReset();
 
-  // Reset Zustand store
+  // Reset Zustand stores
+  useUserSettingsStore.getState().resetSettings();
   useCameraStore.setState({
     selectedDeviceId: null,
     facingMode: 'environment',
@@ -121,7 +123,7 @@ describe('useCamera', () => {
       expect(constraints.video.deviceId).toEqual({ exact: 'specific-device' });
     });
 
-    it('should request 720p resolution as first attempt', async () => {
+    it('should request 720p resolution as first attempt by default', async () => {
       const mockStream = createMockStream();
       mockGetUserMedia.mockResolvedValueOnce(mockStream);
 
@@ -134,6 +136,23 @@ describe('useCamera', () => {
       const constraints = mockGetUserMedia.mock.calls[0][0];
       expect(constraints.video.width).toEqual({ ideal: 1280 });
       expect(constraints.video.height).toEqual({ ideal: 720 });
+    });
+
+    it('should request 1080p resolution when overridden in useUserSettingsStore', async () => {
+      useUserSettingsStore.getState().setVideoResolution('1080p');
+
+      const mockStream = createMockStream();
+      mockGetUserMedia.mockResolvedValueOnce(mockStream);
+
+      const { result } = renderHook(() => useCamera());
+
+      await act(async () => {
+        await result.current.startCamera();
+      });
+
+      const constraints = mockGetUserMedia.mock.calls[0][0];
+      expect(constraints.video.width).toEqual({ ideal: 1920 });
+      expect(constraints.video.height).toEqual({ ideal: 1080 });
     });
 
     it('should fallback to lower resolution on OverconstrainedError', async () => {

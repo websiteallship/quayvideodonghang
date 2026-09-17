@@ -1,7 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { LogIn, AlertTriangle } from 'lucide-react';
 import { Modal } from '@/components/ui/Modal';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
 import { useAuthStore } from '@/stores/auth-store';
 
 interface SessionRecoveryModalProps {
@@ -206,13 +206,14 @@ export const SessionRecoveryModal: React.FC<SessionRecoveryModalProps> = ({
             Đăng xuất
           </Button>
           <Button
-            variant="primary"
-            leftIcon={<LogIn size={14} />}
+            variant="default"
+            disabled={isLoading}
             onClick={() => handleSubmit()}
-            isLoading={isLoading}
             style={{ minHeight: '38px', height: '38px', fontSize: '12px' }}
+            className="flex items-center gap-1.5"
           >
-            Tiếp tục
+            <LogIn size={14} />
+            <span>Tiếp tục</span>
           </Button>
         </div>
       </div>

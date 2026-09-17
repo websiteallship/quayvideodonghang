@@ -10,7 +10,7 @@
 ---
 
 ## 2. TECH STACK CHUẨN
-- **Frontend**: React 18+ (TypeScript), Vite 5+, Zustand (quản lý state), Tailwind CSS (giao diện), `lucide-react` (icon), IndexedDB (`idb` lưu trữ offline).
+- **Frontend**: React 18+ (TypeScript), Vite 5+, Zustand (quản lý state), Tailwind CSS v4, shadcn/ui & Radix UI (Core UI Primitives), `lucide-react` (icon), IndexedDB (`idb` lưu trữ offline).
 - **Backend API**: Cloudflare Workers + Hono framework (TypeScript).
 - **Database**: Cloudflare D1 (SQLite at Edge).
 - **Video Storage**: Google Drive API v3 (Shared Drive qua Service Account, Resumable Upload protocol).
@@ -37,7 +37,7 @@ Mọi quyết định thiết kế và lập trình phải tuân thủ nghiêm n
 
 ## 4. QUY TẮC BẮT BUỘC CHO AI AGENT (STRICT RULES)
 Trước khi sinh code, Agent bắt buộc đọc các file rule tại `.agents/rules/`:
-1. **Tuyệt đối cấm Icon Ký tự / Emoji** (`.agents/rules/01-ui-ux.md`): Không dùng `📦`, `🎥`, `✅`, `❌`... Bắt buộc dùng `lucide-react` hoặc inline SVG chuẩn. Nút bấm tối thiểu `48px x 48px`. Bắt buộc kích hoạt Screen Wake Lock khi quay.
+1. **Chuẩn hóa UI Primitives & Tuyệt đối cấm Icon Ký tự / Emoji** (`.agents/rules/01-ui-ux.md`): Bắt buộc dùng Core UI Primitives từ `@/components/ui/*` (dựa trên shadcn/ui & Radix UI: `Button`, `Card`, `Input`, `Dialog`, `AlertDialog`, `Badge`, `Alert`, `Sonner`, `Progress`, `Skeleton`, `Separator`, `Select`, `Tabs`, `Collapsible`, `ScrollArea`). Cấm tạo modal/button/card tự chế (ad-hoc). Không dùng `📦`, `🎥`, `✅`, `❌`... Bắt buộc dùng `lucide-react` hoặc inline SVG chuẩn. Nút bấm tối thiểu `48px x 48px`. Bắt buộc kích hoạt Screen Wake Lock khi quay.
 2. **Bảo mật Tuyệt đối** (`.agents/rules/02-security.md`): Không để lộ Service Account Key ra client. Xác thực JWT, băm mã PIN bằng Argon2id/bcrypt. Validate toàn bộ input bằng Zod.
 3. **Hiệu năng & Giải phóng Bộ nhớ** (`.agents/rules/03-performance.md`): Bắt buộc thu hồi `URL.revokeObjectURL()` và dừng stream tracks (`track.stop()`) khi unmount. MediaRecorder dùng `timeslice = 1000`. Cấm lưu blob video vào Cache Storage (chỉ lưu IndexedDB).
 4. **Tương thích Phần cứng Kho** (`.agents/rules/04-device-and-hardware.md`): Thẻ preview video có `playsInline, autoPlay, muted` cho iOS Safari. Bắt sự kiện keydown tốc độ cao (<50ms) cho súng quét USB barcode. Ghi nhớ `deviceId` cho webcam USB.

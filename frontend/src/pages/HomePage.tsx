@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback } from 'react';
+import React, { useState, useRef, useCallback, useEffect } from 'react';
 import {
   Camera,
   ScanLine,
@@ -7,10 +7,16 @@ import {
   AlertTriangle,
   ArrowRight,
   X,
-  Keyboard,
   Barcode as BarcodeIcon,
+  Package,
+  PackageOpen,
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent } from '@/components/ui/card';
+import { Alert, AlertDescription } from '@/components/ui/alert';
+import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { AlertDialog, AlertDialogContent, AlertDialogHeader, AlertDialogTitle, AlertDialogDescription, AlertDialogFooter, AlertDialogCancel, AlertDialogAction } from '@/components/ui/alert-dialog';
+import { toast } from 'sonner';
 import { useUploadQueue } from '@/hooks/use-upload-queue';
 import { useNavigate } from 'react-router-dom';
 import { useCamera } from '@/hooks/use-camera';
@@ -22,7 +28,7 @@ import { CameraPreview } from '@/components/camera/CameraPreview';
 import { CameraSelector } from '@/components/camera/CameraSelector';
 import { ScannerOverlay } from '@/components/scanner/ScannerOverlay';
 import { ScanResult } from '@/components/scanner/ScanResult';
-import { WorkModeSelector, WorkModeModal } from '@/components/work-mode';
+import { WorkModeModal } from '@/components/work-mode';
 import { RecordingView, VideoPreview } from '@/components/recording';
 import { useWorkModeStore } from '@/stores/work-mode-store';
 import { useAuthStore } from '@/stores/auth-store';
@@ -43,7 +49,6 @@ export const HomePage: React.FC = () => {
   const [currentView, setCurrentView] = useState<'idle' | 'scanner' | 'recording' | 'preview'>('idle');
   const [activeBarcode, setActiveBarcode] = useState<BarcodeResult | null>(null);
   const [manualCodeInput, setManualCodeInput] = useState('');
-  const [showManualInput, setShowManualInput] = useState(false);
   const [recordingMessage, setRecordingMessage] = useState<string | null>(null);
 
   // Sprint 1.2 — Work Mode selection state (Mode-First)
@@ -96,13 +101,19 @@ export const HomePage: React.FC = () => {
 
   // Sprint 2.2 — IndexedDB Queue & Offline Storage Hook
   const {
+    queue,
     pendingCount,
-    errorCount,
     completedCount,
     enqueue,
     storageWarning,
     loadQueue,
   } = useUploadQueue({ isRecording });
+
+  // Get recent completed items (max 2)
+  const recentCompletedItems = queue
+    .filter((item) => item.status === 'da_upload')
+    .sort((a, b) => b.created_at - a.created_at)
+    .slice(0, 2);
 
   // Recording exit guard — blocks navigation, tab switch, browser back
   const {
@@ -125,6 +136,19 @@ export const HomePage: React.FC = () => {
       setCurrentView('idle');
     },
   });
+
+  useEffect(() => {
+    if (tabSwitchWarning) {
+      toast.error(tabSwitchWarning, {
+        id: 'tab-switch-warning',
+        duration: 10000,
+        onDismiss: dismissTabWarning,
+        onAutoClose: dismissTabWarning,
+      });
+    } else {
+      toast.dismiss('tab-switch-warning');
+    }
+  }, [tabSwitchWarning, dismissTabWarning]);
 
   // Sprint 1.3 — Duplicate checking API hook
   const {
@@ -203,10 +227,6 @@ export const HomePage: React.FC = () => {
     startScanning();
   };
 
-  const handleSwitchWorkMode = () => {
-    const nextMode: LoaiBienBan = workMode === 'dong_goi' ? 'khui_hang' : 'dong_goi';
-    setWorkMode(nextMode);
-  };
 
   // Close camera scanner
   const handleCloseScanner = () => {
@@ -345,328 +365,334 @@ export const HomePage: React.FC = () => {
       source: 'manual',
     });
     setManualCodeInput('');
-    setShowManualInput(false);
   };
 
   return (
-    <div className="page-stack">
+    <div className="flex flex-col gap-5">
       {/* Storage Quota Warning if < 500MB */}
       {storageWarning && (
-        <div className="glass-panel alert-banner alert-banner--error">
-          <AlertTriangle size={18} color="var(--color-error)" />
-          <span>{storageWarning}</span>
-        </div>
+        <Alert variant="destructive">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>{storageWarning}</AlertDescription>
+        </Alert>
       )}
 
       {/* Toast Notification if any */}
       {recordingMessage && (
-        <div className="glass-panel alert-banner alert-banner--success">
-          <CheckCircle2 size={18} color="var(--color-success)" />
-          <span>{recordingMessage}</span>
+        <Alert className="border-emerald-500/50 text-emerald-600 bg-emerald-500/10 dark:text-emerald-400">
+          <CheckCircle2 className="h-4 w-4 stroke-emerald-600 dark:stroke-emerald-400" />
+          <AlertDescription>{recordingMessage}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Mode Error */}
+      {modeError && (
+        <Alert variant="destructive" className="py-2 px-3">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription className="text-xs">{modeError}</AlertDescription>
+        </Alert>
+      )}
+
+      {/* Top Header & Mode Switcher */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="hidden lg:block">
+          <h2 className="text-2xl font-bold tracking-tight text-foreground">
+            Quét &amp; Ghi hình biên bản
+          </h2>
+          <p className="text-xs text-muted-foreground mt-0.5">
+            Sử dụng súng quét barcode USB hoặc camera để bắt đầu quy trình biên bản
+          </p>
         </div>
-      )}
 
-      {/* Quick Stats Banner — Only visible when idle */}
-      {currentView === 'idle' && (
-        <div className="glass-panel stat-grid">
-          <div className="stat-cell">
-            <div className="stat-icon-label" style={{ color: 'var(--color-success)' }}>
-              <CheckCircle2 size={16} />
-              <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold' }}>Đã lưu</span>
-            </div>
-            <span className="stat-value">{completedCount}</span>
-          </div>
-
-          <div className="stat-cell stat-cell--bordered">
-            <div className="stat-icon-label" style={{ color: 'var(--color-warning)' }}>
-              <Clock size={16} />
-              <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold' }}>Chờ tải</span>
-            </div>
-            <span className="stat-value">{pendingCount}</span>
-          </div>
-
-          <div className="stat-cell">
-            <div className="stat-icon-label" style={{ color: 'var(--color-error)' }}>
-              <AlertTriangle size={16} />
-              <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold' }}>Lỗi</span>
-            </div>
-            <span className="stat-value">{errorCount}</span>
-          </div>
-        </div>
-      )}
-
-      {/* 1. Active Recording View */}
-      {currentView === 'recording' && (
-        <RecordingView
-          stream={stream}
-          overlayInfo={
-            activeOverlayInfo ?? {
-              maVanDon: '',
-              donViVc: 'GHN',
-              loaiBienBan: workMode ?? 'dong_goi',
-              maNhanVien: user?.ma_nhan_vien || 'NV001',
-            }
-          }
-          duration={recordDuration}
-          isRecording={isRecording}
-          error={recorderError}
-          onStopRecording={handleStopRecording}
-          onAttachVideoRef={attachSourceVideo}
-        />
-      )}
-
-      {/* 2. Video Preview & Confirmation */}
-      {currentView === 'preview' && previewUrl && recordedBlob && activeOverlayInfo && (
-        <VideoPreview
-          blob={recordedBlob}
-          previewUrl={previewUrl}
-          duration={recordedDuration}
-          overlayInfo={activeOverlayInfo}
-          onSaveAndContinue={handleSaveAndContinue}
-          onDiscardAndRetry={handleDiscardAndRetry}
-        />
-      )}
-
-      {/* 3. Camera Barcode Scanner View */}
-      {currentView === 'scanner' && (
-        <div
-          className="glass-panel-elevated"
-          style={{
-            padding: 'var(--space-4)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--space-3)',
-            borderRadius: 'var(--radius-xl)',
-          }}
-        >
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-            }}
+        {/* Big Mode Switcher Desktop */}
+        <div className="hidden lg:inline-flex bg-muted/80 p-1 rounded-2xl border shadow-xs">
+          <button
+            onClick={() => { setWorkMode('dong_goi'); setModeError(null); }}
+            className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+              workMode === 'dong_goi'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
           >
-            <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-2)' }}>
-              <ScanLine size={20} color="var(--color-primary-500)" />
-              <span style={{ fontWeight: 'var(--font-bold)', fontSize: 'var(--text-base)' }}>
-                Quét mã camera
+            <Package className="w-4 h-4" />
+            <span>1. ĐÓNG GÓI HÀNG</span>
+          </button>
+          <button
+            onClick={() => { setWorkMode('khui_hang'); setModeError(null); }}
+            className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
+              workMode === 'khui_hang'
+                ? 'bg-amber-600 text-white shadow-md'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <PackageOpen className="w-4 h-4" />
+            <span>2. KHUI HÀNG / TRẢ HÀNG</span>
+          </button>
+        </div>
+
+        {/* Big Mode Switcher Mobile */}
+        <div className="grid lg:hidden grid-cols-2 gap-1.5 bg-muted/70 p-1 rounded-2xl border">
+          <button
+            onClick={() => { setWorkMode('dong_goi'); setModeError(null); }}
+            className={`h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              workMode === 'dong_goi'
+                ? 'bg-blue-600 text-white shadow-md'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <Package className="w-4 h-4" />
+            <span>1. ĐÓNG GÓI</span>
+          </button>
+          <button
+            onClick={() => { setWorkMode('khui_hang'); setModeError(null); }}
+            className={`h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
+              workMode === 'khui_hang'
+                ? 'bg-amber-600 text-white shadow-md'
+                : 'text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            <PackageOpen className="w-4 h-4" />
+            <span>2. KHUI HÀNG</span>
+          </button>
+        </div>
+      </div>
+
+      {/* Main Grid */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
+        {/* Left Col (2/3): Camera Viewport & Actions */}
+        <div className="xl:col-span-2 flex flex-col gap-4">
+          
+          {/* 1. Active Recording View */}
+          {currentView === 'recording' && (
+            <RecordingView
+              stream={stream}
+              overlayInfo={
+                activeOverlayInfo ?? {
+                  maVanDon: '',
+                  donViVc: 'GHN',
+                  loaiBienBan: workMode ?? 'dong_goi',
+                  maNhanVien: user?.ma_nhan_vien || 'NV001',
+                }
+              }
+              duration={recordDuration}
+              isRecording={isRecording}
+              error={recorderError}
+              onStopRecording={handleStopRecording}
+              onAttachVideoRef={attachSourceVideo}
+            />
+          )}
+
+          {/* 2. Video Preview & Confirmation */}
+          {currentView === 'preview' && previewUrl && recordedBlob && activeOverlayInfo && (
+            <VideoPreview
+              blob={recordedBlob}
+              previewUrl={previewUrl}
+              duration={recordedDuration}
+              overlayInfo={activeOverlayInfo}
+              onSaveAndContinue={handleSaveAndContinue}
+              onDiscardAndRetry={handleDiscardAndRetry}
+            />
+          )}
+
+          {/* 3. Camera Barcode Scanner View */}
+          {currentView === 'scanner' && (
+            <Card className="flex flex-col gap-3 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-primary">
+                  <ScanLine size={20} />
+                  <span className="font-bold text-base">
+                    Quét mã camera
+                  </span>
+                </div>
+
+                <Button
+                  variant="secondary"
+                  onClick={handleCloseScanner}
+                  size="sm"
+                >
+                  <X data-icon="inline-start" />
+                  Đóng
+                </Button>
+              </div>
+
+              {/* Device selector */}
+              {devices.length > 0 && (
+                <CameraSelector
+                  devices={devices}
+                  selectedDeviceId={selectedDevice}
+                  onSelect={switchDevice}
+                />
+              )}
+
+              {/* Camera Viewfinder */}
+              <div className="relative w-full rounded-lg overflow-hidden">
+                <CameraPreview
+                  stream={stream}
+                  isLoading={isCameraLoading}
+                  videoRef={videoRef}
+                >
+                  <ScannerOverlay
+                    isScanning={isScanning}
+                    isSuccess={!!activeBarcode}
+                    stream={stream}
+                    workMode={workMode}
+                  />
+                </CameraPreview>
+              </div>
+
+              {cameraError && (
+                <Alert variant="destructive" className="py-2 px-3">
+                  <AlertDescription className="text-xs">
+                    {cameraError.userMessage}
+                  </AlertDescription>
+                </Alert>
+              )}
+
+              <div className="flex items-center justify-center gap-2 text-xs text-muted-foreground mt-1">
+                <BarcodeIcon size={16} />
+                <span>Hướng camera vào mã vạch trên đơn hàng (Code 128, QR, Code 39)</span>
+              </div>
+            </Card>
+          )}
+
+          {/* 4. Idle Main View */}
+          {currentView === 'idle' && (
+            <Card className="min-h-[260px]">
+              <CardContent className="flex flex-col items-center justify-center text-center gap-4 p-6">
+                <div className={`w-[72px] h-[72px] rounded-full flex items-center justify-center border-2 transition-all ${
+                  workMode === 'khui_hang'
+                    ? 'bg-amber-500/20 border-amber-500 text-amber-500 shadow-[0_0_24px_rgba(245,158,11,0.25)]'
+                    : 'bg-primary/20 border-primary text-primary shadow-[0_0_24px_rgba(234,88,12,0.25)]'
+                }`}>
+                  <Camera size={36} />
+                </div>
+
+                <div>
+                  <h2 className="text-xl font-bold mb-1">
+                    {workMode === 'dong_goi'
+                      ? 'Sẵn sàng quét đơn Đóng gói'
+                      : workMode === 'khui_hang'
+                      ? 'Sẵn sàng quét đơn Khui hàng'
+                      : 'Sẵn sàng quét mã đơn'}
+                  </h2>
+                  <p className="text-sm text-muted-foreground max-w-[340px] mx-auto">
+                    {workMode
+                      ? `Đang chọn chế độ: ${workMode === 'dong_goi' ? 'Đóng gói xuất kho' : 'Khui hàng hoàn trả'}. Quét bằng camera hoặc súng barcode.`
+                      : 'Vui lòng chọn chế độ làm việc phía trên trước khi bắt đầu quét.'}
+                  </p>
+                </div>
+
+                <Button
+                  size="lg"
+                  className={`w-full max-w-[340px] font-bold text-sm tracking-wide ${
+                    workMode === 'khui_hang'
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20'
+                  }`}
+                  onClick={handleOpenScanner}
+                >
+                  <ScanLine data-icon="inline-start" />
+                  {workMode === 'dong_goi'
+                    ? 'BẮT ĐẦU QUÉT ĐÓNG GÓI'
+                    : workMode === 'khui_hang'
+                    ? 'BẮT ĐẦU QUÉT KHUI HÀNG'
+                    : 'CHỌN CHẾ ĐỘ & BẮT ĐẦU QUÉT'}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </div>
+
+        {/* Right Col (1/3): Barcode Gun Listener & Session Info */}
+        <div className="flex flex-col gap-4">
+          {/* Súng quét Barcode Card */}
+          <div className="p-5 rounded-3xl border border-border bg-card shadow-xs flex flex-col gap-3">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Súng quét Barcode</span>
+              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[11px] font-bold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
+                Sẵn sàng
               </span>
             </div>
 
-            <Button
-              variant="secondary"
-              leftIcon={<X size={18} />}
-              onClick={handleCloseScanner}
-              className="btn-compact"
-            >
-              Đóng
-            </Button>
-          </div>
-
-          {/* Device selector */}
-          {devices.length > 0 && (
-            <CameraSelector
-              devices={devices}
-              selectedDeviceId={selectedDevice}
-              onSelect={switchDevice}
-            />
-          )}
-
-          {/* Camera Viewfinder */}
-          <div style={{ position: 'relative', width: '100%', borderRadius: 'var(--radius-lg)', overflow: 'hidden' }}>
-            <CameraPreview
-              stream={stream}
-              isLoading={isCameraLoading}
-              videoRef={videoRef}
-            >
-              <ScannerOverlay
-                isScanning={isScanning}
-                isSuccess={!!activeBarcode}
-                stream={stream}
-                workMode={workMode}
-                onSwitchWorkMode={handleSwitchWorkMode}
+            <form onSubmit={handleManualSubmit} className="relative">
+              <input
+                type="text"
+                value={manualCodeInput}
+                onChange={(e) => setManualCodeInput(e.target.value)}
+                placeholder="Bắn súng quét hoặc nhập mã..."
+                className="w-full h-12 pl-10 pr-4 rounded-xl border border-border bg-muted/40 font-mono font-bold text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
-            </CameraPreview>
+              <BarcodeIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            </form>
+
+            <p className="text-[11px] text-muted-foreground">
+              💡 Có thể cắm súng quét barcode USB trực tiếp. Hệ thống tự động bắt mã.
+            </p>
           </div>
 
-          {cameraError && (
-            <div
-              style={{
-                color: 'var(--color-error)',
-                fontSize: 'var(--text-xs)',
-                padding: 'var(--space-2)',
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                borderRadius: 'var(--radius-sm)',
-              }}
-            >
-              {cameraError.userMessage}
+          {/* Thống kê ca làm việc */}
+          <div className="p-5 rounded-3xl border border-border bg-card shadow-xs flex flex-col gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Tiến độ ca làm việc</span>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="p-3 rounded-2xl bg-muted/40 border border-border/80 flex flex-col">
+                <span className="text-[11px] text-muted-foreground">Đã quay hôm nay</span>
+                <span className="text-2xl font-black text-foreground mt-1">{completedCount}</span>
+              </div>
+              <div className="p-3 rounded-2xl bg-muted/40 border border-border/80 flex flex-col">
+                <span className="text-[11px] text-muted-foreground">Đang đợi tải</span>
+                <span className="text-2xl font-black text-amber-500 mt-1">{pendingCount}</span>
+                <span className="text-[10px] text-muted-foreground font-semibold">Tự động đồng bộ</span>
+              </div>
             </div>
-          )}
-
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: 'var(--space-2)',
-              fontSize: 'var(--text-xs)',
-              color: 'var(--color-text-secondary)',
-            }}
-          >
-            <BarcodeIcon size={16} />
-            <span>Hướng camera vào mã vạch trên đơn hàng (Code 128, QR, Code 39)</span>
-          </div>
-        </div>
-      )}
-
-      {/* 4. Idle Main View */}
-      {currentView === 'idle' && (
-        <>
-          {/* Sprint 1.2 — Work Mode Selector (Mode-First Selection) */}
-          <div
-            className="glass-panel-elevated"
-            style={{
-              padding: 'var(--space-4)',
-              borderRadius: 'var(--radius-xl)',
-            }}
-          >
-            <WorkModeSelector
-              selectedMode={workMode}
-              onSelectMode={(mode) => {
-                setWorkMode(mode);
-                setModeError(null);
-              }}
-              errorMessage={modeError}
-            />
           </div>
 
-          {/* Idle Main Action Card */}
-          <div
-            className="glass-panel-elevated"
-            style={{
-              padding: 'var(--space-6)',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              textAlign: 'center',
-              gap: 'var(--space-4)',
-              minHeight: '260px',
-            }}
-          >
-            <div
-              style={{
-                width: '72px',
-                height: '72px',
-                borderRadius: 'var(--radius-full)',
-                background:
-                  workMode === 'khui_hang'
-                    ? 'linear-gradient(135deg, rgba(217, 119, 6, 0.2) 0%, rgba(245, 158, 11, 0.2) 100%)'
-                    : 'linear-gradient(135deg, rgba(63, 81, 181, 0.2) 0%, rgba(0, 188, 212, 0.2) 100%)',
-                border:
-                  workMode === 'khui_hang'
-                    ? '2px solid var(--color-warning)'
-                    : '2px solid var(--color-accent-400)',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: workMode === 'khui_hang' ? 'var(--color-warning)' : 'var(--color-accent-400)',
-                boxShadow: 'var(--shadow-glow)',
-              }}
-            >
-              <Camera size={36} />
-            </div>
-
-            <div>
-              <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)', marginBottom: '4px' }}>
-                {workMode === 'dong_goi'
-                  ? 'Sẵn sàng quét đơn Đóng gói'
-                  : workMode === 'khui_hang'
-                  ? 'Sẵn sàng quét đơn Khui hàng'
-                  : 'Sẵn sàng quét mã đơn'}
-              </h2>
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)', maxWidth: '340px' }}>
-                {workMode
-                  ? `Đang chọn chế độ: ${workMode === 'dong_goi' ? 'Đóng gói xuất kho' : 'Khui hàng hoàn trả'}. Quét bằng camera hoặc súng barcode.`
-                  : 'Vui lòng chọn chế độ làm việc phía trên trước khi bắt đầu quét.'}
-              </p>
-            </div>
-
-            <Button
-              size="large"
-              variant="primary"
-              leftIcon={<ScanLine size={22} />}
-              style={{ width: '100%', maxWidth: '340px' }}
-              onClick={handleOpenScanner}
-            >
-              {workMode === 'dong_goi'
-                ? 'BẮT ĐẦU QUÉT ĐÓNG GÓI'
-                : workMode === 'khui_hang'
-                ? 'BẮT ĐẦU QUÉT KHUI HÀNG'
-                : 'CHỌN CHẾ ĐỘ & BẮT ĐẦU QUÉT'}
-            </Button>
-
-            {/* Quick test with manual entry or barcode gun */}
-            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: '8px' }}>
-              <button
-                type="button"
-                className="btn btn-ghost"
-                style={{
-                  fontSize: 'var(--text-xs)',
-                  color: 'var(--color-text-secondary)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '6px',
-                }}
-                onClick={() => setShowManualInput(!showManualInput)}
-              >
-                <Keyboard size={16} />
-                <span>{showManualInput ? 'Ẩn nhập tay' : 'Hoặc nhập tay / dùng súng barcode'}</span>
-              </button>
-
-              {showManualInput && (
-                <form
-                  onSubmit={handleManualSubmit}
-                  style={{
-                    display: 'flex',
-                    gap: 'var(--space-2)',
-                    width: '100%',
-                    maxWidth: '320px',
-                    marginTop: '4px',
-                  }}
-                >
-                  <input
-                    type="text"
-                    className="input font-mono"
-                    placeholder="VD: GHN123456789"
-                    value={manualCodeInput}
-                    onChange={(e) => setManualCodeInput(e.target.value)}
-                    style={{
-                      flex: 1,
-                      height: '42px',
-                      fontSize: 'var(--text-sm)',
-                      padding: '0 12px',
-                    }}
-                    autoFocus
-                  />
-                  <Button
-                    type="submit"
-                    variant="secondary"
-                    style={{ height: '42px', minHeight: '42px', padding: '0 16px' }}
-                  >
-                    Kiểm tra
-                  </Button>
-                </form>
+          {/* Vừa quay gần nhất */}
+          <div className="p-5 rounded-3xl border border-border bg-card shadow-xs flex flex-col gap-3">
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Vừa quay gần nhất</span>
+            <div className="flex flex-col gap-2">
+              {recentCompletedItems.length > 0 ? (
+                recentCompletedItems.map((item) => (
+                  <div key={item.id} className="p-2.5 rounded-xl border border-border/70 bg-muted/20 flex items-center justify-between text-xs">
+                    <div className="min-w-0 flex-1 pr-2">
+                      <div className="font-mono font-bold truncate">{item.ma_van_don}</div>
+                      <div className="text-[10px] text-muted-foreground truncate">
+                        {item.don_vi_vc} • {item.loai_bien_ban === 'dong_goi' ? 'Đóng gói' : 'Khui hàng'} • {formatDuration(item.thoi_luong_video)}
+                      </div>
+                    </div>
+                    <span className="text-emerald-600 font-bold text-[11px] shrink-0">Đã lưu</span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-xs text-muted-foreground text-center py-2">
+                  Chưa có video nào
+                </div>
               )}
             </div>
           </div>
-        </>
-      )}
+
+          {/* Pending Queue Notice Mini Card */}
+          {pendingCount > 0 && (
+            <div className="p-4 rounded-3xl border-l-4 border-l-amber-500 bg-card shadow-xs flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Clock className="text-amber-500" size={20} />
+                <div>
+                  <div className="text-sm font-bold">{pendingCount} video chờ tải</div>
+                  <div className="text-[11px] text-muted-foreground">Tự động đồng bộ</div>
+                </div>
+              </div>
+              <Button variant="secondary" size="sm" onClick={() => navigate('/queue')}>Xem <ArrowRight className="w-3.5 h-3.5 ml-1" /></Button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Scan Result Modal Popup */}
-      {activeBarcode && (
-        <div className="modal-backdrop">
-          <div style={{ maxWidth: '440px', width: '100%' }}>
+      <Dialog open={!!activeBarcode} onOpenChange={(open) => !open && handleRescan()}>
+        <DialogContent className="max-w-[440px] p-0 border-none bg-transparent shadow-none" showCloseButton={false}>
+          <DialogTitle className="sr-only">Kết quả quét mã vạch</DialogTitle>
+          <DialogDescription className="sr-only">Hiển thị thông tin mã vạch vừa quét được.</DialogDescription>
+          {activeBarcode && (
             <ScanResult
               result={activeBarcode}
               isDuplicate={isDuplicate}
@@ -676,9 +702,9 @@ export const HomePage: React.FC = () => {
               onStartRecording={handleStartRecording}
               onRescan={handleRescan}
             />
-          </div>
-        </div>
-      )}
+          )}
+        </DialogContent>
+      </Dialog>
 
       {/* Work Mode Pre-selection Guard Modal */}
       <WorkModeModal
@@ -702,147 +728,30 @@ export const HomePage: React.FC = () => {
         }}
       />
 
-      {/* Pending Queue Notice — Only in idle */}
-      {currentView === 'idle' && pendingCount > 0 && (
-        <div
-          className="glass-panel"
-          style={{
-            padding: 'var(--space-4)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            borderLeft: '4px solid var(--color-warning)',
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--space-3)' }}>
-            <Clock size={20} color="var(--color-warning)" />
-            <div>
-              <div style={{ fontSize: 'var(--text-sm)', fontWeight: 'bold' }}>
-                {pendingCount} video đang chờ tải lên
-              </div>
-              <div style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
-                Tự động đồng bộ khi có kết nối ổn định
-              </div>
-            </div>
+      {/* Exit Confirmation Dialog */}
+      <AlertDialog open={showExitDialog} onOpenChange={(open) => !open && cancelExit()}>
+        <AlertDialogContent className="max-w-[400px] text-center flex flex-col items-center gap-4 p-6 rounded-xl">
+          <div className="w-14 h-14 rounded-full bg-destructive/15 border-2 border-destructive flex items-center justify-center">
+            <AlertTriangle size={28} className="text-destructive" />
           </div>
-          <Button
-            variant="secondary"
-            rightIcon={<ArrowRight size={16} />}
-            className="btn-compact"
-            onClick={() => navigate('/queue')}
-          >
-            Xem
-          </Button>
-        </div>
-      )}
-
-      {/* Exit Confirmation Dialog — shown when user tries to navigate during recording */}
-      {showExitDialog && (
-        <div className="modal-backdrop modal-backdrop--dark">
-          <div
-            className="glass-panel-elevated"
-            style={{
-              maxWidth: '400px',
-              width: '100%',
-              padding: 'var(--space-6)',
-              borderRadius: 'var(--radius-xl)',
-              textAlign: 'center',
-              display: 'flex',
-              flexDirection: 'column',
-              gap: 'var(--space-4)',
-            }}
-          >
-            <div style={{
-              width: '56px',
-              height: '56px',
-              borderRadius: 'var(--radius-full)',
-              background: 'rgba(239, 68, 68, 0.15)',
-              border: '2px solid var(--color-error)',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              margin: '0 auto',
-            }}>
-              <AlertTriangle size={28} color="var(--color-error)" />
-            </div>
-            <div>
-              <h3 style={{ fontSize: 'var(--text-lg)', fontWeight: 'var(--font-bold)', marginBottom: '8px' }}>
-                Đang quay video!
-              </h3>
-              <p style={{ fontSize: 'var(--text-sm)', color: 'var(--color-text-secondary)' }}>
-                Video chưa được lưu. Bạn có chắc muốn dừng quay và thoát?
-              </p>
-            </div>
-            <div style={{ display: 'flex', gap: 'var(--space-3)' }}>
-              <Button
-                variant="secondary"
-                onClick={cancelExit}
-                style={{ flex: 1 }}
-              >
-                Tiếp tục quay
-              </Button>
-              <Button
-                variant="primary"
-                onClick={confirmExit}
-                style={{
-                  flex: 1,
-                  backgroundColor: 'var(--color-error)',
-                  borderColor: 'var(--color-error)',
-                }}
-              >
-                Dừng và thoát
-              </Button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Cảnh báo khi chuyển tab trong lúc quay video */}
-      {tabSwitchWarning && (
-        <div
-          role="alert"
-          style={{
-            position: 'fixed',
-            top: 'var(--space-4)',
-            left: '50%',
-            transform: 'translateX(-50%)',
-            zIndex: 99999,
-            backgroundColor: 'var(--color-error)',
-            color: '#ffffff',
-            padding: 'var(--space-3) var(--space-4)',
-            borderRadius: 'var(--radius-lg)',
-            boxShadow: '0 8px 32px rgba(0, 0, 0, 0.45)',
-            display: 'flex',
-            alignItems: 'center',
-            gap: 'var(--space-3)',
-            maxWidth: 'calc(100vw - 32px)',
-            fontSize: 'var(--text-sm)',
-            fontWeight: 'var(--font-medium)',
-          }}
-        >
-          <AlertTriangle size={20} color="#ffffff" style={{ flexShrink: 0 }} />
-          <span>{tabSwitchWarning}</span>
-          <button
-            type="button"
-            onClick={dismissTabWarning}
-            aria-label="Đóng thông báo"
-            style={{
-              background: 'transparent',
-              border: 'none',
-              color: '#ffffff',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              padding: '4px',
-              marginLeft: 'var(--space-2)',
-              borderRadius: 'var(--radius-sm)',
-            }}
-          >
-            <X size={18} />
-          </button>
-        </div>
-      )}
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-bold">
+              Đang quay video!
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm text-muted-foreground">
+              Video chưa được lưu. Bạn có chắc muốn dừng quay và thoát?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="w-full flex sm:flex-row gap-3">
+            <AlertDialogCancel onClick={cancelExit} className="flex-1 mt-0">
+              Tiếp tục quay
+            </AlertDialogCancel>
+            <AlertDialogAction onClick={confirmExit} className="flex-1 bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Dừng và thoát
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

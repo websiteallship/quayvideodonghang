@@ -1,3 +1,138 @@
+@import "tailwindcss";
+@import "tw-animate-css";
+@import "@fontsource-variable/geist";
+
+@source "../**/*.{js,ts,jsx,tsx}";
+
+@custom-variant dark (&:is(.dark, .dark *, [data-theme="dark"], [data-theme="dark"] *));
+
+@theme inline {
+  --font-sans: 'Geist Variable', sans-serif;
+
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+
+}
+
+:root {
+  --radius: 0.75rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.20 0.025 255);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.20 0.025 255);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.20 0.025 255);
+  --primary: oklch(0.53 0.17 250);
+  --primary-foreground: oklch(0.99 0 0);
+  --secondary: oklch(0.96 0.01 245);
+  --secondary-foreground: oklch(0.28 0.04 250);
+  --muted: oklch(0.96 0.008 245);
+  --muted-foreground: oklch(0.52 0.025 250);
+  --accent: oklch(0.94 0.025 245);
+  --accent-foreground: oklch(0.35 0.12 250);
+  --destructive: oklch(0.58 0.20 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.92 0.01 245);
+  --input: oklch(0.92 0.01 245);
+  --ring: oklch(0.53 0.17 250);
+  --chart-1: oklch(0.53 0.17 250);
+  --chart-2: oklch(0.65 0.15 190);
+  --chart-3: oklch(0.65 0.16 150);
+  --chart-4: oklch(0.75 0.14 80);
+  --chart-5: oklch(0.60 0.15 285);
+  --sidebar: oklch(1 0 0);
+  --sidebar-foreground: oklch(0.20 0.025 255);
+  --sidebar-primary: oklch(0.53 0.17 250);
+  --sidebar-primary-foreground: oklch(0.99 0 0);
+  --sidebar-accent: oklch(0.94 0.025 245);
+  --sidebar-accent-foreground: oklch(0.35 0.12 250);
+  --sidebar-border: oklch(0.92 0.01 245);
+  --sidebar-ring: oklch(0.53 0.17 250);
+}
+
+.dark,
+[data-theme="dark"] {
+  --background: oklch(0.14 0.02 255);
+  --foreground: oklch(0.98 0.005 250);
+  --card: oklch(0.18 0.025 255);
+  --card-foreground: oklch(0.98 0.005 250);
+  --popover: oklch(0.18 0.025 255);
+  --popover-foreground: oklch(0.98 0.005 250);
+  --primary: oklch(0.65 0.18 250);
+  --primary-foreground: oklch(0.12 0.02 255);
+  --secondary: oklch(0.24 0.025 255);
+  --secondary-foreground: oklch(0.98 0.005 250);
+  --muted: oklch(0.22 0.02 255);
+  --muted-foreground: oklch(0.70 0.025 250);
+  --accent: oklch(0.25 0.035 250);
+  --accent-foreground: oklch(0.98 0.005 250);
+  --destructive: oklch(0.65 0.20 25);
+  --destructive-foreground: oklch(0.99 0 0);
+  --border: oklch(0.28 0.02 255);
+  --input: oklch(0.28 0.02 255);
+  --ring: oklch(0.65 0.18 250);
+  --chart-1: oklch(0.65 0.18 250);
+  --chart-2: oklch(0.72 0.16 190);
+  --chart-3: oklch(0.68 0.17 150);
+  --chart-4: oklch(0.78 0.13 80);
+  --chart-5: oklch(0.65 0.16 285);
+  --sidebar: oklch(0.16 0.02 255);
+  --sidebar-foreground: oklch(0.98 0.005 250);
+  --sidebar-primary: oklch(0.65 0.18 250);
+  --sidebar-primary-foreground: oklch(0.12 0.02 255);
+  --sidebar-accent: oklch(0.25 0.035 250);
+  --sidebar-accent-foreground: oklch(0.98 0.005 250);
+  --sidebar-border: oklch(0.28 0.02 255);
+  --sidebar-ring: oklch(0.65 0.18 250);
+}
+
+@layer base {
+  * {
+    border-color: var(--border);
+  }
+  html {
+    height: 100%;
+    font-family: var(--font-sans);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+  body {
+    background-color: var(--background);
+    color: var(--foreground);
+    min-height: 100%;
+  }
+}
+
 /* ==========================================================================
    PAGE-LEVEL & REUSABLE COMPONENT STYLES
    Tối ưu trích xuất từ inline styles của các page components
@@ -249,30 +384,125 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  min-height: calc(100vh - 140px);
-  padding: var(--space-4);
+  min-height: 100vh;
+  padding: var(--space-6);
+  background: var(--color-bg-primary);
+  position: relative;
+  overflow: hidden;
 }
 
 .login-card {
   width: 100%;
-  max-width: 380px;
-  padding: var(--space-8) var(--space-6);
+  max-width: 420px;
+  padding: var(--space-8);
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-6);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--shadow-lg);
+  position: relative;
+  z-index: 10;
+}
+
+.login-header {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--space-6);
+  text-align: center;
+  gap: var(--space-2);
 }
 
 .login-logo {
-  width: 64px;
-  height: 64px;
-  border-radius: var(--radius-xl);
-  background: linear-gradient(135deg, var(--color-primary-600) 0%, var(--color-accent-500) 100%);
+  width: 52px;
+  height: 52px;
+  border-radius: var(--radius-lg);
+  background: linear-gradient(135deg, var(--color-primary-500) 0%, var(--color-primary-600) 100%);
   display: flex;
   align-items: center;
   justify-content: center;
   color: #fff;
   box-shadow: var(--shadow-glow);
+  margin-bottom: var(--space-2);
+}
+
+.login-title {
+  font-size: var(--text-xl);
+  font-weight: var(--font-bold);
+  color: var(--color-text-primary);
+  letter-spacing: -0.01em;
+}
+
+.login-subtitle {
+  font-size: var(--text-xs);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+.login-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.login-field-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-1);
+}
+
+.login-field-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: var(--text-xs);
+  font-weight: var(--font-medium);
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.login-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 11px;
+  font-weight: var(--font-medium);
+  color: var(--color-text-muted);
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.login-toggle-btn:hover {
+  background: none;
+  color: var(--color-text-primary);
+}
+
+.pin-inputs-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: var(--space-2);
+  width: 100%;
+}
+
+.pin-inputs-grid .pin-digit {
+  width: 100%;
+  height: 52px;
+  font-size: var(--text-xl);
+}
+
+.login-submit-btn {
+  width: 100%;
+  margin-top: var(--space-2);
+}
+
+.login-footer {
+  text-align: center;
+  font-size: var(--text-xs);
+  color: var(--color-text-muted);
 }
 
 /* ===== MODAL OVERLAYS ===== */
@@ -331,37 +561,6 @@
   padding: 1px 4px;
   border-radius: 3px;
   line-height: 12px;
-}
-
-/* ===== HOMEPAGE — Stat Card Grid ===== */
-.stat-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  padding: var(--space-3);
-  text-align: center;
-}
-
-.stat-cell {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 4px;
-}
-
-.stat-cell--bordered {
-  border-left: 1px solid var(--color-border);
-  border-right: 1px solid var(--color-border);
-}
-
-.stat-icon-label {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.stat-value {
-  font-size: var(--text-2xl);
-  font-weight: var(--font-bold);
 }
 
 /* ===== COMPACT BUTTON OVERRIDES ===== */

@@ -50,10 +50,36 @@ export const BienBanQuerySchema = z.object({
 });
 
 export const NhanVienCreateSchema = z.object({
-  ma: z.string().min(1).max(20),
-  ten: z.string().min(1).max(100),
-  pin: z.string().length(4, 'PIN phải có đúng 4 chữ số').regex(/^\d+$/, 'PIN chỉ chứa chữ số'),
+  ma: z.string()
+    .min(1, 'Mã nhân viên bắt buộc')
+    .max(20, 'Mã tối đa 20 ký tự')
+    .regex(/^[A-Za-z0-9_]+$/, 'Chỉ chữ cái, số và gạch dưới')
+    .transform(v => v.toUpperCase()),
+  ten: z.string().min(1, 'Tên bắt buộc').max(100),
+  pin: z.string()
+    .length(4, 'PIN phải có đúng 4 chữ số')
+    .regex(/^\d+$/, 'PIN chỉ chứa chữ số'),
   vai_tro: z.enum(['admin', 'nhan_vien']).default('nhan_vien')
+});
+
+export const NhanVienUpdateSchema = z.object({
+  ten: z.string().min(1, 'Tên bắt buộc').max(100, 'Tên tối đa 100 ký tự').optional(),
+  vai_tro: z.enum(['admin', 'nhan_vien']).optional(),
+  trang_thai: z.enum(['hoat_dong', 'vo_hieu_hoa']).optional()
+}).refine(
+  data => Object.keys(data).length > 0,
+  'Phải cập nhật ít nhất 1 trường'
+);
+
+export const ResetPinSchema = z.object({
+  pin_moi: z.string()
+    .length(4, 'PIN phải có đúng 4 chữ số')
+    .regex(/^\d+$/, 'PIN chỉ chứa chữ số')
+});
+
+export const NhanVienQuerySchema = z.object({
+  trang_thai: z.enum(['hoat_dong', 'vo_hieu_hoa', 'da_xoa']).optional(),
+  search: z.string().optional()
 });
 
 export const CauHinhUpdateSchema = z.object({
@@ -73,6 +99,10 @@ export const CheckMaVanDonParamSchema = z.object({
     .regex(/^[a-zA-Z0-9_-]+$/, 'Mã vận đơn chỉ được chứa chữ cái, chữ số, gạch nối hoặc gạch dưới')
 });
 
+export const CheckMaVanDonQuerySchema = z.object({
+  loai_bien_ban: z.enum(['dong_goi', 'khui_hang']).optional()
+});
+
 export type LoginRequestDTO = z.infer<typeof LoginRequestSchema>;
 export type UploadInitDTO = z.infer<typeof UploadInitSchema>;
 export type UploadCompleteDTO = z.infer<typeof UploadCompleteSchema>;
@@ -81,5 +111,8 @@ export type UploadCancelDTO = z.infer<typeof UploadCancelSchema>;
 export type BienBanQueryDTO = z.infer<typeof BienBanQuerySchema>;
 export type BienBanIdParamDTO = z.infer<typeof BienBanIdParamSchema>;
 export type NhanVienCreateDTO = z.infer<typeof NhanVienCreateSchema>;
+export type NhanVienUpdateDTO = z.infer<typeof NhanVienUpdateSchema>;
+export type ResetPinDTO = z.infer<typeof ResetPinSchema>;
+export type NhanVienQueryDTO = z.infer<typeof NhanVienQuerySchema>;
 export type CauHinhUpdateDTO = z.infer<typeof CauHinhUpdateSchema>;
 export type CheckMaVanDonParamDTO = z.infer<typeof CheckMaVanDonParamSchema>;

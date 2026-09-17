@@ -267,7 +267,8 @@ describe('Sprint 0 — Backend Integration Tests', () => {
       const { status, data } = await get('/api/admin/nhan-vien', adminToken);
       expect(status).toBe(200);
       expect(data.success).toBe(true);
-      expect(Array.isArray(data.data)).toBe(true);
+      const items = Array.isArray(data.data) ? data.data : (data.data as Record<string, unknown>).items;
+      expect(Array.isArray(items)).toBe(true);
     });
 
     it('ADMIN can create new employee', async () => {

@@ -164,8 +164,7 @@ export function VideoPreview({
           onTimeUpdate={handleTimeUpdate}
           onEnded={handleEnded}
           onClick={handleVideoClick}
-          className="video-preview-card__player"
-          style={{ cursor: 'pointer' }}
+          className="video-preview-card__player cursor-pointer"
         />
       </div>
 

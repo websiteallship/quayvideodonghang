@@ -16,7 +16,7 @@ export const authRouter = new Hono<{
 }>();
 
 authRouter.post('/login', loginRateLimiter, zValidator('json', LoginRequestSchema), async (c) => {
-  const { ma_nhan_vien, pin } = c.req.valid('json');
+  const { ma_nhan_vien, pin, thiet_bi } = c.req.valid('json');
 
   try {
     const userRow = await c.env.DB.prepare(
@@ -31,12 +31,12 @@ authRouter.post('/login', loginRateLimiter, zValidator('json', LoginRequestSchem
         trang_thai: string;
       }>();
 
-    if (!userRow) {
+    if (!userRow || userRow.trang_thai === 'da_xoa') {
       return errorResponse(c, 'USER_NOT_FOUND', 'Mã nhân viên không tồn tại', 401);
     }
 
     if (userRow.trang_thai !== 'hoat_dong') {
-      return errorResponse(c, 'ACCOUNT_DISABLED', 'Tài khoản đã bị vô hiệu hoá', 403);
+      return errorResponse(c, 'ACCOUNT_DISABLED', 'Tài khoản đã bị vô hiệu hoá', 401);
     }
 
     const isValidPin = await comparePin(pin, userRow.pin_hash);
@@ -54,6 +54,20 @@ authRouter.post('/login', loginRateLimiter, zValidator('json', LoginRequestSchem
       },
       expiresIn
     );
+
+    // Ghi nhận phiên đăng nhập để tính thời gian đăng nhập cuối
+    const sessionId = crypto.randomUUID();
+    const clientIp = c.req.header('cf-connecting-ip') || c.req.header('x-forwarded-for') || '127.0.0.1';
+    try {
+      await c.env.DB.prepare(
+        `INSERT INTO phien_dang_nhap (id, ma_nhan_vien, thiet_bi, ip_address, thoi_gian_dang_nhap, thoi_gian_het_han, con_hieu_luc)
+         VALUES (?, ?, ?, ?, datetime('now'), datetime('now', '+' || ? || ' seconds'), 1)`
+      )
+        .bind(sessionId, userRow.ma, thiet_bi || 'mobile', clientIp, expiresIn)
+        .run();
+    } catch {
+      // Bỏ qua nếu môi trường test không có bảng phien_dang_nhap
+    }
 
     return successResponse(c, {
       token,

@@ -36,21 +36,34 @@ interface UseCameraReturn {
   toggleFacing: () => Promise<void>;
 }
 
+import { useUserSettingsStore } from '../stores/user-settings-store';
+
 // ---------------------------------------------------------------------------
-// Resolution Fallback Chain: 720p → 480p → any
+// Resolution Fallback Chain: 1080p / 720p → 480p → any
 // ---------------------------------------------------------------------------
 
-interface ResolutionConstraint {
+export interface ResolutionConstraint {
   width: { ideal: number };
   height: { ideal: number };
   frameRate: { ideal: number };
 }
 
-const RESOLUTION_CHAIN: ResolutionConstraint[] = [
+export const RESOLUTION_CHAIN_1080P: ResolutionConstraint[] = [
+  { width: { ideal: 1920 }, height: { ideal: 1080 }, frameRate: { ideal: 30 } },
   { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
   { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
   { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } },
 ];
+
+export const RESOLUTION_CHAIN_720P: ResolutionConstraint[] = [
+  { width: { ideal: 1280 }, height: { ideal: 720 }, frameRate: { ideal: 30 } },
+  { width: { ideal: 854 }, height: { ideal: 480 }, frameRate: { ideal: 30 } },
+  { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } },
+];
+
+export function getResolutionChain(resolution: '1080p' | '720p'): ResolutionConstraint[] {
+  return resolution === '1080p' ? RESOLUTION_CHAIN_1080P : RESOLUTION_CHAIN_720P;
+}
 
 // ---------------------------------------------------------------------------
 // Error Mapper — DOMException → CameraError (tiếng Việt, doc 10 §2.1)
@@ -219,10 +232,13 @@ export function useCamera(): UseCameraReturn {
       };
 
       // Thử resolution chain
-      for (let i = 0; i < RESOLUTION_CHAIN.length; i++) {
+      const currentResPref = useUserSettingsStore.getState().videoResolution;
+      const resolutionChain = getResolutionChain(currentResPref);
+
+      for (let i = 0; i < resolutionChain.length; i++) {
         try {
           const constraints = buildConstraints(
-            RESOLUTION_CHAIN[i],
+            resolutionChain[i],
             targetDeviceId,
             facingMode
           );
@@ -254,7 +270,7 @@ export function useCamera(): UseCameraReturn {
           if (targetDeviceId && (isOverconstrained || isNotFound)) {
             try {
               const fallbackConstraints = buildConstraints(
-                RESOLUTION_CHAIN[i],
+                resolutionChain[i],
                 null,
                 facingMode
               );
@@ -285,7 +301,7 @@ export function useCamera(): UseCameraReturn {
           if (
             err instanceof DOMException &&
             err.name === 'OverconstrainedError' &&
-            i < RESOLUTION_CHAIN.length - 1
+            i < resolutionChain.length - 1
           ) {
             continue;
           }
@@ -365,7 +381,10 @@ export function useCamera(): UseCameraReturn {
     setIsLoading(true);
     setError(null);
 
-    for (const resolution of RESOLUTION_CHAIN) {
+    const toggleResPref = useUserSettingsStore.getState().videoResolution;
+    const toggleChain = getResolutionChain(toggleResPref);
+
+    for (const resolution of toggleChain) {
       try {
         const constraints: MediaStreamConstraints = {
           video: {

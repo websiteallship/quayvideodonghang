@@ -4,11 +4,12 @@
 // Rules: 01-ui-ux.md (no emoji, 48px+ touch targets, lucide-react)
 // ---------------------------------------------------------------------------
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect } from 'react';
 import { Package, PackageOpen, Video, RotateCcw, ChevronDown, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import type { BarcodeResult, DonViVanChuyen, LoaiBienBan } from '../../types';
 import { DON_VI_VAN_CHUYEN_LIST } from '../../config/constants';
 import { detectCarrier, getCarrierLabel } from '../../utils/detect-carrier';
+import { useUserSettingsStore } from '../../stores/user-settings-store';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -70,6 +71,25 @@ export function ScanResult({
     });
   }, [result.rawValue, selectedCarrier, loaiBienBan, onStartRecording]);
 
+  const autoRecordAfterScan = useUserSettingsStore((s) => s.autoRecordAfterScan);
+  const [autoRecordCountdown, setAutoRecordCountdown] = useState<number | null>(null);
+
+  useEffect(() => {
+    if (!autoRecordAfterScan || result.source !== 'gun' || isDuplicate || isChecking) {
+      setAutoRecordCountdown(null);
+      return;
+    }
+
+    setAutoRecordCountdown(1);
+    const timer = setTimeout(() => {
+      handleStartRecording(false);
+    }, 1000);
+
+    return () => {
+      clearTimeout(timer);
+    };
+  }, [autoRecordAfterScan, result.source, isDuplicate, isChecking, handleStartRecording]);
+
   const duplicateSourceLabel = useMemo(() => {
     if (!duplicateInfo?.source) return '';
     switch (duplicateInfo.source) {
@@ -90,6 +110,13 @@ export function ScanResult({
         </span>
       </div>
 
+      {/* Auto-record countdown banner */}
+      {autoRecordCountdown !== null && (
+        <div className="mb-3 px-3 py-1.5 rounded-lg bg-primary/10 border border-primary/20 text-xs text-primary font-bold text-center animate-pulse">
+          Súng quét nhận mã: Tự động bắt đầu quay sau {autoRecordCountdown}s...
+        </div>
+      )}
+
       {/* Duplicate warning or Checking status */}
       {isChecking && (
         <div className="scan-result__checking-status" aria-live="polite">
@@ -108,19 +135,11 @@ export function ScanResult({
             Người quay: <strong>{duplicateInfo.nhanVien}</strong> &middot; {duplicateInfo.thoiGian}
           </div>
           {duplicateSourceLabel && (
-            <div className="scan-result__duplicate-detail" style={{ marginTop: '4px', opacity: 0.8 }}>
+            <div className="scan-result__duplicate-detail mt-1 opacity-80">
               Nguồn: {duplicateSourceLabel}
             </div>
           )}
-          <div style={{
-            marginTop: '8px',
-            padding: '8px 12px',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            borderRadius: 'var(--radius-sm)',
-            fontSize: 'var(--text-xs)',
-            color: 'var(--color-warning)',
-            fontWeight: 'var(--font-medium)',
-          }}>
+          <div className="mt-2 px-3 py-2 bg-destructive/10 rounded-md text-xs text-amber-600 dark:text-amber-400 font-medium">
             Bạn muốn ghi đè video cũ không?
           </div>
         </div>
@@ -155,9 +174,9 @@ export function ScanResult({
 
       {/* Loại biên bản — Cố định theo chế độ làm việc đã chọn trước khi quét (Mode-First) */}
       <div className="scan-result__field">
-        <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '6px' }}>
-          <span className="scan-result__field-label" style={{ marginBottom: 0 }}>Loại biên bản</span>
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-primary-500)', fontWeight: 500 }}>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="scan-result__field-label mb-0">Loại biên bản</span>
+          <span className="text-xs text-primary font-medium">
             Đã gán theo chế độ làm việc
           </span>
         </div>
@@ -197,10 +216,9 @@ export function ScanResult({
             {/* Quay thêm: giữ video cũ + quay thêm */}
             <button
               type="button"
-              className="scan-result__btn-primary"
+              className="scan-result__btn-primary mt-1.5"
               onClick={() => handleStartRecording(false)}
               disabled={isChecking}
-              style={{ marginTop: '6px' }}
             >
               <Video size={20} aria-hidden="true" />
               <span>Quay thêm video mới</span>

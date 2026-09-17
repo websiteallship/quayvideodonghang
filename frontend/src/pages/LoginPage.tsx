@@ -1,7 +1,5 @@
 import React, { useState, useRef } from 'react';
-import { Video, LogIn } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Input } from '@/components/ui/Input';
+import { Video, ArrowRight, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useNavigate } from 'react-router-dom';
 import { APP_CONFIG } from '@/config/constants';
@@ -10,8 +8,10 @@ import { API_ENDPOINTS } from '@/config/api';
 export const LoginPage: React.FC = () => {
   const [maNhanVien, setMaNhanVien] = useState('');
   const [pin, setPin] = useState(['', '', '', '']);
+  const [showPin, setShowPin] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+
   const pinRefs = [
     useRef<HTMLInputElement>(null),
     useRef<HTMLInputElement>(null),
@@ -23,13 +23,11 @@ export const LoginPage: React.FC = () => {
   const navigate = useNavigate();
 
   const handlePinChange = (index: number, val: string) => {
-    // Chỉ nhận ký tự số
     const num = val.replace(/\D/g, '').slice(-1);
     const newPin = [...pin];
     newPin[index] = num;
     setPin(newPin);
 
-    // Auto focus ô tiếp theo
     if (num && index < 3) {
       pinRefs[index + 1].current?.focus();
     }
@@ -39,6 +37,20 @@ export const LoginPage: React.FC = () => {
     if (e.key === 'Backspace' && !pin[index] && index > 0) {
       pinRefs[index - 1].current?.focus();
     }
+  };
+
+  const handlePinPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 4);
+    if (!pasted) return;
+
+    const newPin = ['', '', '', ''];
+    for (let i = 0; i < pasted.length; i++) {
+      newPin[i] = pasted[i];
+    }
+    setPin(newPin);
+    const targetIdx = Math.min(pasted.length, 3);
+    pinRefs[targetIdx].current?.focus();
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -69,13 +81,17 @@ export const LoginPage: React.FC = () => {
         })
       });
 
-      const body = await res.json();
-
-      if (!res.ok || !body.success) {
-        throw new Error(body.error?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      let body: any;
+      try {
+        body = await res.json();
+      } catch {
+        throw new Error(`Không thể kết nối đến máy chủ backend (Port 8787). Vui lòng kiểm tra backend.`);
       }
 
-      // Lưu token thật vào store
+      if (!res.ok || !body?.success) {
+        throw new Error(body?.error?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
+      }
+
       setAuth(body.data.token, body.data.nhan_vien);
       navigate('/');
     } catch (err: unknown) {
@@ -87,88 +103,102 @@ export const LoginPage: React.FC = () => {
 
   return (
     <div className="login-wrapper">
-      <div className="glass-panel-elevated animate-fade-in login-card">
-        {/* App Logo */}
-        <div className="flex-col-center" style={{ gap: 'var(--space-2)' }}>
+      <div className="login-card">
+        {/* Header */}
+        <div className="login-header">
           <div className="login-logo">
-            <Video size={36} />
+            <Video size={24} />
           </div>
-          <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)', textAlign: 'center' }}>
-            Quay Video Đóng Hàng
-          </h2>
-          <span className="text-xs-secondary">
-            Hệ thống đóng gói & kiểm soát kho vận
-          </span>
+          <h1 className="login-title">Quay Video Đóng Hàng</h1>
+          <p className="login-subtitle">
+            Hệ thống kiểm soát & lưu trữ đóng gói kho vận
+          </p>
         </div>
 
-        {/* Login Form */}
-        <form
-          onSubmit={handleLogin}
-          style={{ width: '100%', display: 'flex', flexDirection: 'column', gap: 'var(--space-4)' }}
-        >
-          <Input
-            label="Mã nhân viên"
-            placeholder="VD: NV001"
-            value={maNhanVien}
-            onChange={(e) => setMaNhanVien(e.target.value)}
-            isMono
-            autoFocus
-          />
+        {/* Form */}
+        <form onSubmit={handleLogin} className="login-form">
+          {/* Mã nhân viên */}
+          <div className="login-field-group">
+            <div className="login-field-header">
+              <label htmlFor="ma_nhan_vien">Mã nhân viên</label>
+            </div>
+            <input
+              id="ma_nhan_vien"
+              type="text"
+              placeholder="Nhập mã nhân viên..."
+              value={maNhanVien}
+              onChange={(e) => setMaNhanVien(e.target.value)}
+              className="input-field input-mono"
+              autoFocus
+              autoComplete="username"
+            />
+          </div>
 
-          <div>
-            <label
-              style={{
-                display: 'block',
-                fontSize: 'var(--text-sm)',
-                fontWeight: 'var(--font-medium)',
-                color: 'var(--color-text-secondary)',
-                marginBottom: '8px'
-              }}
-            >
-              Mã PIN (4 số)
-            </label>
-            <div style={{ display: 'flex', justifyContent: 'space-between', gap: '8px' }}>
+          {/* Mã PIN 4 số */}
+          <div className="login-field-group">
+            <div className="login-field-header">
+              <label>Mã PIN (4 số)</label>
+              <button
+                type="button"
+                onClick={() => setShowPin(!showPin)}
+                className="login-toggle-btn"
+                aria-label={showPin ? "Ẩn số PIN" : "Hiện số PIN"}
+              >
+                {showPin ? <EyeOff size={13} /> : <Eye size={13} />}
+                <span>{showPin ? 'Ẩn' : 'Hiện'}</span>
+              </button>
+            </div>
+            <div className="pin-inputs-grid">
               {pin.map((digit, index) => (
                 <input
                   key={index}
                   ref={pinRefs[index]}
-                  type="password"
+                  type={showPin ? 'text' : 'password'}
                   inputMode="numeric"
                   maxLength={1}
                   value={digit}
                   onChange={(e) => handlePinChange(index, e.target.value)}
                   onKeyDown={(e) => handlePinKeyDown(index, e)}
+                  onPaste={handlePinPaste}
+                  aria-label={`Số PIN ${index + 1}`}
                   className="pin-digit"
-                  aria-label={`Số PIN thứ ${index + 1}`}
                 />
               ))}
             </div>
           </div>
 
+          {/* Error Banner */}
           {error && (
-            <div
-              className="alert-banner alert-banner--error"
-              style={{ justifyContent: 'center', fontSize: 'var(--text-xs)', padding: '8px' }}
-            >
-              {error}
+            <div className="alert-banner alert-banner--error" role="alert">
+              <AlertCircle size={16} />
+              <span>{error}</span>
             </div>
           )}
 
-          <Button
+          {/* Submit CTA */}
+          <button
             type="submit"
-            size="large"
-            variant="primary"
-            isLoading={isLoading}
-            leftIcon={<LogIn size={20} />}
-            style={{ width: '100%', marginTop: 'var(--space-2)' }}
+            disabled={isLoading}
+            className="btn btn-primary btn-large login-submit-btn"
           >
-            ĐĂNG NHẬP
-          </Button>
+            {isLoading ? (
+              <>
+                <Loader2 size={18} className="animate-spin" />
+                <span>Đang đăng nhập...</span>
+              </>
+            ) : (
+              <>
+                <span>Đăng nhập</span>
+                <ArrowRight size={18} />
+              </>
+            )}
+          </button>
         </form>
 
-        <span className="text-xs-muted">
-          Phiên bản {APP_CONFIG.VERSION}
-        </span>
+        {/* Footer */}
+        <div className="login-footer">
+          Hệ thống nội bộ kho vận • Phiên bản {APP_CONFIG.VERSION}
+        </div>
       </div>
     </div>
   );

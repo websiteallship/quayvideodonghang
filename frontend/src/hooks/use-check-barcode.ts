@@ -91,7 +91,7 @@ export function useCheckBarcode(): UseCheckBarcodeReturn {
       const hasLocalDuplicate = localItems.length > 0;
 
       // --- Step 2: Kiểm tra remote API (backend D1) ---
-      const res = await checkBarcodeDuplicate(code, { signal: controller.signal });
+      const res = await checkBarcodeDuplicate(code, loaiBienBan, { signal: controller.signal });
 
       // Nếu đã bị hủy bởi request mới hơn thì bỏ qua
       if (controller.signal.aborted) {

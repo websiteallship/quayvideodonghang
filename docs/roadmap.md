@@ -661,14 +661,14 @@ gantt
    - Debounce search input (300ms)
 
 **Verification:**
-- [ ] Search by exact code → result found instantly
-- [ ] Partial search "GHN012" → matching results
-- [ ] Filter by date range → correct results
-- [ ] Filter by status "loi" → only failed uploads
-- [ ] `nhan_vien` → only own videos visible
-- [ ] `admin` → all employees' videos visible
-- [ ] Tap "Xem video" → video plays from Google Drive
-- [ ] Pagination → smooth load-more
+- [x] Search by exact code → result found instantly
+- [x] Partial search "GHN012" → matching results
+- [x] Filter by date range → correct results
+- [x] Filter by status "loi" → only failed uploads
+- [x] `nhan_vien` → only own videos visible
+- [x] `admin` → all employees' videos visible
+- [x] Tap "Xem video" → video plays from Google Drive
+- [x] Pagination → smooth load-more
 
 ---
 
@@ -698,33 +698,147 @@ gantt
 
 ---
 
-## Step 3.4 — Admin Settings
+## Step 3.4 — Settings & Admin Management (Tách User Settings / System Settings)
+
+> **Kiến trúc mới**: Phân tách rõ ràng giữa **User Settings** (cục bộ trên thiết bị, mọi NV đều dùng) và **System Settings** (toàn cục trên D1, chỉ Admin sửa).
+> Override Hierarchy: `User Override (localStorage) > System Default (D1) > Hardcoded Default`
 
 **Tham chiếu docs:**
-- [`06-api-backend-specification.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/06-api-backend-specification.md): Admin endpoints (3.5, 3.6)
-- [`03-uiux-flow.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/03-uiux-flow.md): Settings screen
+- [`14-admin-crud-specification.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/14-admin-crud-specification.md): Đặc tả chi tiết CRUD Admin + Gap Analysis
+- [`06-api-backend-specification.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/06-api-backend-specification.md): Admin endpoints (§3.5, §3.6)
+- [`07-database-schema.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/07-database-schema.md): Schema `nhan_vien`, `cau_hinh`, `phien_dang_nhap`
+- [`03-uiux-flow.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/03-uiux-flow.md): Settings screen (§6)
 
 **Skills áp dụng:**
-- `cloudflare-workers-expert` — D1 CRUD patterns
-- `zod-validation-expert` — Admin request validation
+- `cloudflare-workers-expert` — D1 CRUD, batch operations
+- `zod-validation-expert` — Enum-restricted schemas, partial update validation
+- `zustand-store-ts` — `useUserSettingsStore` mới
+- `react-best-practices` — Admin page layout, data tables
+
+---
+
+### Step 3.4A — User Settings Page (Frontend Only, Mọi NV)
+
+**Route:** `/settings` → `UserSettingsPage`
 
 **Công việc:**
-1. Backend admin endpoints:
-   - CRUD `nhan_vien`: list, create, update, soft-delete
-   - CRUD `cau_hinh`: get all, update, test-drive
-2. Frontend `SettingsPage` (admin only):
-   - Google Drive connection status + "Kiểm tra kết nối" button
-   - Employee management table: add, edit, disable, reset PIN
-   - Video quality settings (resolution, bitrate)
-   - Feature toggles: auto-scan, continuous recording, watermark
-   - Carrier list management
+1. Rename `SettingsPage.tsx` → `UserSettingsPage.tsx` (hoặc giữ path `/settings`)
+2. Tạo Zustand store mới `useUserSettingsStore`:
+   - `videoResolution`: `'1080p' | '720p'` (override cục bộ, lưu `localStorage`)
+   - `autoRecordAfterScan`: `boolean` (bật/tắt tự động quay sau quét)
+   - `soundBeepEnabled`: `boolean` (bật/tắt âm thanh bíp)
+3. Giữ nguyên 4 tabs hiện tại (Ghi hình, Lưu trữ, Barcode, Thông tin Trạm)
+4. Tab "Lưu trữ Drive" → chỉ hiển thị trạng thái read-only (thư mục, dung lượng, kết nối)
+5. Nút Logout giữ nguyên ở tab "Thông tin Trạm"
 
 **Verification:**
-- [ ] Non-admin → 403 on admin endpoints
-- [ ] Create employee → appears in list
-- [ ] Disable employee → cannot login
-- [ ] Test Drive → shows connection status + remaining storage
-- [ ] Update config → persists across sessions
+- [x] Tabs ngang hoạt động đúng trên mobile (scrollable) + desktop (grid 4 cột)
+- [x] `useUserSettingsStore` persist qua `localStorage`, khôi phục khi reload
+- [x] Resolution override ghi đè lên system default khi gọi `getUserMedia()`
+- [x] NV thường KHÔNG thấy menu Admin trên sidebar/bottom-nav
+
+---
+
+### Step 3.4B — Backend CRUD Nhân viên (Admin Only)
+
+**Tham chiếu:** [`14-admin-crud-specification.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/14-admin-crud-specification.md) §2
+
+**Công việc:**
+1. **Nâng cấp** `GET /api/admin/nhan-vien` (đã có, cần sửa):
+   - Thêm query params: `?trang_thai=hoat_dong&search=NV00`
+   - JOIN subquery lấy `so_video_hom_nay` (COUNT bien_ban hôm nay)
+   - JOIN subquery lấy `dang_nhap_cuoi` (MAX phien_dang_nhap)
+   - Mặc định ẩn `da_xoa`, chỉ hiện khi `?trang_thai=da_xoa`
+2. **Tạo mới** `PUT /api/admin/nhan-vien/:ma`:
+   - Partial update: `ten`, `vai_tro`, `trang_thai` (optional fields)
+   - Zod: `NhanVienUpdateSchema` với `.refine()` ít nhất 1 field
+   - Nếu vô hiệu hóa → invalidate tất cả `phien_dang_nhap`
+3. **Tạo mới** `DELETE /api/admin/nhan-vien/:ma`:
+   - Soft-delete: `SET trang_thai = 'da_xoa'`
+   - Guard: chặn xóa admin cuối cùng → 400 `LAST_ADMIN`
+   - Invalidate tất cả phiên đăng nhập
+4. **Tạo mới** `PUT /api/admin/nhan-vien/:ma/reset-pin`:
+   - Zod: `ResetPinSchema` (`pin_moi`: 4 chữ số)
+   - Hash bcrypt + invalidate tất cả phiên → buộc đăng nhập lại
+5. **Bổ sung Zod schemas** trong `schemas.ts`:
+   - `NhanVienUpdateSchema`
+   - `ResetPinSchema`
+
+**Verification:**
+- [x] Non-admin → 403 on tất cả `/api/admin/*`
+- [x] `POST /api/admin/nhan-vien` → create → appears in list (đã có ✅)
+- [x] `PUT .../nhan-vien/NV003` → partial update tên → tên mới trong list
+- [x] `PUT .../nhan-vien/NV003` → `trang_thai: vo_hieu_hoa` → NV003 login → 401
+- [x] `DELETE .../nhan-vien/NV003` → soft-delete → NV003 login → 401
+- [x] `DELETE` admin cuối cùng → 400 `LAST_ADMIN`
+- [x] `PUT .../reset-pin` → hash mới → NV phải đăng nhập lại bằng PIN mới
+
+---
+
+### Step 3.4C — Backend CRUD Cấu hình Hệ thống (Admin Only)
+
+**Tham chiếu:** [`14-admin-crud-specification.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/14-admin-crud-specification.md) §3
+
+**Công việc:**
+1. **Sửa** `GET /api/admin/cau-hinh` (đã có, cần sửa):
+   - Transform response từ array `[{khoa, gia_tri}]` → object `{khoa: gia_tri}`
+2. **Siết** `PUT /api/admin/cau-hinh` (đã có, cần sửa Zod):
+   - `CauHinhUpdateSchema.khoa` → `z.enum([...9 keys cho phép...])`
+   - Validate giá trị theo từng key (số, boolean string, etc.)
+3. **Tạo mới** `PATCH /api/admin/cau-hinh/batch`:
+   - Batch update nhiều key cùng lúc
+   - `CauHinhBatchUpdateSchema` với `z.record(z.enum(...), z.string())`
+   - D1 batch UPSERT trong transaction
+4. **Nâng cấp** `POST /api/admin/cau-hinh/test-drive` (đã có, cần bổ sung):
+   - Thêm: `GET /drive/v3/about?fields=storageQuota` → lấy dung lượng
+   - Thêm: tạo file test 1 byte → xóa ngay → xác nhận quyền ghi
+   - Response bổ sung: `dung_luong_da_dung_gb`, `dung_luong_tong_gb`, `dung_luong_con_lai_gb`, `file_test_ok`
+
+**Verification:**
+- [ ] `GET /api/admin/cau-hinh` → response là object (không phải array)
+- [ ] `PUT` với `khoa: "invalid_key"` → 400 validation error
+- [ ] `PATCH .../batch` → update 3 keys cùng lúc → tất cả persist
+- [ ] `POST .../test-drive` → trả `dung_luong_con_lai_gb` + `file_test_ok: true`
+- [ ] Update config → frontend fetch lại → hiển thị giá trị mới
+
+---
+
+### Step 3.4D — Frontend Admin Pages (Chỉ Admin)
+
+**Routes mới:**
+- `/admin/settings` → `AdminSettingsPage` — Cấu hình hệ thống
+- `/admin/employees` → `AdminEmployeesPage` — Quản lý nhân viên
+
+**Công việc:**
+1. **Routing & Guard:**
+   - Thêm 2 routes mới trong router, bọc `AdminGuard` (check `vai_tro === 'admin'`)
+   - Sidebar: thêm menu "Quản trị" (icon `Shield`) chỉ hiện với Admin, sub-items:
+     - "Cấu hình hệ thống" → `/admin/settings`
+     - "Quản lý nhân viên" → `/admin/employees`
+2. **`AdminSettingsPage`:**
+   - Google Drive connection card: Service Account email, Shared Drive folder, nút "Kiểm tra kết nối" (gọi `POST .../test-drive`)
+   - Storage quota progress bar (data từ test-drive response)
+   - Video quality settings: độ phân giải mặc định (select), bitrate (input số)
+   - Feature toggles (Switch component): auto-scan, quay liên tục, watermark
+   - Carrier list management: editable tag list (thêm/xóa ĐVVC)
+   - Data retention: input số tháng giữ video
+   - Nút "Lưu tất cả" → gọi `PATCH .../cau-hinh/batch`
+3. **`AdminEmployeesPage`:**
+   - Data table danh sách NV: mã, tên, vai trò, trạng thái, video hôm nay, đăng nhập cuối
+   - Search bar: tìm theo mã/tên
+   - Filter: trạng thái (hoạt động / vô hiệu hóa)
+   - Actions mỗi row: Edit (Dialog), Disable/Enable (AlertDialog), Reset PIN (Dialog), Delete (AlertDialog)
+   - Nút "Thêm nhân viên" (Dialog form: mã, tên, PIN, vai trò)
+   - Badge trạng thái: xanh (hoạt động), vàng (vô hiệu hóa), đỏ (đã xóa)
+
+**Verification:**
+- [ ] NV thường truy cập `/admin/*` → redirect về `/settings` hoặc 403 toast
+- [ ] Admin thấy menu "Quản trị" trên sidebar
+- [ ] Tạo NV mới → xuất hiện trong bảng
+- [ ] Vô hiệu hóa NV → NV đó không login được
+- [ ] Reset PIN → NV phải đăng nhập lại bằng PIN mới
+- [ ] Test Drive → hiển thị trạng thái kết nối + dung lượng còn lại
+- [ ] Lưu cấu hình → persist qua sessions, tất cả trạm nhận giá trị mới
 
 ---
 

@@ -8,6 +8,9 @@ import {
   UploadCancelSchema,
   BienBanQuerySchema,
   NhanVienCreateSchema,
+  NhanVienUpdateSchema,
+  ResetPinSchema,
+  NhanVienQuerySchema,
   CauHinhUpdateSchema,
   CheckMaVanDonParamSchema,
   BienBanIdParamSchema
@@ -311,6 +314,139 @@ describe('BienBanIdParamSchema', () => {
   it('should reject empty id', () => {
     const result = BienBanIdParamSchema.safeParse({
       id: ''
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('NhanVienCreateSchema', () => {
+  it('should accept valid employee and uppercase ma', () => {
+    const result = NhanVienCreateSchema.safeParse({
+      ma: 'nv009',
+      ten: 'Nguyen Van Test',
+      pin: '1234'
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.ma).toBe('NV009');
+      expect(result.data.vai_tro).toBe('nhan_vien'); // default
+    }
+  });
+
+  it('should accept valid admin role', () => {
+    const result = NhanVienCreateSchema.safeParse({
+      ma: 'ADMIN02',
+      ten: 'Admin User',
+      pin: '9999',
+      vai_tro: 'admin'
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject non-4-digit PIN', () => {
+    const result = NhanVienCreateSchema.safeParse({
+      ma: 'NV01',
+      ten: 'User',
+      pin: '123'
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject PIN with letters', () => {
+    const result = NhanVienCreateSchema.safeParse({
+      ma: 'NV01',
+      ten: 'User',
+      pin: '12ab'
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject ma containing special characters', () => {
+    const result = NhanVienCreateSchema.safeParse({
+      ma: 'NV@01',
+      ten: 'User',
+      pin: '1234'
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('NhanVienUpdateSchema', () => {
+  it('should accept partial update with only ten', () => {
+    const result = NhanVienUpdateSchema.safeParse({
+      ten: 'Ten Moi'
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept partial update with vai_tro and trang_thai', () => {
+    const result = NhanVienUpdateSchema.safeParse({
+      vai_tro: 'admin',
+      trang_thai: 'vo_hieu_hoa'
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject empty object without any fields', () => {
+    const result = NhanVienUpdateSchema.safeParse({});
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject invalid trang_thai', () => {
+    const result = NhanVienUpdateSchema.safeParse({
+      trang_thai: 'da_xoa' // da_xoa only via DELETE endpoint
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject invalid vai_tro', () => {
+    const result = NhanVienUpdateSchema.safeParse({
+      vai_tro: 'superadmin'
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('ResetPinSchema', () => {
+  it('should accept valid 4-digit PIN', () => {
+    const result = ResetPinSchema.safeParse({
+      pin_moi: '8888'
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject PIN with length not equal to 4', () => {
+    const result = ResetPinSchema.safeParse({
+      pin_moi: '12345'
+    });
+    expect(result.success).toBe(false);
+  });
+
+  it('should reject PIN with non-numeric characters', () => {
+    const result = ResetPinSchema.safeParse({
+      pin_moi: 'abcd'
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('NhanVienQuerySchema', () => {
+  it('should accept empty query', () => {
+    const result = NhanVienQuerySchema.safeParse({});
+    expect(result.success).toBe(true);
+  });
+
+  it('should accept valid trang_thai and search query', () => {
+    const result = NhanVienQuerySchema.safeParse({
+      trang_thai: 'hoat_dong',
+      search: 'NV00'
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject invalid trang_thai', () => {
+    const result = NhanVienQuerySchema.safeParse({
+      trang_thai: 'inactive'
     });
     expect(result.success).toBe(false);
   });

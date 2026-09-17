@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import { useState, useCallback } from 'react';
-import { Flashlight, FlashlightOff, ScanLine, Package, PackageOpen, RefreshCw } from 'lucide-react';
+import { Flashlight, FlashlightOff, ScanLine, Package, PackageOpen } from 'lucide-react';
 import type { LoaiBienBan } from '../../types';
 
 // ---------------------------------------------------------------------------
@@ -23,8 +23,6 @@ interface ScannerOverlayProps {
   isMobile?: boolean;
   /** Active work mode ('dong_goi' | 'khui_hang' | null) */
   workMode?: LoaiBienBan | null;
-  /** Optional callback to toggle/switch work mode */
-  onSwitchWorkMode?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -58,7 +56,6 @@ export function ScannerOverlay({
   stream = null,
   isMobile = false,
   workMode = null,
-  onSwitchWorkMode,
 }: ScannerOverlayProps) {
   const [torchOn, setTorchOn] = useState(false);
   const [torchSupported, setTorchSupported] = useState(true);
@@ -97,18 +94,6 @@ export function ScannerOverlay({
             )}
             <span>CHẾ ĐỘ: {workMode === 'dong_goi' ? 'ĐÓNG GÓI' : 'KHUI HÀNG'}</span>
           </div>
-          {onSwitchWorkMode && (
-            <button
-              type="button"
-              className="scanner-work-mode-switch-btn"
-              onClick={onSwitchWorkMode}
-              title="Đổi chế độ làm việc"
-              aria-label="Đổi chế độ làm việc"
-            >
-              <RefreshCw size={12} aria-hidden="true" />
-              <span>Đổi</span>
-            </button>
-          )}
         </div>
       )}
 

@@ -2,200 +2,155 @@
 
 ---
 
-## 1. Design Tokens
+## 1. Design Tokens & Theme Engine (Tailwind CSS v4 + shadcn/ui)
 
-### 1.1 Color Palette
+Hệ thống Design Tokens được xây dựng trên nền tảng **Tailwind CSS v4** kết hợp biến số ngữ nghĩa (Semantic Tokens) chuẩn của **shadcn/ui** (OKLCH color space), hỗ trợ 2 chế độ Light & Dark mode linh hoạt:
 
-```css
-:root {
-  /* Primary — Deep Navy + Electric Blue */
-  --color-primary-50:  #e8eaf6;
-  --color-primary-100: #c5cae9;
-  --color-primary-200: #9fa8da;
-  --color-primary-500: #3f51b5;
-  --color-primary-600: #3949ab;
-  --color-primary-700: #303f9f;
-  --color-primary-900: #1a237e;
+### 1.1 Semantic Color Tokens (shadcn/ui Theme Engine)
 
-  /* Accent — Vibrant Teal */
-  --color-accent-400: #26c6da;
-  --color-accent-500: #00bcd4;
-  --color-accent-600: #00acc1;
+| Token CSS / Tailwind | Vai trò (Semantic Role) | Light Value (OKLCH / Hex) | Dark Value (OKLCH / Hex) |
+|---|---|---|---|
+| `--background` / `bg-background` | Màu nền trang chính | `oklch(1 0 0)` (#ffffff) | `oklch(0.14 0.02 255)` (#0f172a) |
+| `--foreground` / `text-foreground` | Màu chữ chính | `oklch(0.20 0.025 255)` (#1e293b) | `oklch(0.98 0.005 250)` (#f8fafc) |
+| `--card` / `bg-card` | Nền thẻ (Card, Panels) | `oklch(1 0 0)` (#ffffff) | `oklch(0.18 0.025 255)` (#1e293b) |
+| `--card-foreground` / `text-card-foreground` | Chữ trong thẻ Card | `oklch(0.20 0.025 255)` | `oklch(0.98 0.005 250)` |
+| `--primary` / `bg-primary` | Màu nhận diện chủ đạo (Trust Blue) | `oklch(0.53 0.17 250)` (#2563eb) | `oklch(0.65 0.18 250)` (#3b82f6) |
+| `--primary-foreground` | Chữ trên nền Primary | `oklch(0.99 0 0)` (#ffffff) | `oklch(0.12 0.02 255)` (#090d16) |
+| `--secondary` / `bg-secondary` | Nút phụ, chip, khối phụ trợ | `oklch(0.96 0.01 245)` | `oklch(0.24 0.025 255)` |
+| `--muted` / `bg-muted` | Nền mờ, skeleton loading | `oklch(0.96 0.008 245)` | `oklch(0.22 0.02 255)` |
+| `--muted-foreground` / `text-muted-foreground` | Text phụ, caption, nhãn thời gian | `oklch(0.52 0.025 250)` | `oklch(0.65 0.02 250)` |
+| `--accent` / `bg-accent` | Hover highlight, active item | `oklch(0.94 0.025 245)` | `oklch(0.26 0.03 250)` |
+| `--destructive` / `bg-destructive` | Nút nguy hiểm (Dừng quay, Xóa) | `oklch(0.58 0.20 25)` (#dc2626) | `oklch(0.62 0.22 25)` (#ef4444) |
+| `--border` / `border-border` | Viền ngăn cách nhẹ | `oklch(0.92 0.01 245)` | `oklch(0.28 0.02 255)` |
+| `--input` / `border-input` | Viền ô nhập liệu Input | `oklch(0.92 0.01 245)` | `oklch(0.28 0.02 255)` |
+| `--ring` / `ring-ring` | Focus ring công thái học súng quét/phím | `oklch(0.53 0.17 250)` | `oklch(0.65 0.18 250)` |
 
-  /* Status Colors */
-  --color-success:  #4caf50;    /* 🟢 Đã upload */
-  --color-warning:  #ff9800;    /* 🟡 Chờ upload */
-  --color-error:    #f44336;    /* 🔴 Lỗi */
-  --color-info:     #2196f3;    /* 🔵 Đang upload */
+### 1.2 Bảng màu Trạng thái Nghiệp vụ Kho (Logistics Status Colors)
 
-  /* Neutral (Dark Theme) */
-  --color-bg-primary:    #0f0f23;
-  --color-bg-secondary:  #1a1a2e;
-  --color-bg-card:       #16213e;
-  --color-bg-elevated:   #1e2a4a;
-  --color-text-primary:  #e8e8e8;
-  --color-text-secondary: #a0a0b8;
-  --color-text-muted:    #6c6c80;
-  --color-border:        #2a2a40;
+Tuân thủ độ tương phản WCAG 2.2 AA (>= 4.5:1), dùng kết hợp với `Badge` hoặc `Alert`:
+- **Thành công (Đã tải lên Drive / Quét hợp lệ)**: Emerald (`#059669` / `emerald-500`, dark: `#10b981`)
+- **Chờ tải lên (IndexedDB Queue)**: Amber (`#d97706` / `amber-500`, dark: `#f59e0b`)
+- **Đang tải lên / Đồng bộ**: Sky Blue (`#2563eb` / `sky-500`, dark: `#38bdf8`)
+- **Đang ghi hình (Recording)**: Red Pulse (`#dc2626` / `rose-500`, dark: `#ef4444`)
+- **Lỗi tải lên / Lỗi thiết bị**: Destructive Red (`#dc2626` / `destructive`)
 
-  /* Recording State */
-  --color-recording:     #ff1744;  /* Đỏ nổi bật khi đang quay */
-  --color-recording-pulse: rgba(255, 23, 68, 0.3);
-}
-```
+### 1.3 Typography
+- **Sans-serif font**: Geist Sans / Inter (`--font-sans`).
+- **Monospace font**: JetBrains Mono / Fira Code (`font-mono`) — **BẮT BUỘC** cho mã vận đơn, mã nhân viên, chuỗi Barcode để đối chiếu ký tự chuẩn xác.
+- **Scale**:
+  - `text-xs`: 12px (Badge, caption)
+  - `text-sm`: 14px (Secondary text, descriptions, table cells)
+  - `text-base`: 16px (Body, form inputs)
+  - `text-lg`: 18px (Card titles, sub-headings)
+  - `text-xl`: 20px (Modal/Dialog titles)
+  - `text-2xl` - `text-3xl`: 24px - 32px (Mã đơn scan lớn, hero counts)
 
-### 1.2 Typography
-
-```css
-:root {
-  /* Font — Inter (Google Fonts) */
-  --font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-
-  /* Scale */
-  --text-xs:   0.75rem;   /* 12px — caption, badge */
-  --text-sm:   0.875rem;  /* 14px — secondary text */
-  --text-base: 1rem;      /* 16px — body */
-  --text-lg:   1.125rem;  /* 18px — sub-heading */
-  --text-xl:   1.25rem;   /* 20px — heading */
-  --text-2xl:  1.5rem;    /* 24px — page title */
-  --text-3xl:  2rem;      /* 32px — hero number (dashboard count) */
-
-  /* Weight */
-  --font-normal:   400;
-  --font-medium:   500;
-  --font-semibold: 600;
-  --font-bold:     700;
-}
-```
-
-### 1.3 Spacing
-
-```css
-:root {
-  --space-1:  0.25rem;   /* 4px */
-  --space-2:  0.5rem;    /* 8px */
-  --space-3:  0.75rem;   /* 12px */
-  --space-4:  1rem;      /* 16px */
-  --space-5:  1.25rem;   /* 20px */
-  --space-6:  1.5rem;    /* 24px */
-  --space-8:  2rem;      /* 32px */
-  --space-10: 2.5rem;    /* 40px */
-  --space-12: 3rem;      /* 48px */
-  --space-16: 4rem;      /* 64px */
-}
-```
-
-### 1.4 Border Radius
-
-```css
-:root {
-  --radius-sm:   0.375rem;  /* 6px — inputs, small buttons */
-  --radius-md:   0.5rem;    /* 8px — cards */
-  --radius-lg:   0.75rem;   /* 12px — modals */
-  --radius-xl:   1rem;      /* 16px — large cards */
-  --radius-full: 9999px;    /* circle/pill */
-}
-```
-
-### 1.5 Shadows & Glass
-
-```css
-:root {
-  --shadow-sm:  0 1px 2px rgba(0,0,0,0.3);
-  --shadow-md:  0 4px 6px rgba(0,0,0,0.3);
-  --shadow-lg:  0 10px 25px rgba(0,0,0,0.4);
-  --shadow-glow: 0 0 20px rgba(0, 188, 212, 0.15);
-
-  /* Glassmorphism */
-  --glass-bg:     rgba(255, 255, 255, 0.05);
-  --glass-border: rgba(255, 255, 255, 0.1);
-  --glass-blur:   blur(12px);
-}
-```
+### 1.4 Spacing & Bo góc (Border Radius)
+- **Border Radius**: `--radius: 0.75rem` (12px).
+  - `rounded-sm`: 6px (nhãn nhỏ)
+  - `rounded-md`: 8px (input, button)
+  - `rounded-lg`: 12px (card, dialog)
+  - `rounded-full`: 9999px (pills, status badges)
+- **Spacing Rule**: Bắt buộc dùng `gap-*` (Flexbox/Grid), không dùng `space-y-*` hoặc margin lộn xộn.
 
 ---
 
-## 2. Component Specifications
+## 2. Đặc tả Core UI Primitives (shadcn/ui & Radix UI)
 
-### 2.1 Button
+Toàn bộ giao diện chuẩn hóa 100% qua Core UI Primitives tại `@/components/ui/*`:
 
-```
-┌─────────────────────────────────┐
-│         Quét mã đơn             │   ← Primary Large: 56px height, full-width mobile
-│            📷                    │      Gradient: primary-600 → accent-500
-└─────────────────────────────────┘     Border-radius: radius-lg
-                                        Font: text-lg, font-semibold
-                                        Box-shadow: shadow-glow
+### 2.1 Button (`@/components/ui/button.tsx`)
+Xây dựng trên Radix UI `Slot` (`asChild`) và `class-variance-authority`:
+- **Variants**:
+  - `default`: Nền `bg-primary`, chữ `text-primary-foreground`. Dùng cho hành động xác nhận chính.
+  - `destructive`: Nền `bg-destructive`, chữ `text-destructive-foreground`. Dùng cho: Dừng quay khẩn cấp, Xoá video trong hàng đợi.
+  - `outline`: Viền `border border-input`, nền `bg-background` hover `bg-accent`. Dùng cho nút đổi camera, nút huỷ, bộ lọc.
+  - `secondary`: Nền `bg-secondary`, hover nhẹ. Dùng cho các hành động phụ.
+  - `ghost`: Trong suốt, hover `bg-accent`. Dùng cho nút copy mã, nút đóng.
+  - `link`: Dạng text link khi cần điều hướng nhẹ.
+- **Sizes**:
+  - `default`: `h-10 px-4 py-2`
+  - `sm`: `h-9 rounded-md px-3`
+  - `lg`: `h-11 rounded-md px-8`
+  - `icon`: `size-9` (Đảm bảo vùng bấm công thái học kho vận ≥ 48px: `min-h-[48px] min-w-[48px]`).
+- **Warehouse CTA Rule**: Nút bấm chính trên màn hình thao tác kho (Bắt đầu quay, Quét mã, Dừng & Lưu) sử dụng chiều cao tối thiểu `h-12` đến `h-14` (56px) để thao tác bằng găng tay dễ dàng.
 
-┌──────────────┐ ┌──────────────┐
-│   Đóng gói   │ │  Khui hàng   │   ← Secondary: 48px height
-└──────────────┘ └──────────────┘     Outline style, border 2px
+### 2.2 Input (`@/components/ui/input.tsx`)
+- Thẻ input chuẩn shadcn với viền `border-input`, focus ring `focus-visible:ring-1 focus-visible:ring-ring`.
+- Kết hợp class `font-mono tracking-wider` khi nhập mã vận đơn để tối ưu việc đọc và đối chiếu mã vạch.
 
-┌────────┐                            ← Icon Button: 44px × 44px circle
-│   🔄   │                              Dùng cho: đổi camera, thử lại, đóng modal
-└────────┘
+### 2.3 Card (`@/components/ui/card.tsx`)
+Container chuẩn mực cho mọi panel, thay thế hoàn toàn `.glass-panel` hay `div` thủ công:
+- **Compound Components**:
+  - `<Card>`: Khung thẻ chuẩn (`rounded-lg border bg-card text-card-foreground shadow-sm`).
+  - `<CardHeader>`: Phần đầu thẻ (`flex flex-col gap-1.5 p-6`).
+  - `<CardTitle>`: Tiêu đề thẻ (`text-2xl font-semibold leading-none tracking-tight`).
+  - `<CardDescription>`: Mô tả bổ trợ (`text-sm text-muted-foreground`).
+  - `<CardContent>`: Vùng chứa nội dung chính (`p-6 pt-0`).
+  - `<CardFooter>`: Chân thẻ chứa cụm nút hành động (`flex items-center p-6 pt-0`).
 
-┌──────────────────────────────────────────────┐
-│              ⏹  DỪNG QUAY                    │   ← Danger Large: 64px height
-└──────────────────────────────────────────────┘     Background: color-recording
-                                                      Pulse animation khi đang quay
-```
+### 2.4 Badge (`@/components/ui/badge.tsx`)
+Dùng để gắn nhãn ĐVVC, loại biên bản và trạng thái xử lý đơn hàng:
+- **Variants**: `default`, `secondary`, `destructive`, `outline`.
+- **Status Mapping**:
+  - `Đã lưu` (Uploaded): `bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-emerald-500/30`
+  - `Chờ upload` (Pending): `bg-amber-500/15 text-amber-600 dark:text-amber-400 border-amber-500/30`
+  - `Đang upload` (Syncing): `bg-sky-500/15 text-sky-600 dark:text-sky-400 border-sky-500/30`
+  - `Lỗi upload` (Failed): `bg-destructive/15 text-destructive border-destructive/30`
+  - `Chế độ Đóng gói`: `bg-primary/15 text-primary border-primary/30`
+  - `Chế độ Khui hàng`: `bg-purple-500/15 text-purple-600 dark:text-purple-400 border-purple-500/30`
 
-### 2.2 Input
+### 2.5 Dialog & AlertDialog (`@/components/ui/dialog.tsx`, `@/components/ui/alert-dialog.tsx`)
+Thay thế hoàn toàn `Modal.tsx` và `.modal-backdrop`:
+- Xây dựng trên **Radix UI Dialog Primitive**: Đảm bảo quản lý focus trap, chặn cuộn nền, phím `Escape` và overlay làm mờ chuẩn mực.
+- **A11y Rule BẮT BUỘC**: Mọi `<DialogContent>` / `<AlertDialogContent>` PHẢI chứa `<DialogTitle>` (hoặc `<AlertDialogTitle>`). Nếu tiêu đề không muốn hiện trên màn hình, phải bọc class `sr-only` của Tailwind để thiết bị Screen Reader đọc được.
+- Dùng `<DialogTrigger asChild>` để truyền sự kiện xuống nút bấm con mà không sinh thẻ lồng không hợp lệ.
+- **Ứng dụng**:
+  - `Dialog`: Popup xác nhận quét mã (`ScanResult`), Modal xem lại video Drive từ trang Lịch sử.
+  - `AlertDialog`: Modal xác nhận xoá video cục bộ, Thoát tiến trình quay khẩn cấp.
 
-```
-┌─ Mã nhân viên ─────────────────┐
-│  NV003                         │   ← 48px height, radius-sm
-└────────────────────────────────┘     Focus: border accent-500 + glow
-                                       Font: text-base, monospace cho mã
+### 2.6 Alert (`@/components/ui/alert.tsx`)
+- Hiển thị thông báo trạng thái hoặc lỗi ngay trên màn hình (thay cho banner fixed thủ công):
+  - Lỗi không tìm thấy Camera hoặc từ chối quyền truy cập (`variant="destructive"`).
+  - Cảnh báo quét trùng mã vận đơn trong ca làm (`variant="destructive"` hoặc cảnh báo viền vàng).
+- Compound: `<Alert>`, `<AlertTitle>`, `<AlertDescription>`.
 
-┌─ PIN ──────────────────────────┐
-│  ● ● ● ●                      │   ← 4 ô riêng biệt, auto-focus next
-└────────────────────────────────┘     Font: text-2xl, center
-```
+### 2.7 Sonner Toast (`@/components/ui/sonner.tsx`)
+Hệ thống Toast hiện đại, nhẹ và không chiếm dụng DOM:
+- Tích hợp qua `<Toaster position="top-right" richColors />` tại root `App.tsx`.
+- Sử dụng trực tiếp: `toast.success()`, `toast.error()`, `toast.warning()`, `toast.info()`.
+- Tuyệt đối không tạo floating alert divs tự chế.
 
-### 2.3 Toast / Notification
+### 2.8 Progress (`@/components/ui/progress.tsx`)
+- Radix Progress Primitive hiển thị thanh tiến trình trực quan mượt mà.
+- Dùng cho: Thanh dung lượng bộ nhớ khả dụng (Storage Quota Bar), Tiến trình upload video % lên Google Drive.
 
-```
-Success:  ┌─ ✅ Upload thành công ─────────────────────┐
-          │  Video GHN0123456789 đã lưu trữ            │
-          └────────────────────────────────────────────┘
-          Background: success + opacity 95%, radius-lg, auto-dismiss 4s
+### 2.9 Skeleton (`@/components/ui/skeleton.tsx`)
+- Cung cấp hiệu ứng tải trang (shimmer loading) định hình trước bố cục (thay cho spinner vô định):
+  - Khối danh sách đơn trong HistoryPage, QueuePage.
+  - Cụm thông số thống kê Dashboard trên HomePage.
 
-Error:    ┌─ ❌ Lỗi upload ────────────────── [Thử lại] ┐
-          │  Mất kết nối mạng                            │
-          └──────────────────────────────────────────────┘
-          Background: error, persist until dismissed or action
+### 2.10 Separator (`@/components/ui/separator.tsx`)
+- Phân cách nội dung (`orientation="horizontal"` hoặc `"vertical"`) theo chuẩn ngữ nghĩa của Radix UI thay thế `<hr>`.
 
-Warning:  ┌─ ⚠️ Còn 3 video chưa upload ──────────────┐
-          │  Giữ app mở và kết nối mạng                 │
-          └─────────────────────────────────────────────┘
-          Background: warning, semi-persistent (30s)
-```
+### 2.11 Select (`@/components/ui/select.tsx`)
+- Dropdown chuyên dụng chọn Đơn vị vận chuyển (ĐVVC), chọn Webcam thiết bị với hỗ trợ bàn phím và cảm ứng tối ưu.
 
-### 2.4 Badge / Status
+### 2.12 Tabs (`@/components/ui/tabs.tsx`)
+- Quản lý phân đoạn chuyển đổi chế độ làm việc (Đóng gói / Khui hàng), bộ lọc trạng thái (Tất cả / Chờ tải / Lỗi).
 
-```
-🟢 Đã lưu      → Background: success, text-xs, radius-full, padding 2px 8px
-🟡 Chờ upload   → Background: warning
-🔵 Đang upload  → Background: info, kèm spinner nhỏ
-🔴 Lỗi          → Background: error
-```
+### 2.13 Collapsible (`@/components/ui/collapsible.tsx`)
+- Đóng / mở nhanh thông tin chi tiết biên bản kiểm hàng trong danh sách Lịch sử mà không phải mở trang mới.
 
-### 2.5 Card
-
-```
-┌────────────────────────────────────────────────┐
-│  GHN0123456789                     🟢 Đã lưu  │   ← Glass card
-│  GHN · Đóng gói · NV003                       │      Background: glass-bg
-│  14/09/2026 14:30 · 1:05 · 18.5MB             │      Border: glass-border
-│                                                │      Backdrop: glass-blur
-└────────────────────────────────────────────────┘      Hover: translateY(-2px) + shadow
-```
+### 2.14 ScrollArea (`@/components/ui/scroll-area.tsx`)
+- Vùng cuộn tuỳ biến với thanh cuộn thanh mảnh, không phá vỡ layout trên cả Windows và iOS.
 
 ---
 
 ## 3. Wireframes (ASCII)
+
+> [!NOTE]
+> Các ký hiệu hình ảnh trong mô hình ASCII dưới đây (như `📷`, `📦`, `🔄`) chỉ mang tính chất minh họa layout trực quan trên tài liệu. Khi triển khai mã nguồn thực tế, **BẮT BUỘC** phải tuân thủ [Rule 01-ui-ux](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/.agents/rules/01-ui-ux.md): Tuyệt đối không dùng emoji, chỉ sử dụng icon từ `lucide-react` (`Camera`, `Package`, `RefreshCw`, `Square`, `Play`, `CheckCircle2`, `AlertTriangle`, v.v.).
 
 ### 3.1 Login Page (Mobile)
 

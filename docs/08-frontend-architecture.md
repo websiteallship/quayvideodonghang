@@ -10,7 +10,7 @@
 **HTTP Client:** ky (nhẹ hơn axios, tối ưu cho modern browsers)
 **Barcode:** zxing-wasm + BarcodeDetector API fallback
 **IndexedDB:** idb
-**CSS:** Vanilla CSS (CSS Modules hoặc CSS-in-JS không cần, app đủ nhỏ)
+**CSS & UI Primitives:** Tailwind CSS v4 + shadcn/ui & Radix UI (Core UI Primitives), class-variance-authority, clsx, tailwind-merge
 
 ---
 
@@ -32,10 +32,9 @@ frontend/
 │   ├── assets/                   # Static assets (logo, illustrations)
 │   │   └── logo.svg
 │   │
-│   ├── styles/                   # Global styles
-│   │   ├── index.css             # CSS reset + design tokens (colors, spacing, typography)
-│   │   ├── components.css        # Shared component styles (buttons, inputs, cards)
-│   │   └── animations.css        # Keyframe animations
+│   ├── styles/                   # Global styles & Tailwind v4
+│   │   ├── index.css             # Tailwind v4 import (@import "tailwindcss"; @layer base theme variables)
+│   │   └── pages.css             # Helper styles & legacy transition classes
 │   │
 │   ├── config/                   # App configuration
 │   │   ├── constants.ts          # Hằng số (ĐVVC list, video defaults, retry config)
@@ -70,16 +69,23 @@ frontend/
 │   │   └── idb-service.ts        # IndexedDB operations (lưu/đọc/xoá video blob)
 │   │
 │   ├── components/               # Reusable UI components
-│   │   ├── ui/                   # Primitive components
-│   │   │   ├── Button.tsx
-│   │   │   ├── Input.tsx
-│   │   │   ├── Modal.tsx
-│   │   │   ├── Toast.tsx
-│   │   │   ├── Badge.tsx
-│   │   │   ├── Dropdown.tsx
-│   │   │   ├── Spinner.tsx
-│   │   │   ├── ProgressBar.tsx
-│   │   │   └── EmptyState.tsx
+│   │   ├── ui/                   # Core UI Primitives (shadcn/ui + Radix UI)
+│   │   │   ├── button.tsx        # CVA Button (default, destructive, outline, ghost...)
+│   │   │   ├── input.tsx         # Input field (hỗ trợ font-mono cho barcode)
+│   │   │   ├── card.tsx          # Card, CardHeader, CardTitle, CardContent, CardFooter
+│   │   │   ├── badge.tsx         # Status & carrier badge
+│   │   │   ├── dialog.tsx        # Radix Dialog (bắt buộc DialogTitle cho a11y)
+│   │   │   ├── alert-dialog.tsx  # Modal xác nhận xóa, dừng khẩn cấp
+│   │   │   ├── alert.tsx         # Alert box thông báo lỗi camera, quét trùng
+│   │   │   ├── sonner.tsx        # Toast provider (Sonner)
+│   │   │   ├── progress.tsx      # Thanh tiến trình tải video, storage quota
+│   │   │   ├── skeleton.tsx      # Skeleton loader cho bảng và danh sách
+│   │   │   ├── separator.tsx     # Đường kẻ phân cách ngữ cảnh
+│   │   │   ├── select.tsx        # Dropdown lựa chọn ĐVVC, camera
+│   │   │   ├── tabs.tsx          # Tab phân nhóm chế độ làm việc
+│   │   │   ├── collapsible.tsx   # Đóng/mở chi tiết đơn hàng
+│   │   │   ├── scroll-area.tsx   # Khung cuộn mượt mà có custom scrollbar
+│   │   │   └── EmptyState.tsx    # Empty state minh họa SVG
 │   │   │
 │   │   ├── layout/               # Layout components
 │   │   │   ├── AppShell.tsx      # Header + main content + bottom nav
@@ -428,14 +434,18 @@ export default defineConfig({
 
 | Quy tắc | Chi tiết |
 |---|---|
-| **File naming** | `kebab-case.ts` cho files, `PascalCase.tsx` cho components |
+| **File naming** | `kebab-case.ts` cho files, `PascalCase.tsx` cho components (riêng UI primitives theo chuẩn shadcn: `button.tsx`, `card.tsx`, `dialog.tsx`) |
 | **Component** | Functional components + hooks, không class component |
+| **UI Primitives** | 100% sử dụng `@/components/ui/*` (shadcn/Radix). Cấm dùng raw HTML `<button>`, `<input>` với style tự chế |
+| **Composition** | Tuân thủ compound components: `CardHeader` + `CardContent`, `Dialog` + `DialogContent` + `DialogTitle` |
+| **Radix A11y** | Mọi Dialog/AlertDialog bắt buộc có `DialogTitle` (dùng `sr-only` nếu ẩn). Dùng `asChild` tránh lồng nút |
 | **Types** | Dùng `interface` cho objects, `type` cho unions/intersections |
-| **Imports** | Absolute imports: `@/components/...`, `@/hooks/...`, `@/services/...` |
-| **CSS** | 1 file CSS per page/component nếu cần, hoặc dùng CSS Modules |
+| **Imports** | Absolute imports: `@/components/...`, `@/hooks/...`, `@/services/...`, `@/utils/...` |
+| **CSS & Spacing** | Tailwind CSS v4 utility classes + semantic design tokens. Dùng `gap-*` (cấm `space-y-*` hoặc margin hack) |
+| **Class Merge** | Nối class động bắt buộc dùng `cn(...)` (`clsx` + `tailwind-merge`) |
 | **Constants** | UPPER_SNAKE_CASE cho constants |
 | **Async** | async/await, không .then() chains |
-| **Error** | try/catch với typed errors, hiển thị Toast cho user-facing errors |
+| **Error** | try/catch với typed errors, hiển thị thông báo bằng Sonner `toast` |
 
 ---
 

@@ -1,4 +1,5 @@
 import React from 'react';
+import { cn } from '@/utils/cn';
 
 export interface ProgressBarProps {
   progress: number; // 0 - 100
@@ -14,38 +15,15 @@ export const ProgressBar: React.FC<ProgressBarProps> = ({
   const clamped = Math.min(100, Math.max(0, progress));
 
   return (
-    <div style={{ width: '100%' }} className={className}>
-      <div
-        style={{
-          width: '100%',
-          height: '8px',
-          backgroundColor: 'var(--color-bg-elevated)',
-          borderRadius: 'var(--radius-full)',
-          overflow: 'hidden',
-          border: '1px solid var(--color-border)'
-        }}
-      >
+    <div className={cn("w-full", className)}>
+      <div className="w-full h-2 bg-muted rounded-full overflow-hidden border border-border">
         <div
-          style={{
-            height: '100%',
-            width: `${clamped}%`,
-            background: 'linear-gradient(90deg, var(--color-primary-500) 0%, var(--color-accent-400) 100%)',
-            borderRadius: 'var(--radius-full)',
-            transition: 'width 0.3s ease-out'
-          }}
+          className="h-full rounded-full bg-gradient-to-r from-primary to-accent transition-all duration-300 ease-out"
+          style={{ width: `${clamped}%` }}
         />
       </div>
       {showLabel && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'flex-end',
-            fontSize: 'var(--text-xs)',
-            color: 'var(--color-text-secondary)',
-            marginTop: '4px',
-            fontFamily: 'var(--font-mono)'
-          }}
-        >
+        <div className="flex justify-end text-xs text-muted-foreground mt-1 font-mono">
           {Math.round(clamped)}%
         </div>
       )}

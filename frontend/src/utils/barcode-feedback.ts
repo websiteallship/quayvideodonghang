@@ -1,3 +1,5 @@
+import { useUserSettingsStore } from '@/stores/user-settings-store';
+
 // ---------------------------------------------------------------------------
 // Audio & Haptic Feedback for Barcode Scanning
 // Tham chiếu: .agents/rules/01-ui-ux.md (mục 4)
@@ -105,6 +107,7 @@ export function playTone(
  * Falls back to 2400Hz crisp tone if audio file playback fails.
  */
 export function playSuccessBeep(): void {
+  if (!useUserSettingsStore.getState().soundBeepEnabled) return;
   try {
     const audio = getSuccessAudio();
     if (audio) {
@@ -128,6 +131,7 @@ export function playSuccessBeep(): void {
  * Falls back to dual 400Hz warning tone if audio file playback fails.
  */
 export function playWarningBeep(): void {
+  if (!useUserSettingsStore.getState().soundBeepEnabled) return;
   try {
     const audio = getWarningAudio();
     if (audio) {

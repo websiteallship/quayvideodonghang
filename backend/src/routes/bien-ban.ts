@@ -6,6 +6,7 @@ import { authMiddleware } from '../middleware/auth';
 import { DriveService } from '../services/drive-service';
 import {
   CheckMaVanDonParamSchema,
+  CheckMaVanDonQuerySchema,
   BienBanQuerySchema,
   BienBanIdParamSchema
 } from '../types/schemas';
@@ -32,33 +33,54 @@ bienBanRouter.get(
       );
     }
   }),
+  zValidator('query', CheckMaVanDonQuerySchema, (result, c) => {
+    if (!result.success) {
+      return errorResponse(
+        c,
+        'INVALID_QUERY',
+        result.error.errors[0]?.message || 'Tham số truy vấn không hợp lệ',
+        400
+      );
+    }
+  }),
   async (c) => {
     const ma_van_don = c.req.param('ma_van_don');
+    const { loai_bien_ban } = c.req.valid('query');
 
     try {
-      // Đếm tổng số video đã quay cho mã này
-      const countResult = await c.env.DB.prepare(
-        'SELECT COUNT(*) as total FROM bien_ban WHERE ma_van_don = ?'
-      )
-        .bind(ma_van_don)
-        .first<{ total: number }>();
+      let so_luong_video = 0;
+      let existing: any = null;
 
-      const so_luong_video = countResult?.total || 0;
+      if (loai_bien_ban) {
+        // Đếm tổng số video đã quay cho mã này và loại biên bản này
+        const countResult = await c.env.DB.prepare(
+          'SELECT COUNT(*) as total FROM bien_ban WHERE ma_van_don = ? AND loai_bien_ban = ?'
+        )
+          .bind(ma_van_don, loai_bien_ban)
+          .first<{ total: number }>();
+        so_luong_video = countResult?.total || 0;
 
-      // Lấy thông tin video gần nhất
-      const existing = await c.env.DB.prepare(
-        'SELECT id, ma_van_don, don_vi_vc, loai_bien_ban, ma_nhan_vien, thoi_gian_tao, trang_thai FROM bien_ban WHERE ma_van_don = ? ORDER BY thoi_gian_tao DESC LIMIT 1'
-      )
-        .bind(ma_van_don)
-        .first<{
-          id: string;
-          ma_van_don: string;
-          don_vi_vc: string;
-          loai_bien_ban: string;
-          ma_nhan_vien: string;
-          thoi_gian_tao: string;
-          trang_thai: string;
-        }>();
+        // Lấy thông tin video gần nhất
+        existing = await c.env.DB.prepare(
+          'SELECT id, ma_van_don, don_vi_vc, loai_bien_ban, ma_nhan_vien, thoi_gian_tao, trang_thai FROM bien_ban WHERE ma_van_don = ? AND loai_bien_ban = ? ORDER BY thoi_gian_tao DESC LIMIT 1'
+        )
+          .bind(ma_van_don, loai_bien_ban)
+          .first();
+      } else {
+        // Fallback for older clients that don't send loai_bien_ban
+        const countResult = await c.env.DB.prepare(
+          'SELECT COUNT(*) as total FROM bien_ban WHERE ma_van_don = ?'
+        )
+          .bind(ma_van_don)
+          .first<{ total: number }>();
+        so_luong_video = countResult?.total || 0;
+
+        existing = await c.env.DB.prepare(
+          'SELECT id, ma_van_don, don_vi_vc, loai_bien_ban, ma_nhan_vien, thoi_gian_tao, trang_thai FROM bien_ban WHERE ma_van_don = ? ORDER BY thoi_gian_tao DESC LIMIT 1'
+        )
+          .bind(ma_van_don)
+          .first();
+      }
 
       const da_co_video = so_luong_video > 0;
 

@@ -22,71 +22,27 @@ export const BottomNav: React.FC = () => {
   ];
 
   return (
-    <nav
-      className="glass-panel"
-      style={{
-        position: 'fixed',
-        bottom: 0,
-        left: 0,
-        right: 0,
-        height: '64px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-around',
-        zIndex: 50,
-        borderRadius: 0,
-        borderLeft: 'none',
-        borderRight: 'none',
-        borderBottom: 'none'
-      }}
-    >
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 flex items-center justify-around z-50 border-t border-border bg-background/90 backdrop-blur-md">
       {navItems.map((item) => {
         const Icon = item.icon;
         return (
           <NavLink
             key={item.to}
             to={item.to}
-            style={({ isActive }) => ({
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              gap: '2px',
-              minWidth: '64px',
-              minHeight: '48px',
-              color: isActive ? 'var(--color-accent-400)' : 'var(--color-text-muted)',
-              textDecoration: 'none',
-              position: 'relative'
-            })}
+            className={({ isActive }) =>
+              `flex flex-col items-center justify-center gap-0.5 min-w-[64px] min-h-[48px] text-xs font-medium transition-colors ${isActive ? 'text-primary' : 'text-muted-foreground hover:text-foreground'
+              }`
+            }
           >
-            <div style={{ position: 'relative' }}>
+            <div className="relative">
               <Icon size={22} />
               {item.badge !== null && (
-                <span
-                  style={{
-                    position: 'absolute',
-                    top: '-6px',
-                    right: '-10px',
-                    backgroundColor: 'var(--color-warning)',
-                    color: '#000',
-                    fontSize: '10px',
-                    fontWeight: 'bold',
-                    borderRadius: 'var(--radius-full)',
-                    minWidth: '16px',
-                    height: '16px',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    padding: '0 4px'
-                  }}
-                >
+                <span className="absolute -top-1.5 -right-2.5 bg-amber-500 text-white font-bold text-[10px] rounded-full min-w-[16px] h-4 flex items-center justify-center px-1">
                   {item.badge}
                 </span>
               )}
             </div>
-            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'var(--font-medium)' }}>
-              {item.label}
-            </span>
+            <span>{item.label}</span>
           </NavLink>
         );
       })}

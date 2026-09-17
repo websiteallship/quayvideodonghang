@@ -1,79 +1,18 @@
-import React from 'react';
-import { cn } from '@/utils/cn';
+import * as React from "react"
+import { cn } from "@/lib/utils"
 
-export interface InputProps extends React.InputHTMLAttributes<HTMLInputElement> {
-  label?: string;
-  error?: string;
-  isMono?: boolean;
-  leftIcon?: React.ReactNode;
+function Input({ className, type, ...props }: React.ComponentProps<"input">) {
+  return (
+    <input
+      type={type}
+      data-slot="input"
+      className={cn(
+        "h-12 w-full min-w-0 rounded-lg border border-input bg-transparent px-4 py-2 text-base transition-colors outline-none file:inline-flex file:h-6 file:border-0 file:bg-transparent file:text-sm file:font-medium file:text-foreground placeholder:text-muted-foreground focus-visible:border-ring focus-visible:ring-3 focus-visible:ring-ring/50 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-input/50 disabled:opacity-50 aria-invalid:border-destructive aria-invalid:ring-3 aria-invalid:ring-destructive/20 md:text-base dark:bg-input/30 dark:disabled:bg-input/80 dark:aria-invalid:border-destructive/50 dark:aria-invalid:ring-destructive/40",
+        className
+      )}
+      {...props}
+    />
+  )
 }
 
-export const Input = React.forwardRef<HTMLInputElement, InputProps>(({
-  label,
-  error,
-  isMono = false,
-  leftIcon,
-  className,
-  id,
-  style,
-  ...props
-}, ref) => {
-  const inputId = id || (label ? `input-${label.toLowerCase().replace(/\s+/g, '-')}` : undefined);
-
-  return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px', width: '100%' }}>
-      {label && (
-        <label
-          htmlFor={inputId}
-          style={{
-            fontSize: 'var(--text-sm)',
-            fontWeight: 'var(--font-medium)',
-            color: 'var(--color-text-secondary)'
-          }}
-        >
-          {label}
-        </label>
-      )}
-      <div style={{ position: 'relative', display: 'flex', alignItems: 'center', width: '100%' }}>
-        {leftIcon && (
-          <div
-            style={{
-              position: 'absolute',
-              left: 'var(--space-3)',
-              display: 'flex',
-              alignItems: 'center',
-              pointerEvents: 'none',
-              color: 'var(--color-text-muted)'
-            }}
-          >
-            {leftIcon}
-          </div>
-        )}
-        <input
-          ref={ref}
-          id={inputId}
-          className={cn('input-field', isMono && 'input-mono', className)}
-          style={{
-            ...(leftIcon ? { paddingLeft: '40px' } : {}),
-            ...(error ? { borderColor: 'var(--color-error)' } : {}),
-            ...style
-          }}
-          {...props}
-        />
-      </div>
-      {error && (
-        <span
-          style={{
-            fontSize: 'var(--text-xs)',
-            color: 'var(--color-error)',
-            marginTop: '2px'
-          }}
-        >
-          {error}
-        </span>
-      )}
-    </div>
-  );
-});
-
-Input.displayName = 'Input';
+export { Input }
