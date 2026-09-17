@@ -1,10 +1,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import {
   Search,
-  Camera,
   X,
-  Calendar,
-  Filter,
   RefreshCw,
   Package,
   PackageOpen,
@@ -15,75 +12,137 @@ import {
   ExternalLink,
   ChevronLeft,
   ChevronRight,
+  ChevronsLeft,
+  ChevronsRight,
   AlertCircle,
-  Video as VideoIcon,
-  ChevronDown,
-  ChevronUp,
-  RotateCcw,
   Copy,
   Check,
-  Smartphone,
-  Monitor,
-  Download,
-  FileVideo
+  SlidersHorizontal,
+  Scan,
+  FileVideo,
+
+  PlayCircle,
 } from 'lucide-react';
-import { Button } from '@/components/ui/Button';
-import { Badge } from '@/components/ui/Badge';
-import { Modal } from '@/components/ui/Modal';
-import { EmptyState } from '@/components/ui/EmptyState';
-import { Spinner } from '@/components/ui/Spinner';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
+import { Skeleton } from '@/components/ui/skeleton';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog';
+
+import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
 import { useCamera } from '@/hooks/use-camera';
 import { useBarcode } from '@/hooks/use-barcode';
 import { useBarcodeGun } from '@/hooks/use-barcode-gun';
 import { CameraPreview } from '@/components/camera/CameraPreview';
 import { ScannerOverlay } from '@/components/scanner/ScannerOverlay';
+import { HistoryFilter } from '@/components/history/HistoryFilter';
+import { CustomVideoPlayer } from '@/components/video/CustomVideoPlayer';
+import { DateRange } from 'react-day-picker';
+import { subDays, format } from 'date-fns';
 import {
   fetchBienBanList,
   fetchBienBanViewUrl,
-  BienBanFilterParams
+  type BienBanFilterParams,
 } from '@/services/bien-ban-service';
 import { getStoredToken, apiClient, API_BASE } from '@/services/api-client';
 import { formatDateTimeVN, formatDuration, formatBytes } from '@/utils/format';
 import { feedbackSuccess } from '@/utils/barcode-feedback';
+import { DON_VI_VAN_CHUYEN_LIST } from '@/config/constants';
 import type { BienBan, BarcodeResult } from '@/types';
 
-// Helper tạo chuỗi YYYY-MM-DD theo chuẩn giờ Hồ Chí Minh (+7)
-function getVietnamDateString(offsetDays: number = 0): string {
-  const d = new Date();
-  d.setDate(d.getDate() - offsetDays);
-  const formatter = new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Ho_Chi_Minh',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit'
-  });
-  return formatter.format(d);
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+
+/** Carrier badge color mapping */
+function getCarrierColor(donViVc: string): string {
+  const map: Record<string, string> = {
+    ShopeeXpress: 'bg-orange-500/10 text-orange-600 border-orange-500/25 dark:text-orange-400',
+    GHN: 'bg-amber-500/10 text-amber-600 border-amber-500/25 dark:text-amber-400',
+    'J&T': 'bg-rose-500/10 text-rose-600 border-rose-500/25 dark:text-rose-400',
+    ViettelPost: 'bg-teal-500/10 text-teal-600 border-teal-500/25 dark:text-teal-400',
+    GHTK: 'bg-sky-500/10 text-sky-600 border-sky-500/25 dark:text-sky-400',
+    BestExpress: 'bg-violet-500/10 text-violet-600 border-violet-500/25 dark:text-violet-400',
+    VNPost: 'bg-indigo-500/10 text-indigo-600 border-indigo-500/25 dark:text-indigo-400',
+    NhatTin: 'bg-cyan-500/10 text-cyan-600 border-cyan-500/25 dark:text-cyan-400',
+    LazadaExpress: 'bg-blue-500/10 text-blue-600 border-blue-500/25 dark:text-blue-400',
+  };
+  return map[donViVc] ?? 'bg-slate-500/10 text-slate-600 border-slate-500/25 dark:text-slate-400';
 }
 
-const CARRIERS: { label: string; value: string }[] = [
-  { label: 'Tất cả ĐVVC', value: 'all' },
-  { label: 'GHN', value: 'GHN' },
-  { label: 'GHTK', value: 'GHTK' },
-  { label: 'Viettel Post', value: 'ViettelPost' },
-  { label: 'J&T Express', value: 'J&T' },
-  { label: 'Shopee Xpress', value: 'ShopeeXpress' },
-  { label: 'Khác', value: 'Khac' }
-];
+function getCarrierBarColor(donViVc: string): string {
+  const map: Record<string, string> = {
+    ShopeeXpress: 'bg-orange-500',
+    GHN: 'bg-amber-500',
+    'J&T': 'bg-rose-500',
+    ViettelPost: 'bg-teal-500',
+    GHTK: 'bg-sky-500',
+    BestExpress: 'bg-violet-500',
+  };
+  return map[donViVc] ?? 'bg-blue-500';
+}
 
-const STATUS_LIST: { label: string; value: string }[] = [
-  { label: 'Tất cả trạng thái', value: 'all' },
-  { label: 'Đã lưu (Drive)', value: 'da_upload' },
-  { label: 'Chờ tải lên', value: 'cho_upload' },
-  { label: 'Đang tải lên', value: 'dang_upload' },
-  { label: 'Lỗi tải lên', value: 'loi' }
-];
+function getCarrierLabel(donViVc: string): string {
+  const found = DON_VI_VAN_CHUYEN_LIST.find((c) => c.id === donViVc);
+  return found?.label ?? donViVc;
+}
 
-const WORK_MODES: { label: string; value: string }[] = [
-  { label: 'Tất cả loại', value: 'all' },
-  { label: 'Đóng gói', value: 'dong_goi' },
-  { label: 'Khui hàng', value: 'khui_hang' }
-];
+function getStatusBadge(trangThai: string) {
+  switch (trangThai) {
+    case 'da_upload':
+      return (
+        <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400 hover:bg-emerald-500/15 text-[10px] font-bold uppercase tracking-wider rounded-full shadow-none">
+          ĐÃ LƯU
+        </Badge>
+      );
+    case 'cho_upload':
+      return (
+        <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/25 dark:text-amber-400 hover:bg-amber-500/15 text-[10px] font-bold uppercase tracking-wider rounded-full shadow-none">
+          CHỜ TẢI
+        </Badge>
+      );
+    case 'dang_upload':
+      return (
+        <Badge className="bg-sky-500/10 text-sky-600 border-sky-500/25 dark:text-sky-400 hover:bg-sky-500/15 text-[10px] font-bold uppercase tracking-wider rounded-full shadow-none">
+          ĐANG TẢI
+        </Badge>
+      );
+    case 'loi':
+      return (
+        <Badge className="bg-rose-500/10 text-rose-600 border-rose-500/25 dark:text-rose-400 hover:bg-rose-500/15 text-[10px] font-bold uppercase tracking-wider rounded-full shadow-none">
+          LỖI
+        </Badge>
+      );
+    default:
+      return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Types
+// ---------------------------------------------------------------------------
+
+
+type BienBanItem = BienBan & { ten_nhan_vien?: string };
+
+// ---------------------------------------------------------------------------
+// HistoryPage
+// ---------------------------------------------------------------------------
 
 export const HistoryPage: React.FC = () => {
   const { user } = useAuthStore();
@@ -93,53 +152,55 @@ export const HistoryPage: React.FC = () => {
   const [searchInput, setSearchInput] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
 
-  // 2. Filter states (Default date: Today theo chuẩn Hồ Chí Minh +7)
-  const todayStr = useMemo(() => getVietnamDateString(0), []);
-  const [datePreset, setDatePreset] = useState<'today' | '7days' | 'all' | 'custom'>('today');
-  const [ngayTu, setNgayTu] = useState<string>(todayStr);
-  const [ngayDen, setNgayDen] = useState<string>(todayStr);
+  // 2. Filter states (Default date: 7 days ago)
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: subDays(new Date(), 6),
+    to: new Date()
+  });
   const [carrier, setCarrier] = useState('all');
   const [loaiBienBan, setLoaiBienBan] = useState('all');
   const [trangThai, setTrangThai] = useState('all');
   const [maNhanVien, setMaNhanVien] = useState('');
   const [showFilters, setShowFilters] = useState(false);
-  const [nhanVienList, setNhanVienList] = useState<{ma: string; ten: string}[]>([]);
+  const [showFilterModal, setShowFilterModal] = useState(false);
+  const [nhanVienList, setNhanVienList] = useState<{ ma: string; ten: string }[]>([]);
 
+  // Fetch nhan vien list for admin
   useEffect(() => {
     if (isAdmin) {
-      apiClient.get(`${API_BASE}/admin/nhan-vien`).json<{success: boolean; data: any[]}>()
-        .then(res => {
-          if (res.success && res.data) {
+      apiClient
+        .get(`${API_BASE}/admin/nhan-vien`)
+        .json<{ success: boolean; data: { ma: string; ten: string }[] }>()
+        .then((res) => {
+          if (res.success && Array.isArray(res.data)) {
             setNhanVienList(res.data);
           }
         })
-        .catch(err => console.error('Lỗi tải danh sách nhân viên', err));
+        .catch((err) => console.error('Lỗi tải danh sách nhân viên', err));
     }
   }, [isAdmin]);
 
   // 3. Pagination & Data
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(20);
-  const [items, setItems] = useState<Array<BienBan & { ten_nhan_vien?: string }>>([]);
+  const [items, setItems] = useState<BienBanItem[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
-  // 4. Expandable card state & Copy state
-  const [expandedId, setExpandedId] = useState<string | null>(null);
+  // 4. Copy state
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // 5. Video View Modal & Orientation (Dọc 9:16 hoặc Ngang 16:9)
-  const [videoModalItem, setVideoModalItem] = useState<(BienBan & { ten_nhan_vien?: string }) | null>(null);
+  // 5. Video View Modal
+  const [videoModalItem, setVideoModalItem] = useState<BienBanItem | null>(null);
   const [viewUrl, setViewUrl] = useState<string | null>(null);
   const [streamUrl, setStreamUrl] = useState<string | null>(null);
   const [videoMode, setVideoMode] = useState<'native' | 'iframe'>('native');
-  const [videoOrientation, setVideoOrientation] = useState<'portrait' | 'landscape'>('portrait');
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
 
-  // Copy text helper with feedback
+  // Copy text helper
   const handleCopyText = (e: React.MouseEvent, text: string, id: string) => {
     e.stopPropagation();
     if (navigator?.clipboard?.writeText) {
@@ -158,36 +219,42 @@ export const HistoryPage: React.FC = () => {
     stream: scannerStream,
     isLoading: isScannerCameraLoading,
     startCamera: startScannerCamera,
-    stopCamera: stopScannerCamera
+    stopCamera: stopScannerCamera,
   } = useCamera();
 
-  const handleBarcodeDetected = useCallback((result: BarcodeResult) => {
-    if (result?.rawValue) {
-      feedbackSuccess();
-      setSearchInput(result.rawValue);
-      setDebouncedSearch(result.rawValue);
-      setPage(1);
-      setIsScannerOpen(false);
-      stopScannerCamera();
-    }
-  }, [stopScannerCamera]);
+  const handleBarcodeDetected = useCallback(
+    (result: BarcodeResult) => {
+      if (result?.rawValue) {
+        feedbackSuccess();
+        setSearchInput(result.rawValue);
+        setDebouncedSearch(result.rawValue);
+        setPage(1);
+        setIsScannerOpen(false);
+        stopScannerCamera();
+      }
+    },
+    [stopScannerCamera]
+  );
 
   const {
     startScanning: startBarcodeScanning,
     stopScanning: stopBarcodeScanning,
-    reset: resetBarcode
+    reset: resetBarcode,
   } = useBarcode(scannerVideoRef, handleBarcodeDetected);
 
   // 7. USB Barcode gun listener
   useBarcodeGun(
-    useCallback((code: string) => {
-      if (!isScannerOpen) {
-        feedbackSuccess();
-        setSearchInput(code);
-        setDebouncedSearch(code);
-        setPage(1);
-      }
-    }, [isScannerOpen]),
+    useCallback(
+      (code: string) => {
+        if (!isScannerOpen) {
+          feedbackSuccess();
+          setSearchInput(code);
+          setDebouncedSearch(code);
+          setPage(1);
+        }
+      },
+      [isScannerOpen]
+    ),
     true
   );
 
@@ -200,29 +267,14 @@ export const HistoryPage: React.FC = () => {
     return () => clearTimeout(handler);
   }, [searchInput]);
 
-  // Handle date preset change
-  const handleDatePreset = (preset: 'today' | '7days' | 'all' | 'custom') => {
-    setDatePreset(preset);
-    setPage(1);
-    if (preset === 'today') {
-      setNgayTu(todayStr);
-      setNgayDen(todayStr);
-    } else if (preset === '7days') {
-      setNgayTu(getVietnamDateString(7));
-      setNgayDen(todayStr);
-    } else if (preset === 'all') {
-      setNgayTu('');
-      setNgayDen('');
-    }
-  };
-
   // Reset all filters
   const handleResetFilters = () => {
     setSearchInput('');
     setDebouncedSearch('');
-    setDatePreset('today');
-    setNgayTu(todayStr);
-    setNgayDen(todayStr);
+    setDateRange({
+      from: subDays(new Date(), 6),
+      to: new Date()
+    });
     setCarrier('all');
     setLoaiBienBan('all');
     setTrangThai('all');
@@ -230,16 +282,21 @@ export const HistoryPage: React.FC = () => {
     setPage(1);
   };
 
+  // Check if date range is default (last 7 days)
+  const isDefaultDate = dateRange?.from && dateRange?.to && 
+    format(dateRange.from, 'yyyy-MM-dd') === format(subDays(new Date(), 6), 'yyyy-MM-dd') &&
+    format(dateRange.to, 'yyyy-MM-dd') === format(new Date(), 'yyyy-MM-dd');
+
   // Active filters count
   const activeFiltersCount = useMemo(() => {
     let count = 0;
-    if (datePreset !== 'today') count++;
+    if (!isDefaultDate) count++;
     if (carrier !== 'all') count++;
     if (loaiBienBan !== 'all') count++;
     if (trangThai !== 'all') count++;
-    if (maNhanVien.trim()) count++;
+    if (maNhanVien !== '') count++;
     return count;
-  }, [datePreset, carrier, loaiBienBan, trangThai, maNhanVien]);
+  }, [isDefaultDate, carrier, loaiBienBan, trangThai, maNhanVien]);
 
   // Fetch list
   const loadData = useCallback(async () => {
@@ -250,12 +307,12 @@ export const HistoryPage: React.FC = () => {
       page,
       limit,
       search: debouncedSearch.trim() || undefined,
-      ngay_tu: ngayTu || undefined,
-      ngay_den: ngayDen || undefined,
+      ngay_tu: dateRange?.from ? format(dateRange.from, 'yyyy-MM-dd') : undefined,
+      ngay_den: dateRange?.to ? format(dateRange.to, 'yyyy-MM-dd') : undefined,
       don_vi_vc: carrier !== 'all' ? carrier : undefined,
       loai_bien_ban: loaiBienBan !== 'all' ? loaiBienBan : undefined,
       trang_thai: trangThai !== 'all' ? trangThai : undefined,
-      ma_nhan_vien: isAdmin && maNhanVien.trim() ? maNhanVien.trim() : undefined
+      ma_nhan_vien: isAdmin && maNhanVien.trim() ? maNhanVien.trim() : undefined,
     };
 
     const res = await fetchBienBanList(params);
@@ -272,14 +329,14 @@ export const HistoryPage: React.FC = () => {
     }
 
     setIsLoading(false);
-  }, [page, limit, debouncedSearch, ngayTu, ngayDen, carrier, loaiBienBan, trangThai, maNhanVien, isAdmin]);
+  }, [page, limit, debouncedSearch, dateRange, carrier, loaiBienBan, trangThai, maNhanVien, isAdmin]);
 
   useEffect(() => {
     void loadData();
   }, [loadData]);
 
   // Open Video Modal
-  const handleOpenVideo = async (item: BienBan & { ten_nhan_vien?: string }) => {
+  const handleOpenVideo = async (item: BienBanItem) => {
     setVideoModalItem(item);
     setViewUrl(null);
     setStreamUrl(null);
@@ -287,20 +344,10 @@ export const HistoryPage: React.FC = () => {
     setVideoMode('native');
     setIsVideoLoading(true);
 
-    // Tự động chọn hướng video tối ưu (mobile: Dọc 9:16, desktop/tablet: Ngang 16:9)
-    if (typeof window !== 'undefined' && window.innerWidth < 640) {
-      setVideoOrientation('portrait');
-    } else {
-      setVideoOrientation('landscape');
-    }
-
     const res = await fetchBienBanViewUrl(item.id);
 
     if (res.success && res.data?.view_url) {
       setViewUrl(res.data.view_url);
-
-      // Build authenticated stream URL for native <video> playback
-      // <video src> không gửi được Authorization header → dùng ?token= query param
       if (res.data.stream_url) {
         const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
         const token = getStoredToken();
@@ -313,7 +360,7 @@ export const HistoryPage: React.FC = () => {
     setIsVideoLoading(false);
   };
 
-  // Scanner modal toggler
+  // Scanner modal
   const handleOpenScanner = async () => {
     setIsScannerOpen(true);
     resetBarcode();
@@ -327,1034 +374,967 @@ export const HistoryPage: React.FC = () => {
     stopScannerCamera();
   };
 
+  // Tab counts for loaiBienBan
+  const counts = useMemo(
+    () => ({
+      all: totalItems,
+      dong_goi: items.filter((i) => i.loai_bien_ban === 'dong_goi').length,
+      khui_hang: items.filter((i) => i.loai_bien_ban === 'khui_hang').length,
+    }),
+    [items, totalItems]
+  );
+
+  // Pagination helpers
+  const startIndex = (page - 1) * limit + 1;
+  const endIndex = Math.min(page * limit, totalItems);
+
+  const getPageNumbers = (): (number | '...')[] => {
+    const pages: (number | '...')[] = [];
+    if (totalPages <= 5) {
+      for (let i = 1; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      if (page > 3) pages.push('...');
+      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
+        pages.push(i);
+      }
+      if (page < totalPages - 2) pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
+  // =========================================================================
+  // RENDER
+  // =========================================================================
+
   return (
-    <div className="page-stack" style={{ paddingBottom: 'var(--space-8)' }}>
-      {/* Header */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', flexWrap: 'wrap', gap: 'var(--space-2)' }}>
+    <div className="flex flex-col gap-4 lg:gap-5 pb-6">
+      {/* ------------------------------------------------------------------ */}
+      {/* Page Header */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="hidden lg:flex justify-between items-start">
         <div>
-          <h2 style={{ fontSize: 'var(--text-xl)', fontWeight: 'var(--font-bold)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+          <h2 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
             Lịch sử biên bản
           </h2>
-          <p className="text-xs-secondary">
-            Tra cứu và xem lại video quy trình đóng gói & khui hàng đã lưu
+          <p className="text-sm text-muted-foreground mt-1">
+            Tra cứu và quản lý video quy trình đóng gói &amp; khui hàng đã lưu
           </p>
         </div>
 
         <Button
-          variant="secondary"
-          size="default"
+          variant="outline"
           onClick={() => void loadData()}
           disabled={isLoading}
-          leftIcon={<RefreshCw size={14} className={isLoading ? 'animate-spin' : ''} />}
-          style={{ minHeight: '40px', height: '40px' }}
+          className="h-10 px-4 rounded-xl border border-border bg-card hover:bg-muted text-sm font-semibold gap-2 shadow-xs cursor-pointer"
         >
-          Làm mới
+          <RefreshCw size={16} className={isLoading ? 'animate-spin' : ''} />
+          <span>Làm mới</span>
         </Button>
       </div>
 
-      {/* Search & Action Bar */}
-      <div style={{ display: 'flex', gap: 'var(--space-2)', alignItems: 'center' }}>
-        <div style={{ position: 'relative', flex: 1 }}>
-          <input
-            type="text"
-            className="input-field"
-            placeholder="Tìm theo mã vận đơn..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            style={{
-              width: '100%',
-              height: '48px',
-              paddingLeft: '40px',
-              paddingRight: searchInput ? '40px' : '14px',
-              fontFamily: 'monospace',
-              fontSize: 'var(--text-sm)'
-            }}
-          />
-          <Search
-            size={18}
-            style={{
-              position: 'absolute',
-              left: '12px',
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: 'var(--color-text-muted)',
-              pointerEvents: 'none'
-            }}
-          />
-          {searchInput && (
+      {/* ------------------------------------------------------------------ */}
+      {/* Top Controls Box: Tabs + Search + Filter */}
+      {/* ------------------------------------------------------------------ */}
+      <div className="flex flex-col gap-3">
+        {/* Mobile Pill Segmented Tabs */}
+        <div className="grid grid-cols-3 gap-1 bg-muted/60 p-1 rounded-xl border border-border/60 lg:hidden">
+          {[
+            { id: 'all', label: 'Tất cả', count: counts.all },
+            { id: 'dong_goi', label: 'Đóng gói', count: counts.dong_goi },
+            { id: 'khui_hang', label: 'Khui hàng', count: counts.khui_hang },
+          ].map((tab) => (
             <button
+              key={tab.id}
               type="button"
-              onClick={() => { setSearchInput(''); setDebouncedSearch(''); }}
-              style={{
-                position: 'absolute',
-                right: '8px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'transparent',
-                border: 'none',
-                color: 'var(--color-text-muted)',
-                padding: '8px',
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center'
-              }}
-              aria-label="Xóa tìm kiếm"
+              onClick={() => { setLoaiBienBan(tab.id); setPage(1); }}
+              className={cn(
+                'py-1.5 rounded-lg text-xs font-semibold flex items-center justify-center gap-1 transition-all cursor-pointer',
+                loaiBienBan === tab.id
+                  ? 'bg-card text-foreground shadow-xs'
+                  : 'text-muted-foreground'
+              )}
             >
-              <X size={16} />
+              <span>{tab.label}</span>
+              <span className="text-[10px]">({tab.count})</span>
             </button>
-          )}
+          ))}
         </div>
 
-        {/* Scan Barcode to Search Button */}
-        <Button
-          variant="secondary"
-          size="large"
-          onClick={handleOpenScanner}
-          aria-label="Quét mã barcode để tìm kiếm"
-          style={{
-            minWidth: '48px',
-            width: '48px',
-            height: '48px',
-            padding: 0,
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            flexShrink: 0
-          }}
-          title="Bật camera quét mã để tìm"
-        >
-          <Camera size={22} />
-        </Button>
+        {/* Desktop Controls Bar */}
+        <div className="hidden lg:flex p-1.5 rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-card shadow-xs items-center justify-between gap-3 flex-wrap">
+          {/* Segmented Pill Tabs */}
+          <div className="inline-flex bg-muted/60 p-1 rounded-xl border border-border/60">
+            {[
+              { id: 'all', label: 'Tất cả', count: counts.all, icon: null },
+              { id: 'dong_goi', label: 'Đóng gói', count: counts.dong_goi, icon: <Package size={14} className="text-blue-500" /> },
+              { id: 'khui_hang', label: 'Khui hàng', count: counts.khui_hang, icon: <PackageOpen size={14} className="text-amber-500" /> },
+            ].map((tab) => (
+              <button
+                key={tab.id}
+                type="button"
+                onClick={() => { setLoaiBienBan(tab.id); setPage(1); }}
+                className={cn(
+                  'px-4 py-2 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer',
+                  loaiBienBan === tab.id
+                    ? 'bg-card text-foreground shadow-xs border border-border/70'
+                    : 'text-muted-foreground hover:text-foreground'
+                )}
+              >
+                {tab.icon}
+                <span>{tab.label}</span>
+                <span className="px-1.5 py-0.5 rounded-full text-[10px] bg-muted font-bold text-foreground">
+                  ({tab.count})
+                </span>
+              </button>
+            ))}
+          </div>
 
-        {/* Toggle Filters Button */}
-        <Button
-          variant={showFilters || activeFiltersCount > 0 ? 'primary' : 'secondary'}
-          size="large"
-          onClick={() => setShowFilters(!showFilters)}
-          style={{
-            minWidth: '48px',
-            height: '48px',
-            padding: '0 14px',
-            display: 'flex',
-            alignItems: 'center',
-            gap: '6px',
-            flexShrink: 0
-          }}
-        >
-          <Filter size={18} />
-          <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold' }}>
-            Lọc {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}
-          </span>
-        </Button>
-      </div>
-
-      {/* Filter Expandable Panel */}
-      {showFilters && (
-        <div
-          className="glass-panel animate-fade-in"
-          style={{
-            padding: 'var(--space-4)',
-            display: 'flex',
-            flexDirection: 'column',
-            gap: 'var(--space-3)',
-            border: '1px solid var(--color-border)'
-          }}
-        >
-          {/* Quick Date Presets */}
-          <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-            <span className="text-xs-secondary" style={{ fontWeight: 'bold' }}>
-              Khoảng thời gian
-            </span>
-            <div className="flex-wrap-gap">
-              {[
-                { id: 'today', label: 'Hôm nay' },
-                { id: '7days', label: '7 ngày qua' },
-                { id: 'all', label: 'Tất cả' },
-                { id: 'custom', label: 'Tùy chỉnh' }
-              ].map((p) => (
+          {/* Search + Actions */}
+          <div className="flex items-center gap-2 flex-1 max-w-md ml-auto">
+            <div className="relative flex-1">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <Input
+                type="text"
+                placeholder="Tìm theo mã vận đơn..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+                className="w-full h-10 pl-9 pr-8 text-xs font-mono bg-muted/30 border border-border rounded-xl focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:border-blue-500"
+              />
+              {searchInput && (
                 <button
-                  key={p.id}
-                  className={`btn ${datePreset === p.id ? 'btn-primary' : 'btn-secondary'} btn-compact`}
-                  onClick={() => handleDatePreset(p.id as typeof datePreset)}
+                  type="button"
+                  onClick={() => { setSearchInput(''); setDebouncedSearch(''); }}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
                 >
-                  {p.label}
+                  <X size={14} />
                 </button>
-              ))}
+              )}
             </div>
 
-            {/* Custom Date Inputs */}
-            {datePreset === 'custom' && (
-              <div style={{ display: 'flex', gap: '8px', marginTop: '6px', flexWrap: 'wrap' }}>
-                <div style={{ flex: 1, minWidth: '130px' }}>
-                  <label style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Từ ngày</label>
-                  <input
-                    type="date"
-                    className="input-field"
-                    value={ngayTu}
-                    onChange={(e) => { setNgayTu(e.target.value); setPage(1); }}
-                    style={{ width: '100%', height: '36px', fontSize: 'var(--text-xs)' }}
-                  />
-                </div>
-                <div style={{ flex: 1, minWidth: '130px' }}>
-                  <label style={{ fontSize: '11px', color: 'var(--color-text-muted)' }}>Đến ngày</label>
-                  <input
-                    type="date"
-                    className="input-field"
-                    value={ngayDen}
-                    onChange={(e) => { setNgayDen(e.target.value); setPage(1); }}
-                    style={{ width: '100%', height: '36px', fontSize: 'var(--text-xs)' }}
-                  />
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Carrier, Mode & Status Selectors */}
-          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
-            {/* Đơn vị VC */}
-            <div>
-              <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '4px' }}>
-                Đơn vị vận chuyển
-              </label>
-              <select
-                className="input-field"
-                value={carrier}
-                onChange={(e) => { setCarrier(e.target.value); setPage(1); }}
-                style={{ width: '100%', height: '38px', fontSize: 'var(--text-xs)' }}
-              >
-                {CARRIERS.map((c) => (
-                  <option key={c.value} value={c.value}>{c.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Loại biên bản */}
-            <div>
-              <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '4px' }}>
-                Loại biên bản
-              </label>
-              <select
-                className="input-field"
-                value={loaiBienBan}
-                onChange={(e) => { setLoaiBienBan(e.target.value); setPage(1); }}
-                style={{ width: '100%', height: '38px', fontSize: 'var(--text-xs)' }}
-              >
-                {WORK_MODES.map((m) => (
-                  <option key={m.value} value={m.value}>{m.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Trạng thái */}
-            <div>
-              <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '4px' }}>
-                Trạng thái lưu trữ
-              </label>
-              <select
-                className="input-field"
-                value={trangThai}
-                onChange={(e) => { setTrangThai(e.target.value); setPage(1); }}
-                style={{ width: '100%', height: '38px', fontSize: 'var(--text-xs)' }}
-              >
-                {STATUS_LIST.map((s) => (
-                  <option key={s.value} value={s.value}>{s.label}</option>
-                ))}
-              </select>
-            </div>
-
-            {/* Admin Filter: Mã nhân viên */}
-            {isAdmin && (
-              <div>
-                <label style={{ fontSize: '11px', color: 'var(--color-text-secondary)', display: 'block', marginBottom: '4px' }}>
-                  Lọc theo Mã NV (Admin)
-                </label>
-                <select
-                  className="input-field"
-                  value={maNhanVien}
-                  onChange={(e) => { setMaNhanVien(e.target.value); setPage(1); }}
-                  style={{ width: '100%', height: '38px', fontSize: 'var(--text-xs)', appearance: 'none', background: 'var(--color-bg) url("data:image/svg+xml;utf8,<svg fill=\'%23999\' height=\'20\' viewBox=\'0 0 24 24\' width=\'20\' xmlns=\'http://www.w3.org/2000/svg\'><path d=\'M7 10l5 5 5-5z\'/></svg>") no-repeat right 8px center' }}
-                >
-                  <option value="">Tất cả nhân viên</option>
-                  {nhanVienList.map(nv => (
-                    <option key={nv.ma} value={nv.ma}>
-                      {nv.ma} - {nv.ten}
-                    </option>
-                  ))}
-                </select>
-              </div>
-            )}
-          </div>
-
-          {/* Reset button */}
-          <div style={{ display: 'flex', justifyContent: 'flex-end', paddingTop: '4px' }}>
             <Button
-              variant="secondary"
-              size="default"
-              onClick={handleResetFilters}
-              leftIcon={<RotateCcw size={14} />}
-              style={{ minHeight: '36px', height: '36px', padding: '0 12px', fontSize: 'var(--text-xs)' }}
+              variant="outline"
+              size="icon"
+              onClick={handleOpenScanner}
+              title="Quét barcode bằng Camera"
+              className="size-10 rounded-xl border border-border bg-card hover:bg-muted shadow-xs cursor-pointer shrink-0"
             >
-              Đặt lại bộ lọc
+              <Scan size={16} className="text-blue-600 dark:text-blue-400" />
+            </Button>
+
+            <Button
+              variant={showFilters || activeFiltersCount > 0 ? 'default' : 'outline'}
+              onClick={() => setShowFilters(!showFilters)}
+              title="Bật / tắt bảng bộ lọc nâng cao"
+              className={cn(
+                'h-10 px-3.5 rounded-xl text-xs font-semibold gap-1.5 shrink-0 shadow-xs cursor-pointer transition-all',
+                showFilters || activeFiltersCount > 0
+                  ? 'bg-blue-600 hover:bg-blue-700 text-white border-blue-600 shadow-sm shadow-blue-500/20'
+                  : 'bg-card border-border hover:bg-muted text-foreground'
+              )}
+            >
+              <SlidersHorizontal size={14} />
+              <span>Lọc {activeFiltersCount > 0 ? `(${activeFiltersCount})` : ''}</span>
             </Button>
           </div>
         </div>
+
+        {/* Mobile Search & Actions */}
+        <div className="flex items-center gap-2 lg:hidden">
+          <div className="relative flex-1">
+            <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+            <Input
+              type="text"
+              placeholder="Tìm theo mã vận đơn..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              className="w-full h-10 pl-9 pr-8 text-xs font-mono bg-muted/30 border border-border rounded-xl"
+            />
+            {searchInput && (
+              <button
+                type="button"
+                onClick={() => { setSearchInput(''); setDebouncedSearch(''); }}
+                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+              >
+                <X size={14} />
+              </button>
+            )}
+          </div>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={handleOpenScanner}
+            title="Quét Barcode"
+            className="size-10 rounded-xl border border-border bg-card shadow-xs shrink-0 cursor-pointer active:scale-95 transition-all"
+          >
+            <Scan size={16} className="text-blue-600 dark:text-blue-400" />
+          </Button>
+
+          <button
+            type="button"
+            onClick={() => setShowFilterModal(true)}
+            className={cn(
+              'relative size-10 rounded-xl border flex items-center justify-center shrink-0 shadow-xs active:scale-95 transition-all cursor-pointer',
+              activeFiltersCount > 0
+                ? 'bg-amber-500/15 border-amber-500/40 text-amber-600 dark:text-amber-400 font-bold'
+                : 'border-border bg-card text-foreground hover:bg-muted'
+            )}
+            title="Mở Bộ Lọc"
+          >
+            <SlidersHorizontal size={16} />
+            {activeFiltersCount > 0 && (
+              <span className="absolute -top-1 -right-1 size-4 bg-amber-500 text-white rounded-full text-[9px] font-extrabold flex items-center justify-center shadow-xs">
+                {activeFiltersCount}
+              </span>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* ------------------------------------------------------------------ */}
+      {/* HistoryFilter (Inline Desktop + Modal) */}
+      {/* ------------------------------------------------------------------ */}
+      <HistoryFilter
+        isAdmin={isAdmin}
+        nhanVienList={nhanVienList}
+        dateRange={dateRange}
+        setDateRange={setDateRange}
+        carrier={carrier}
+        setCarrier={setCarrier}
+        trangThai={trangThai}
+        setTrangThai={setTrangThai}
+        maNhanVien={maNhanVien}
+        setMaNhanVien={setMaNhanVien}
+        setPage={setPage}
+        showFilters={showFilters}
+        setShowFilters={setShowFilters}
+        showFilterModal={showFilterModal}
+        setShowFilterModal={setShowFilterModal}
+        activeFiltersCount={activeFiltersCount}
+        totalItems={totalItems}
+        debouncedSearch={debouncedSearch}
+        handleResetFilters={handleResetFilters}
+      />
+
+      {/* ------------------------------------------------------------------ */}
+      {/* Active Filters Chips Row */}
+      {/* ------------------------------------------------------------------ */}
+      {activeFiltersCount > 0 && (
+        <div className="flex items-center gap-1.5 lg:gap-2 overflow-x-auto pb-1 text-xs lg:text-xs">
+          <span className="text-[10px] lg:text-xs font-semibold text-muted-foreground shrink-0">Đang lọc:</span>
+
+          {!isDefaultDate && (
+            <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-lg bg-muted border border-border text-foreground font-medium shrink-0">
+              <span>
+                {dateRange?.from && dateRange?.to ? `${format(dateRange.from, 'dd/MM/yyyy')} → ${format(dateRange.to, 'dd/MM/yyyy')}` : ''}
+              </span>
+              <button type="button" onClick={() => setDateRange({ from: subDays(new Date(), 6), to: new Date() })} className="text-muted-foreground hover:text-foreground ml-0.5 cursor-pointer">
+                <X size={12} />
+              </button>
+            </span>
+          )}
+
+          {carrier !== 'all' && (
+            <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-lg bg-blue-500/10 text-blue-600 border border-blue-500/20 shrink-0 font-medium">
+              ĐVVC: {getCarrierLabel(carrier)}
+              <button type="button" onClick={() => { setCarrier('all'); setPage(1); }} className="hover:opacity-70 cursor-pointer">
+                <X size={12} />
+              </button>
+            </span>
+          )}
+
+          {trangThai !== 'all' && (
+            <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-lg bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shrink-0 font-medium">
+              {trangThai === 'da_upload' ? 'Đã lưu' : trangThai === 'cho_upload' ? 'Chờ tải' : trangThai === 'dang_upload' ? 'Đang tải' : 'Lỗi'}
+              <button type="button" onClick={() => { setTrangThai('all'); setPage(1); }} className="hover:opacity-70 cursor-pointer">
+                <X size={12} />
+              </button>
+            </span>
+          )}
+
+          {loaiBienBan !== 'all' && (
+            <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-lg bg-violet-500/10 text-violet-600 border border-violet-500/20 shrink-0 font-medium">
+              {loaiBienBan === 'dong_goi' ? 'Đóng gói' : 'Khui hàng'}
+              <button type="button" onClick={() => { setLoaiBienBan('all'); setPage(1); }} className="hover:opacity-70 cursor-pointer">
+                <X size={12} />
+              </button>
+            </span>
+          )}
+
+          {maNhanVien && (
+            <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-lg bg-purple-500/10 text-purple-600 border border-purple-500/20 shrink-0 font-medium">
+              NV: {maNhanVien}
+              <button type="button" onClick={() => { setMaNhanVien(''); setPage(1); }} className="hover:opacity-70 cursor-pointer">
+                <X size={12} />
+              </button>
+            </span>
+          )}
+
+          <button
+            type="button"
+            onClick={handleResetFilters}
+            className="text-xs text-destructive hover:underline font-semibold shrink-0 ml-auto cursor-pointer flex items-center gap-1"
+          >
+            <RefreshCw size={12} />
+            <span>Xoá tất cả</span>
+          </button>
+
+          <span className="hidden lg:inline ml-auto text-xs text-muted-foreground shrink-0">
+            Tìm thấy <strong className="text-foreground font-bold">{totalItems}</strong> biên bản
+          </span>
+        </div>
       )}
 
-      {/* Status / Count Summary */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', padding: '0 4px' }}>
+      {/* Mobile result count */}
+      <div className="flex items-center justify-between text-[11px] text-muted-foreground font-medium lg:hidden">
         <span>
-          {isLoading ? (
-            'Đang tải danh sách...'
-          ) : (
-            <>Tìm thấy <strong style={{ color: 'var(--color-text-primary)' }}>{totalItems}</strong> biên bản</>
-          )}
+          Tìm thấy <strong className="text-foreground">{totalItems}</strong> biên bản
         </span>
-        {totalItems > 0 && (
-          <span>
-            Trang {page} / {totalPages}
-          </span>
+        {activeFiltersCount > 0 && (
+          <span className="text-amber-600 dark:text-amber-400 font-medium">({activeFiltersCount} tiêu chí)</span>
         )}
       </div>
 
-      {/* Error Message */}
-      {loadError && (
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: '8px',
-            padding: '12px',
-            backgroundColor: 'rgba(239, 68, 68, 0.1)',
-            border: '1px solid var(--color-error)',
-            borderRadius: 'var(--radius-md)',
-            color: 'var(--color-error)',
-            fontSize: 'var(--text-xs)'
-          }}
-        >
-          <AlertCircle size={18} style={{ flexShrink: 0 }} />
-          <span>{loadError}</span>
+      {/* ------------------------------------------------------------------ */}
+      {/* Loading State */}
+      {/* ------------------------------------------------------------------ */}
+      {isLoading && (
+        <div className="flex flex-col gap-3">
+          {[1, 2, 3].map((i) => (
+            <div key={i} className="rounded-2xl border border-border bg-card p-4 flex flex-col gap-3">
+              <div className="flex items-center justify-between">
+                <Skeleton className="h-5 w-40" />
+                <Skeleton className="h-5 w-16 rounded-full" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="h-5 w-24 rounded" />
+                <Skeleton className="h-5 w-20 rounded" />
+              </div>
+              <div className="grid grid-cols-2 gap-2">
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+                <Skeleton className="h-4 w-full" />
+              </div>
+            </div>
+          ))}
         </div>
       )}
 
-      {/* Loading Skeleton */}
-      {isLoading && items.length === 0 && (
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', alignItems: 'center', padding: 'var(--space-8)' }}>
-          <Spinner size={32} />
-          <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
-            Đang tải dữ liệu biên bản...
-          </span>
+      {/* ------------------------------------------------------------------ */}
+      {/* Error State */}
+      {/* ------------------------------------------------------------------ */}
+      {!isLoading && loadError && (
+        <div className="rounded-2xl border border-rose-200 dark:border-rose-900 bg-rose-50 dark:bg-rose-950/30 p-6 flex flex-col items-center gap-3 text-center">
+          <div className="size-12 rounded-2xl bg-rose-500/10 text-rose-600 flex items-center justify-center">
+            <AlertCircle size={24} />
+          </div>
+          <p className="text-sm font-semibold text-foreground">Lỗi tải dữ liệu</p>
+          <p className="text-xs text-muted-foreground max-w-sm">{loadError}</p>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => void loadData()}
+            className="h-9 px-4 rounded-xl gap-1.5 cursor-pointer"
+          >
+            <RefreshCw size={14} />
+            <span>Thử lại</span>
+          </Button>
         </div>
       )}
 
+      {/* ------------------------------------------------------------------ */}
       {/* Empty State */}
-      {!isLoading && items.length === 0 && (
-        <EmptyState
-          icon={VideoIcon}
-          title="Không tìm thấy biên bản nào"
-          description={
-            debouncedSearch || activeFiltersCount > 0
-              ? 'Không có kết quả khớp với điều kiện tìm kiếm hoặc bộ lọc hiện tại.'
-              : 'Chưa có biên bản video nào được ghi nhận trên hệ thống.'
-          }
-          action={
-            debouncedSearch || activeFiltersCount > 0 ? (
-              <Button variant="secondary" size="default" onClick={handleResetFilters}>
-                Xóa bộ lọc
-              </Button>
-            ) : undefined
-          }
-        />
+      {/* ------------------------------------------------------------------ */}
+      {!isLoading && !loadError && items.length === 0 && (
+        <div className="rounded-2xl border border-border bg-card p-8 lg:p-12 flex flex-col items-center gap-4 text-center">
+          <div className="size-14 rounded-2xl bg-muted flex items-center justify-center">
+            <FileVideo size={28} className="text-muted-foreground" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Không tìm thấy biên bản nào</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-sm">
+              {debouncedSearch || activeFiltersCount > 0
+                ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm'
+                : 'Chưa có biên bản nào được tạo. Hãy quét mã và quay video để bắt đầu.'}
+            </p>
+          </div>
+          {(debouncedSearch || activeFiltersCount > 0) && (
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleResetFilters}
+              className="h-9 px-4 rounded-xl gap-1.5 cursor-pointer"
+            >
+              <RefreshCw size={14} />
+              <span>Đặt lại bộ lọc</span>
+            </Button>
+          )}
+        </div>
       )}
 
-      {/* Results List */}
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-        {items.map((item) => {
-          const isExpanded = expandedId === item.id;
-          const isDongGoi = item.loai_bien_ban === 'dong_goi';
-          const hasDriveVideo = Boolean(item.drive_file_id || item.trang_thai === 'da_upload');
+      {/* ------------------------------------------------------------------ */}
+      {/* Desktop Table View */}
+      {/* ------------------------------------------------------------------ */}
+      {!isLoading && !loadError && items.length > 0 && (
+        <>
+          <div className="hidden lg:block rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-card shadow-xs overflow-hidden">
+            <table className="w-full text-left border-collapse">
+              <thead>
+                <tr className="border-b border-border/80 bg-muted/30 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+                  <th className="py-3.5 px-4">Mã vận đơn</th>
+                  <th className="py-3.5 px-3">Loại</th>
+                  <th className="py-3.5 px-3">Người tạo</th>
+                  <th className="py-3.5 px-3">Thời gian</th>
+                  <th className="py-3.5 px-3">File</th>
+                  <th className="py-3.5 px-3">Trạng thái</th>
+                  <th className="py-3.5 px-4 text-right">Thao tác</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-border/60 text-xs">
+                {items.map((item) => {
+                  const isDongGoi = item.loai_bien_ban === 'dong_goi';
+                  return (
+                    <tr key={item.id} className="hover:bg-muted/40 transition-colors group">
+                      {/* Mã vận đơn + Carrier */}
+                      <td className="py-3.5 px-4">
+                        <div className="flex items-center gap-2">
+                          <span className={cn('w-1 h-8 rounded-full shrink-0', getCarrierBarColor(item.don_vi_vc))} />
+                          <div>
+                            <div className="flex items-center gap-1.5">
+                              <span className="font-mono font-bold text-xs text-foreground tracking-wide">
+                                {item.ma_van_don}
+                              </span>
+                              <button
+                                type="button"
+                                onClick={(e) => handleCopyText(e, item.ma_van_don, item.id)}
+                                className="text-muted-foreground hover:text-foreground p-0.5 rounded cursor-pointer"
+                                title="Sao chép mã đơn"
+                              >
+                                {copiedId === item.id ? (
+                                  <Check size={12} className="text-emerald-500" />
+                                ) : (
+                                  <Copy size={12} className="text-muted-foreground" />
+                                )}
+                              </button>
+                            </div>
+                            <div className="mt-1">
+                              <span className={cn('inline-block text-[10px] font-semibold px-2 py-0.5 rounded border', getCarrierColor(item.don_vi_vc))}>
+                                {getCarrierLabel(item.don_vi_vc)}
+                              </span>
+                            </div>
+                          </div>
+                        </div>
+                      </td>
 
-          return (
-            <div
-              key={item.id}
-              style={{
-                position: 'relative',
-                display: 'flex',
-                flexDirection: 'column',
-                borderRadius: 'var(--radius-lg)',
-                border: isExpanded ? '1px solid var(--color-primary-500)' : '1px solid var(--color-border)',
-                backgroundColor: 'var(--color-bg-card)',
-                boxShadow: 'var(--shadow-sm)',
-                overflow: 'hidden',
-                transition: 'all 0.2s ease'
-              }}
-            >
-              {/* Left Accent Bar */}
-              <div
-                style={{
-                  position: 'absolute',
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  width: '4px',
-                  backgroundColor: isDongGoi ? 'var(--color-primary-500)' : '#f59e0b'
-                }}
-              />
+                      {/* Loại biên bản */}
+                      <td className="py-3.5 px-3">
+                        <span
+                          className={cn(
+                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold border',
+                            isDongGoi
+                              ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400'
+                              : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400'
+                          )}
+                        >
+                          {isDongGoi ? <Package size={12} /> : <PackageOpen size={12} />}
+                          <span>{isDongGoi ? 'Đóng gói' : 'Khui hàng'}</span>
+                        </span>
+                      </td>
 
-              {/* Main Card Content */}
-              <div
-                style={{
-                  padding: '14px 16px 14px 18px',
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: '12px'
-                }}
-              >
-                {/* Row 1: Tracking Code + Copy + Carrier + Badges */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '8px' }}>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
-                    <span
-                      style={{
-                        fontFamily: 'var(--font-mono, monospace)',
-                        fontWeight: 700,
-                        fontSize: '15px',
-                        color: 'var(--color-text-primary)',
-                        letterSpacing: '0.5px'
-                      }}
-                    >
-                      {item.ma_van_don}
-                    </span>
+                      {/* Người tạo */}
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-2 text-foreground font-medium">
+                          <div className="size-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">
+                            {(item.ten_nhan_vien || item.ma_nhan_vien || '').slice(0, 2).toUpperCase() || 'NV'}
+                          </div>
+                          <span className="truncate max-w-[120px]">
+                            {item.ten_nhan_vien || item.ma_nhan_vien}
+                          </span>
+                        </div>
+                      </td>
 
-                    {/* Copy button */}
-                    <button
-                      type="button"
-                      onClick={(e) => handleCopyText(e, item.ma_van_don, `track-${item.id}`)}
-                      title="Sao chép mã vận đơn"
-                      aria-label="Sao chép mã vận đơn"
-                      style={{
-                        background: 'var(--color-bg-elevated)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 'var(--radius-sm)',
-                        cursor: 'pointer',
-                        padding: '3px 7px',
-                        color: copiedId === `track-${item.id}` ? 'var(--color-success)' : 'var(--color-text-muted)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        gap: '4px',
-                        fontSize: '11px',
-                        transition: 'all 0.15s ease'
-                      }}
-                    >
-                      {copiedId === `track-${item.id}` ? (
-                        <>
-                          <Check size={12} />
-                          <span style={{ fontWeight: 600 }}>Đã chép</span>
-                        </>
-                      ) : (
-                        <Copy size={12} />
-                      )}
-                    </button>
+                      {/* Thời gian */}
+                      <td className="py-3.5 px-3 text-muted-foreground font-mono text-[11px]">
+                        {formatDateTimeVN(item.thoi_gian_tao)}
+                      </td>
 
-                    <span
-                      style={{
-                        fontSize: '11px',
-                        padding: '2px 8px',
-                        borderRadius: 'var(--radius-sm)',
-                        backgroundColor: 'var(--color-bg-elevated)',
-                        border: '1px solid var(--color-border)',
-                        color: 'var(--color-text-secondary)',
-                        fontWeight: 600
-                      }}
-                    >
-                      {item.don_vi_vc}
-                    </span>
-                  </div>
+                      {/* File Video Info */}
+                      <td className="py-3.5 px-3">
+                        <div className="flex items-center gap-1.5 text-muted-foreground font-medium text-[11px]">
+                          <Clock size={12} />
+                          <span>{formatDuration(item.thoi_luong_video)}</span>
+                          <span className="text-muted-foreground/40">·</span>
+                          <HardDrive size={12} />
+                          <span>{formatBytes(item.kich_thuoc_bytes)}</span>
+                        </div>
+                      </td>
 
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {/* Work Mode Tag */}
-                    <span className={`tag-chip ${isDongGoi ? 'tag-chip--dong-goi' : 'tag-chip--khui-hang'}`}>
-                      {isDongGoi ? <Package size={12} /> : <PackageOpen size={12} />}
-                      {isDongGoi ? 'Đóng gói' : 'Khui hàng'}
-                    </span>
+                      {/* Trạng thái */}
+                      <td className="py-3.5 px-3">
+                        {getStatusBadge(item.trang_thai)}
+                      </td>
 
-                    {/* Status Badge */}
-                    <Badge status={item.trang_thai} />
-                  </div>
+                      {/* Thao tác */}
+                      <td className="py-3.5 px-4 text-right">
+                        <button
+                          type="button"
+                          onClick={() => void handleOpenVideo(item)}
+                          className="h-8 px-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm shadow-orange-500/20 hover:scale-[1.02] transition-transform cursor-pointer"
+                        >
+                          <Play size={12} className="fill-current" />
+                          <span>Xem</span>
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+
+            {/* Desktop Pagination Footer */}
+            <div className="px-5 py-3.5 border-t border-border/80 bg-muted/10 flex items-center justify-between flex-wrap gap-4 text-xs text-muted-foreground">
+              <div className="flex items-center gap-4 flex-wrap">
+                <div>
+                  Hiển thị{' '}
+                  <strong className="text-foreground font-semibold">
+                    {startIndex} - {endIndex}
+                  </strong>{' '}
+                  trong tổng số{' '}
+                  <strong className="text-foreground font-semibold">{totalItems}</strong> biên bản
                 </div>
-
-                {/* Row 2: Metadata & Actions */}
-                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '10px' }}>
-                  <div
-                    style={{
-                      display: 'flex',
-                      alignItems: 'center',
-                      gap: '14px',
-                      flexWrap: 'wrap',
-                      fontSize: '12px',
-                      color: 'var(--color-text-secondary)'
-                    }}
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-medium text-muted-foreground">Hiển thị</span>
+                  <Select
+                    value={String(limit)}
+                    onValueChange={(val) => { setLimit(Number(val)); setPage(1); }}
                   >
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <User size={13} style={{ color: 'var(--color-text-muted)' }} />
-                      {item.ten_nhan_vien || item.ma_nhan_vien}
-                    </span>
-
-                    <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                      <Calendar size={13} style={{ color: 'var(--color-text-muted)' }} />
-                      {formatDateTimeVN(item.thoi_gian_tao)}
-                    </span>
-
-                    {item.thoi_luong_video > 0 && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <Clock size={13} style={{ color: 'var(--color-text-muted)' }} />
-                        {formatDuration(item.thoi_luong_video)}
-                      </span>
-                    )}
-
-                    {item.kich_thuoc_bytes > 0 && (
-                      <span style={{ display: 'flex', alignItems: 'center', gap: '4px' }}>
-                        <HardDrive size={13} style={{ color: 'var(--color-text-muted)' }} />
-                        {formatBytes(item.kich_thuoc_bytes)}
-                      </span>
-                    )}
-                  </div>
-
-                  {/* Actions: Direct Play Video + Expand Chevron */}
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
-                    {hasDriveVideo && (
-                      <Button
-                        variant="primary"
-                        size="default"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          void handleOpenVideo(item);
-                        }}
-                        leftIcon={<Play size={13} fill="currentColor" />}
-                        className="btn-sm"
-                      >
-                        Xem video
-                      </Button>
-                    )}
-
-                    <button
-                      type="button"
-                      onClick={() => setExpandedId(isExpanded ? null : item.id)}
-                      aria-label={isExpanded ? 'Thu gọn chi tiết' : 'Xem chi tiết'}
-                      title={isExpanded ? 'Thu gọn chi tiết' : 'Xem chi tiết'}
-                      style={{
-                        background: 'var(--color-bg-elevated)',
-                        border: '1px solid var(--color-border)',
-                        borderRadius: 'var(--radius-md)',
-                        cursor: 'pointer',
-                        padding: '4px 8px',
-                        color: 'var(--color-text-secondary)',
-                        display: 'inline-flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        height: '32px',
-                        minHeight: '32px',
-                        transition: 'all 0.15s ease'
-                      }}
+                    <SelectTrigger
+                      size="sm"
+                      className="h-8 w-auto min-w-[100px] px-2.5 rounded-lg border border-input bg-card hover:bg-muted/50 text-foreground font-semibold text-xs cursor-pointer shadow-2xs transition-all focus-visible:ring-1 focus-visible:ring-primary"
                     >
-                      {isExpanded ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                    </button>
-                  </div>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent align="center" className="rounded-xl min-w-[100px] shadow-md">
+                      <SelectItem value="10" className="text-xs font-medium cursor-pointer">10 / trang</SelectItem>
+                      <SelectItem value="20" className="text-xs font-medium cursor-pointer">20 / trang</SelectItem>
+                      <SelectItem value="25" className="text-xs font-medium cursor-pointer">25 / trang</SelectItem>
+                      <SelectItem value="50" className="text-xs font-medium cursor-pointer">50 / trang</SelectItem>
+                      <SelectItem value="100" className="text-xs font-medium cursor-pointer">100 / trang</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
               </div>
 
-              {/* Expandable Clean SaaS Details Drawer */}
-              {isExpanded && (
-                <div className="expanded-drawer">
-                  {/* Clean Property Cards Grid */}
-                  <div className="expanded-drawer__grid">
-                    {/* ID Biên bản Card */}
-                    <div className="property-tile">
-                      <div className="property-tile__label">
-                        ID biên bản
-                      </div>
-                      <div className="property-tile__value">
-                        <span className="text-mono-code" title={item.id}>
-                          {item.id}
-                        </span>
-                        <button
-                          type="button"
-                          onClick={(e) => handleCopyText(e, item.id, `id-${item.id}`)}
-                          title="Sao chép ID"
-                          aria-label="Sao chép ID"
-                          className={`copy-btn-ghost ${copiedId === `id-${item.id}` ? 'copy-btn-ghost--success' : ''}`}
-                        >
-                          {copiedId === `id-${item.id}` ? <Check size={12} /> : <Copy size={12} />}
-                        </button>
-                      </div>
-                    </div>
+              <div className="flex items-center gap-1.5 select-none">
+                <button
+                  type="button"
+                  onClick={() => setPage(1)}
+                  disabled={page === 1}
+                  title="Trang đầu tiên"
+                  className="size-8 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
+                >
+                  <ChevronsLeft size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                  disabled={page === 1}
+                  title="Trang trước"
+                  className="size-8 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
+                >
+                  <ChevronLeft size={14} />
+                </button>
 
-                    {/* Thiết bị Card */}
-                    <div className="property-tile">
-                      <div className="property-tile__label">
-                        Thiết bị ghi hình
-                      </div>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', color: 'var(--color-text-primary)', fontWeight: 500 }}>
-                        {item.thiet_bi?.toLowerCase().includes('webcam') || item.thiet_bi?.toLowerCase().includes('pc') ? (
-                          <Monitor size={14} style={{ color: 'var(--color-accent-500)' }} />
-                        ) : (
-                          <Smartphone size={14} style={{ color: 'var(--color-accent-500)' }} />
-                        )}
-                        <span>{item.thiet_bi || 'mobile'}</span>
-                      </div>
-                    </div>
+                {getPageNumbers().map((pageNum, idx) =>
+                  pageNum === '...' ? (
+                    <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={pageNum}
+                      type="button"
+                      onClick={() => setPage(pageNum)}
+                      className={cn(
+                        'size-8 rounded-lg font-bold text-xs flex items-center justify-center transition-all cursor-pointer',
+                        page === pageNum
+                          ? 'bg-blue-600 text-white shadow-xs'
+                          : 'border border-border bg-card hover:bg-muted text-foreground'
+                      )}
+                    >
+                      {pageNum}
+                    </button>
+                  )
+                )}
 
-                    {/* Tên tệp Google Drive (Full Width) */}
-                    {item.drive_file_name && (
-                      <div className="property-tile property-tile--full">
-                        <div className="property-tile__label icon-text-row">
-                          <FileVideo size={12} />
-                          <span>Tên tệp Google Drive</span>
-                        </div>
-                        <div className="property-tile__value">
-                          <span className="text-mono-code" title={item.drive_file_name}>
-                            {item.drive_file_name}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => handleCopyText(e, item.drive_file_name || '', `file-${item.id}`)}
-                            title="Sao chép tên tệp"
-                            aria-label="Sao chép tên tệp"
-                            className={`copy-btn-ghost ${copiedId === `file-${item.id}` ? 'copy-btn-ghost--success' : ''}`}
-                          >
-                            {copiedId === `file-${item.id}` ? <Check size={12} /> : <Copy size={12} />}
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={page === totalPages}
+                  title="Trang kế tiếp"
+                  className="size-8 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
+                >
+                  <ChevronRight size={14} />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setPage(totalPages)}
+                  disabled={page === totalPages}
+                  title="Trang cuối cùng"
+                  className="size-8 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
+                >
+                  <ChevronsRight size={14} />
+                </button>
+              </div>
+            </div>
+          </div>
 
-                    {/* Drive File ID (Full Width) */}
-                    {item.drive_file_id && (
-                      <div className="property-tile property-tile--full">
-                        <div className="property-tile__label">
-                          Google Drive File ID
-                        </div>
-                        <div className="property-tile__value">
-                          <span className="text-mono-code" title={item.drive_file_id}>
-                            {item.drive_file_id}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => handleCopyText(e, item.drive_file_id || '', `drive-${item.id}`)}
-                            title="Sao chép File ID"
-                            aria-label="Sao chép File ID"
-                            className={`copy-btn-ghost ${copiedId === `drive-${item.id}` ? 'copy-btn-ghost--success' : ''}`}
-                          >
-                            {copiedId === `drive-${item.id}` ? <Check size={12} /> : <Copy size={12} />}
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {/* Chi tiết lỗi */}
-                    {item.loi_message && item.trang_thai === 'loi' && (
-                      <div className="property-tile property-tile--full property-tile--error">
-                        <AlertCircle size={14} style={{ flexShrink: 0 }} />
-                        <div>
-                          <strong>Chi tiết lỗi:</strong> {item.loi_message}
-                        </div>
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Actions row in expanded drawer */}
-                  <div className="expanded-drawer__actions">
-                    {hasDriveVideo ? (
-                      <>
-                        <Button
-                          variant="secondary"
-                          size="default"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            window.open(`https://drive.google.com/uc?export=download&id=${item.drive_file_id}`, '_blank');
-                          }}
-                          leftIcon={<Download size={14} />}
-                          className="btn-md"
-                        >
-                          Tải video
-                        </Button>
-                        <Button
-                          variant="primary"
-                          size="default"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            void handleOpenVideo(item);
-                          }}
-                          leftIcon={<Play size={14} fill="currentColor" />}
-                          className="btn-md"
-                        >
-                          Phát video Drive
-                        </Button>
-                      </>
-                    ) : (
-                      <span className="text-xs-muted" style={{ fontStyle: 'italic', alignSelf: 'center' }}>
-                        Chưa có video trên Google Drive
+          {/* ---------------------------------------------------------------- */}
+          {/* Mobile Card View */}
+          {/* ---------------------------------------------------------------- */}
+          <div className="flex flex-col gap-3 lg:hidden">
+            {items.map((item) => {
+              const isDongGoi = item.loai_bien_ban === 'dong_goi';
+              return (
+                <div
+                  key={item.id}
+                  className="rounded-2xl border border-border bg-card p-4 shadow-xs flex flex-col gap-3 relative overflow-hidden"
+                >
+                  {/* Top Row: Tracking Code + Copy + Status Badge */}
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono font-bold text-sm text-foreground">
+                        {item.ma_van_don}
                       </span>
-                    )}
+                      <button
+                        type="button"
+                        onClick={(e) => handleCopyText(e, item.ma_van_don, item.id)}
+                        className="text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
+                      >
+                        {copiedId === item.id ? (
+                          <Check size={14} className="text-emerald-500" />
+                        ) : (
+                          <Copy size={14} className="text-muted-foreground" />
+                        )}
+                      </button>
+                    </div>
+                    {getStatusBadge(item.trang_thai)}
                   </div>
+
+                  {/* Carrier & Work Mode Badges */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded border', getCarrierColor(item.don_vi_vc))}>
+                      {getCarrierLabel(item.don_vi_vc)}
+                    </span>
+                    <span
+                      className={cn(
+                        'inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded border',
+                        isDongGoi
+                          ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                          : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                      )}
+                    >
+                      {isDongGoi ? <Package size={12} /> : <PackageOpen size={12} />}
+                      <span>{isDongGoi ? 'Đóng gói' : 'Khui hàng'}</span>
+                    </span>
+                  </div>
+
+                  {/* Metadata Grid */}
+                  <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground border-y border-border/60 py-2.5">
+                    <div className="flex items-center gap-1.5 truncate">
+                      <User size={14} className="text-muted-foreground shrink-0" />
+                      <span className="truncate">{item.ten_nhan_vien || item.ma_nhan_vien}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Clock size={14} className="text-muted-foreground shrink-0" />
+                      <span>{formatDateTimeVN(item.thoi_gian_tao).split(' ')[0]}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <Play size={14} className="text-muted-foreground shrink-0" />
+                      <span>{formatDuration(item.thoi_luong_video)}</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <HardDrive size={14} className="text-muted-foreground shrink-0" />
+                      <span>{formatBytes(item.kich_thuoc_bytes)}</span>
+                    </div>
+                  </div>
+
+                  {/* CTA Button */}
+                  <button
+                    type="button"
+                    onClick={() => void handleOpenVideo(item)}
+                    className="w-full h-10 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-orange-500/20 active:scale-[0.98] transition-transform cursor-pointer"
+                  >
+                    <Play size={14} className="fill-current" />
+                    <span>Xem video biên bản</span>
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Mobile Pagination */}
+          <div className="lg:hidden mt-2 p-3.5 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-3 select-none">
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <div>
+                Hiển thị{' '}
+                <strong className="text-foreground font-semibold">
+                  {startIndex} - {endIndex}
+                </strong>{' '}
+                / <strong className="text-foreground font-semibold">{totalItems}</strong>
+              </div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs text-muted-foreground">Hiển thị</span>
+                <Select
+                  value={String(limit)}
+                  onValueChange={(val) => { setLimit(Number(val)); setPage(1); }}
+                >
+                  <SelectTrigger
+                    size="sm"
+                    className="h-7 w-auto min-w-[94px] px-2 rounded-lg border border-input bg-card hover:bg-muted/50 text-foreground font-semibold text-xs cursor-pointer shadow-2xs transition-all"
+                  >
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent align="end" className="rounded-xl min-w-[96px] shadow-md">
+                    <SelectItem value="10" className="text-xs font-medium cursor-pointer">10 / trang</SelectItem>
+                    <SelectItem value="20" className="text-xs font-medium cursor-pointer">20 / trang</SelectItem>
+                    <SelectItem value="50" className="text-xs font-medium cursor-pointer">50 / trang</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/70">
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                disabled={page === 1}
+                className="h-9 px-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted font-semibold text-xs flex items-center gap-1.5 text-foreground disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
+              >
+                <ChevronLeft size={14} />
+                <span>Trước</span>
+              </button>
+
+              <div className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground">
+                <span className="font-bold text-foreground px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                  Trang {page}
+                </span>
+                <span>/</span>
+                <span>{totalPages}</span>
+              </div>
+
+              <button
+                type="button"
+                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                disabled={page === totalPages}
+                className="h-9 px-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted font-semibold text-xs flex items-center gap-1.5 text-foreground disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
+              >
+                <span>Sau</span>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        </>
+      )}
+
+      {/* ================================================================== */}
+      {/* Video Preview Dialog */}
+      {/* ================================================================== */}
+      <Dialog
+        open={!!videoModalItem}
+        onOpenChange={(open) => { if (!open) { setVideoModalItem(null); setViewUrl(null); setStreamUrl(null); } }}
+      >
+        <DialogContent
+          showCloseButton={false}
+          className="w-[96vw] max-w-[96vw] sm:max-w-xl sm:w-full p-0 rounded-2xl overflow-hidden border-border bg-card max-h-[92vh] flex flex-col"
+        >
+          {/* Header */}
+          <DialogHeader className="px-5 py-4 border-b border-border flex flex-row items-center justify-between space-y-0 shrink-0">
+            <div>
+              <div className="flex items-center gap-2">
+                <PlayCircle size={20} className="text-amber-500" />
+                <DialogTitle className="text-sm sm:text-base font-bold text-foreground">
+                  Xem lại video: {videoModalItem?.ma_van_don}
+                </DialogTitle>
+              </div>
+              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                ĐVVC: {videoModalItem ? getCarrierLabel(videoModalItem.don_vi_vc) : ''}{' '}
+                · Thời lượng: {videoModalItem ? formatDuration(videoModalItem.thoi_luong_video) : ''}
+              </DialogDescription>
+            </div>
+            <button
+              type="button"
+              onClick={() => { setVideoModalItem(null); setViewUrl(null); setStreamUrl(null); }}
+              className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+          </DialogHeader>
+
+          {/* Video Player Area */}
+          <div className="p-4 flex flex-col gap-4">
+            {isVideoLoading && (
+              <div className="w-full aspect-video bg-black rounded-xl flex items-center justify-center">
+                <div className="flex flex-col items-center gap-2">
+                  <RefreshCw size={24} className="text-white animate-spin" />
+                  <span className="text-white/70 text-xs">Đang tải video...</span>
+                </div>
+              </div>
+            )}
+
+            {videoError && (
+              <div className="w-full aspect-video bg-black rounded-xl flex flex-col items-center justify-center gap-3 p-6">
+                <AlertCircle size={32} className="text-rose-400" />
+                <p className="text-white/80 text-sm text-center">{videoError}</p>
+                {viewUrl && (
+                  <a
+                    href={viewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1.5 text-amber-400 hover:text-amber-300 text-xs font-semibold"
+                  >
+                    <ExternalLink size={14} />
+                    <span>Mở trên Google Drive</span>
+                  </a>
+                )}
+              </div>
+            )}
+
+            {!isVideoLoading && !videoError && streamUrl && (
+              <div className="w-full aspect-video bg-black rounded-xl overflow-hidden relative">
+                {videoMode === 'native' ? (
+                  <CustomVideoPlayer
+                    src={streamUrl}
+                    expectedDuration={videoModalItem?.thoi_luong_video}
+                    title={videoModalItem ? `${videoModalItem.ma_van_don} | ${formatDateTimeVN(videoModalItem.thoi_gian_tao)}` : undefined}
+                    onError={() => {
+                      setVideoMode('iframe');
+                    }}
+                  />
+                ) : viewUrl ? (
+                  <>
+                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-xs text-[11px] font-mono text-white/90 z-10 pointer-events-none select-none">
+                      {videoModalItem?.ma_van_don} | {videoModalItem ? formatDateTimeVN(videoModalItem.thoi_gian_tao) : ''}
+                    </div>
+                    <iframe
+                      src={viewUrl}
+                      className="w-full h-full border-0"
+                      allow="autoplay; encrypted-media"
+                      allowFullScreen
+                      title="Video preview"
+                    />
+                  </>
+                ) : null}
+              </div>
+            )}
+
+            {!isVideoLoading && !videoError && !streamUrl && viewUrl && (
+              <div className="w-full aspect-video bg-black rounded-xl overflow-hidden relative">
+                <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-xs text-[11px] font-mono text-white/90 z-10 pointer-events-none select-none">
+                  {videoModalItem?.ma_van_don} | {videoModalItem ? formatDateTimeVN(videoModalItem.thoi_gian_tao) : ''}
+                </div>
+                <iframe
+                  src={viewUrl}
+                  className="w-full h-full border-0"
+                  allow="autoplay; encrypted-media"
+                  allowFullScreen
+                  title="Video preview"
+                />
+              </div>
+            )}
+
+            {/* Footer actions */}
+            <div className="flex justify-between items-center text-xs text-muted-foreground flex-wrap gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
+                {videoModalItem?.drive_file_id && (
+                  <span className="font-mono text-[11px]">
+                    Drive: {videoModalItem.drive_file_id.substring(0, 12)}...
+                  </span>
+                )}
+                {viewUrl && (
+                  <a
+                    href={viewUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-blue-600 dark:text-blue-400 hover:underline font-semibold text-[11px]"
+                  >
+                    <ExternalLink size={12} />
+                    <span>Mở trên Drive</span>
+                  </a>
+                )}
+              </div>
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => { setVideoModalItem(null); setViewUrl(null); setStreamUrl(null); }}
+                className="h-9 px-5 rounded-xl bg-blue-600 hover:bg-blue-700 text-white text-xs font-bold cursor-pointer"
+              >
+                Đóng cửa sổ
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ================================================================== */}
+      {/* Barcode Scanner Dialog */}
+      {/* ================================================================== */}
+      <Dialog open={isScannerOpen} onOpenChange={(open) => { if (!open) handleCloseScanner(); }}>
+        <DialogContent
+          showCloseButton={false}
+          className="w-[96vw] max-w-[96vw] sm:max-w-md sm:w-full p-0 rounded-2xl overflow-hidden border-border bg-card"
+        >
+          <DialogHeader className="px-5 py-4 border-b border-border flex flex-row items-center justify-between space-y-0 shrink-0">
+            <div>
+              <DialogTitle className="text-sm font-bold text-foreground">
+                Quét mã vận đơn
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                Đưa mã barcode vào khung hình để quét tự động
+              </DialogDescription>
+            </div>
+            <button
+              type="button"
+              onClick={handleCloseScanner}
+              className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted cursor-pointer"
+            >
+              <X size={20} />
+            </button>
+          </DialogHeader>
+
+          <div className="p-4">
+            <div className="relative w-full aspect-[4/3] bg-black rounded-xl overflow-hidden">
+              <CameraPreview
+                videoRef={scannerVideoRef}
+                stream={scannerStream}
+                isLoading={isScannerCameraLoading}
+              />
+              <ScannerOverlay isScanning={isScannerOpen} />
+
+              {isScannerCameraLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60">
+                  <RefreshCw size={24} className="text-white animate-spin" />
                 </div>
               )}
             </div>
-          );
-        })}
-      </div>
 
-      {/* Pagination Controls */}
-      {totalPages > 1 && (
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            paddingTop: 'var(--space-4)',
-            borderTop: '1px solid var(--color-border)',
-            flexWrap: 'wrap',
-            gap: '8px'
-          }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
-              Hiển thị
-            </span>
-            <select
-              className="input-field"
-              value={limit}
-              onChange={(e) => { setLimit(Number(e.target.value)); setPage(1); }}
-              style={{ height: '36px', fontSize: 'var(--text-xs)', padding: '0 8px' }}
-            >
-              <option value={10}>10 / trang</option>
-              <option value={20}>20 / trang</option>
-              <option value={50}>50 / trang</option>
-            </select>
-          </div>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <Button
-              variant="secondary"
-              size="default"
-              onClick={() => setPage((p) => Math.max(1, p - 1))}
-              disabled={page <= 1 || isLoading}
-              leftIcon={<ChevronLeft size={16} />}
-              style={{ minHeight: '36px', height: '36px', padding: '0 12px' }}
-            >
-              Trước
-            </Button>
-
-            <span style={{ fontSize: 'var(--text-xs)', fontWeight: 'bold' }}>
-              {page} / {totalPages}
-            </span>
-
-            <Button
-              variant="secondary"
-              size="default"
-              onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-              disabled={page >= totalPages || isLoading}
-              rightIcon={<ChevronRight size={16} />}
-              style={{ minHeight: '36px', height: '36px', padding: '0 12px' }}
-            >
-              Sau
-            </Button>
-          </div>
-        </div>
-      )}
-
-      {/* Video Playback Modal */}
-      <Modal
-        isOpen={Boolean(videoModalItem)}
-        onClose={() => setVideoModalItem(null)}
-        title={`Video: ${videoModalItem?.ma_van_don || ''}`}
-        maxWidth="680px"
-        contentPadding="14px"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-          {/* Top Control Bar: Mode switch, Orientation, External link */}
-          <div
-            style={{
-              display: 'flex',
-              justifyContent: 'space-between',
-              alignItems: 'center',
-              flexWrap: 'wrap',
-              gap: '8px',
-              paddingBottom: '8px',
-              borderBottom: '1px solid var(--color-border)'
-            }}
-          >
-            <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-              {/* Video Mode Toggle: Native / Iframe */}
-              <div
-                style={{
-                  display: 'inline-flex',
-                  backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '2px',
-                  gap: '2px'
-                }}
+            <div className="mt-3 flex justify-end">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleCloseScanner}
+                className="h-9 px-4 rounded-xl gap-1.5 cursor-pointer"
               >
-                <button
-                  type="button"
-                  onClick={() => setVideoMode('native')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 10px',
-                    fontSize: '11px',
-                    fontWeight: videoMode === 'native' ? 700 : 500,
-                    borderRadius: 'var(--radius-sm)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    backgroundColor: videoMode === 'native' ? 'var(--color-primary-500)' : 'transparent',
-                    color: videoMode === 'native' ? '#fff' : 'var(--color-text-secondary)',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <Play size={11} fill="currentColor" />
-                  <span>Video</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setVideoMode('iframe')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '4px',
-                    padding: '4px 10px',
-                    fontSize: '11px',
-                    fontWeight: videoMode === 'iframe' ? 700 : 500,
-                    borderRadius: 'var(--radius-sm)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    backgroundColor: videoMode === 'iframe' ? 'var(--color-primary-500)' : 'transparent',
-                    color: videoMode === 'iframe' ? '#fff' : 'var(--color-text-secondary)',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <ExternalLink size={11} />
-                  <span>Drive</span>
-                </button>
-              </div>
-
-              {/* Orientation Toggle */}
-              <div
-                style={{
-                  display: 'inline-flex',
-                  backgroundColor: 'rgba(255, 255, 255, 0.06)',
-                  borderRadius: 'var(--radius-md)',
-                  padding: '2px',
-                  gap: '2px'
-                }}
-              >
-                <button
-                  type="button"
-                  onClick={() => setVideoOrientation('portrait')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '3px',
-                    padding: '4px 8px',
-                    fontSize: '11px',
-                    fontWeight: videoOrientation === 'portrait' ? 700 : 500,
-                    borderRadius: 'var(--radius-sm)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    backgroundColor: videoOrientation === 'portrait' ? 'var(--color-primary-500)' : 'transparent',
-                    color: videoOrientation === 'portrait' ? '#fff' : 'var(--color-text-secondary)',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <Smartphone size={12} />
-                  <span>9:16</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setVideoOrientation('landscape')}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '3px',
-                    padding: '4px 8px',
-                    fontSize: '11px',
-                    fontWeight: videoOrientation === 'landscape' ? 700 : 500,
-                    borderRadius: 'var(--radius-sm)',
-                    border: 'none',
-                    cursor: 'pointer',
-                    backgroundColor: videoOrientation === 'landscape' ? 'var(--color-primary-500)' : 'transparent',
-                    color: videoOrientation === 'landscape' ? '#fff' : 'var(--color-text-secondary)',
-                    transition: 'all 0.15s ease'
-                  }}
-                >
-                  <Monitor size={12} />
-                  <span>16:9</span>
-                </button>
-              </div>
+                <X size={14} />
+                <span>Đóng</span>
+              </Button>
             </div>
-
-            {viewUrl && (
-              <a
-                href={viewUrl.replace('/preview', '/view')}
-                target="_blank"
-                rel="noreferrer noopener"
-                style={{
-                  display: 'inline-flex',
-                  alignItems: 'center',
-                  gap: '4px',
-                  color: 'var(--color-primary-500)',
-                  fontSize: '12px',
-                  fontWeight: 600,
-                  textDecoration: 'none'
-                }}
-              >
-                <ExternalLink size={13} /> Mở tab riêng
-              </a>
-            )}
           </div>
-
-          {isVideoLoading && (
-            <div style={{ height: '320px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
-              <Spinner size={32} />
-              <span style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)' }}>
-                Đang lấy liên kết phát video từ Google Drive...
-              </span>
-            </div>
-          )}
-
-          {videoError && !isVideoLoading && (
-            <div
-              style={{
-                padding: '16px',
-                borderRadius: 'var(--radius-md)',
-                backgroundColor: 'rgba(239, 68, 68, 0.1)',
-                color: 'var(--color-error)',
-                display: 'flex',
-                flexDirection: 'column',
-                gap: '8px',
-                textAlign: 'center'
-              }}
-            >
-              <AlertCircle size={24} style={{ margin: '0 auto' }} />
-              <span style={{ fontSize: 'var(--text-sm)', fontWeight: 'bold' }}>Không thể xem video</span>
-              <span style={{ fontSize: 'var(--text-xs)' }}>{videoError}</span>
-            </div>
-          )}
-
-          {/* Video Player Container - Dynamic Aspect Ratio */}
-          {(viewUrl || streamUrl) && !isVideoLoading && (
-            <div
-              style={{
-                position: 'relative',
-                width: '100%',
-                maxWidth: videoOrientation === 'portrait' ? '350px' : '100%',
-                margin: '0 auto',
-                aspectRatio: videoOrientation === 'portrait' ? '9 / 16' : '16 / 9',
-                maxHeight: videoOrientation === 'portrait' ? '70vh' : '62vh',
-                backgroundColor: '#000',
-                borderRadius: 'var(--radius-md)',
-                overflow: 'hidden',
-                boxShadow: '0 4px 20px rgba(0, 0, 0, 0.35)'
-              }}
-            >
-              {videoMode === 'native' && streamUrl ? (
-                <video
-                  key={streamUrl}
-                  src={streamUrl}
-                  controls
-                  playsInline
-                  autoPlay
-                  preload="metadata"
-                  style={{
-                    width: '100%',
-                    height: '100%',
-                    objectFit: 'contain',
-                    backgroundColor: '#000'
-                  }}
-                  onError={() => {
-                    // Fallback sang iframe nếu native stream lỗi
-                    setVideoMode('iframe');
-                  }}
-                >
-                  Trình duyệt không hỗ trợ thẻ video.
-                </video>
-              ) : viewUrl ? (
-                <iframe
-                  src={viewUrl}
-                  title={`Google Drive Preview ${videoModalItem?.ma_van_don}`}
-                  style={{ width: '100%', height: '100%', border: 'none' }}
-                  allow="autoplay; fullscreen"
-                />
-              ) : null}
-            </div>
-          )}
-
-          {/* Details & Direct Link */}
-          {videoModalItem && (
-            <div
-              style={{
-                display: 'flex',
-                justifyContent: 'space-between',
-                alignItems: 'center',
-                fontSize: 'var(--text-xs)',
-                color: 'var(--color-text-secondary)',
-                flexWrap: 'wrap',
-                gap: '8px',
-                paddingTop: '4px',
-                borderTop: '1px solid var(--color-border)'
-              }}
-            >
-              <div>
-                <strong>Người tạo:</strong> {videoModalItem.ten_nhan_vien || videoModalItem.ma_nhan_vien} &bull;{' '}
-                <strong>Thời gian:</strong> {formatDateTimeVN(videoModalItem.thoi_gian_tao)}
-              </div>
-
-              <div>
-                <strong>ĐVVC:</strong> {videoModalItem.don_vi_vc}
-                {videoModalItem.kich_thuoc_bytes > 0 && ` • ${formatBytes(videoModalItem.kich_thuoc_bytes)}`}
-              </div>
-            </div>
-          )}
-        </div>
-      </Modal>
-
-      {/* Barcode Scanner Modal */}
-      <Modal
-        isOpen={isScannerOpen}
-        onClose={handleCloseScanner}
-        title="Quét mã barcode tra cứu"
-        maxWidth="440px"
-      >
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 'var(--space-3)', alignItems: 'center' }}>
-          <div
-            style={{
-              position: 'relative',
-              width: '100%',
-              height: '280px',
-              borderRadius: 'var(--radius-lg)',
-              overflow: 'hidden',
-              backgroundColor: '#000'
-            }}
-          >
-            <CameraPreview
-              stream={scannerStream}
-              isLoading={isScannerCameraLoading}
-              videoRef={scannerVideoRef}
-            />
-            <ScannerOverlay isScanning={isScannerOpen} />
-          </div>
-
-          <p style={{ fontSize: 'var(--text-xs)', color: 'var(--color-text-secondary)', textAlign: 'center' }}>
-            Hướng camera vào mã vạch trên kiện hàng để tra cứu ngay lập tức
-          </p>
-
-          <Button variant="secondary" size="large" onClick={handleCloseScanner} style={{ width: '100%' }}>
-            Đóng camera
-          </Button>
-        </div>
-      </Modal>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

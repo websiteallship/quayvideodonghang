@@ -17,7 +17,6 @@ import {
   SelectTrigger,
   SelectValue
 } from '@/components/ui/select';
-import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -30,6 +29,8 @@ import {
 import { Separator } from '@/components/ui/separator';
 import { cn } from '@/lib/utils';
 import { DON_VI_VAN_CHUYEN_LIST } from '@/config/constants';
+import { DateRange } from 'react-day-picker';
+import { HistoryDateRangePicker } from './HistoryDateRangePicker';
 
 const CARRIERS = [
   { label: 'Tất cả ĐVVC', value: 'all' },
@@ -47,12 +48,8 @@ const STATUS_LIST = [
 export interface HistoryFilterProps {
   isAdmin: boolean;
   nhanVienList: { ma: string; ten: string }[];
-  datePreset: 'today' | '7days' | '30days' | 'all' | 'custom';
-  handleDatePreset: (val: 'today' | '7days' | '30days' | 'all' | 'custom') => void;
-  ngayTu: string;
-  setNgayTu: (val: string) => void;
-  ngayDen: string;
-  setNgayDen: (val: string) => void;
+  dateRange: DateRange | undefined;
+  setDateRange: (val: DateRange | undefined) => void;
   carrier: string;
   setCarrier: (val: string) => void;
   trangThai: string;
@@ -73,12 +70,8 @@ export interface HistoryFilterProps {
 export const HistoryFilter: React.FC<HistoryFilterProps> = ({
   isAdmin,
   nhanVienList,
-  datePreset,
-  handleDatePreset,
-  ngayTu,
-  setNgayTu,
-  ngayDen,
-  setNgayDen,
+  dateRange,
+  setDateRange,
   carrier,
   setCarrier,
   trangThai,
@@ -144,18 +137,10 @@ export const HistoryFilter: React.FC<HistoryFilterProps> = ({
                 <Calendar size={14} className="text-blue-600 dark:text-blue-400" />
                 <span>Khoảng thời gian</span>
               </label>
-              <Select value={datePreset} onValueChange={(val: any) => handleDatePreset(val)}>
-                <SelectTrigger className="w-full h-10 px-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-card text-foreground font-medium text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs hover:bg-muted/40 transition-all cursor-pointer">
-                  <SelectValue placeholder="Khoảng thời gian" />
-                </SelectTrigger>
-                <SelectContent className="rounded-2xl shadow-xl border-slate-100 dark:border-slate-800">
-                  <SelectItem value="today">Hôm nay</SelectItem>
-                  <SelectItem value="7days">7 ngày qua</SelectItem>
-                  <SelectItem value="30days">30 ngày qua</SelectItem>
-                  <SelectItem value="all">Tất cả thời gian</SelectItem>
-                  <SelectItem value="custom">Tùy chỉnh khoảng ngày...</SelectItem>
-                </SelectContent>
-              </Select>
+              <HistoryDateRangePicker 
+                date={dateRange} 
+                setDate={(val) => { setDateRange(val); setPage(1); }} 
+              />
             </div>
 
             {/* 2. Đơn vị VC */}
@@ -231,25 +216,6 @@ export const HistoryFilter: React.FC<HistoryFilterProps> = ({
             )}
           </div>
 
-          {/* Custom Date Range Picker */}
-          {datePreset === 'custom' && (
-            <div className="flex items-center gap-3 px-4 py-3 bg-slate-50/90 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 text-xs sm:text-sm flex-wrap animate-in fade-in slide-in-from-top-1 duration-200">
-              <span className="font-medium text-slate-600 dark:text-slate-400 shrink-0">Khoảng ngày tùy chọn:</span>
-              <Input
-                type="date"
-                value={ngayTu}
-                onChange={(e) => { setNgayTu(e.target.value); setPage(1); }}
-                className="h-9 w-auto min-w-[150px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm font-medium shadow-2xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-              />
-              <span className="text-slate-400 font-medium px-1">→</span>
-              <Input
-                type="date"
-                value={ngayDen}
-                onChange={(e) => { setNgayDen(e.target.value); setPage(1); }}
-                className="h-9 w-auto min-w-[150px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs sm:text-sm font-medium shadow-2xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-              />
-            </div>
-          )}
 
           {/* Filter Panel Footer */}
           <div className="flex items-center justify-between pt-3 border-t border-slate-100 dark:border-slate-800 flex-wrap gap-2">
@@ -263,7 +229,7 @@ export const HistoryFilter: React.FC<HistoryFilterProps> = ({
                 variant="outline"
                 size="sm"
                 onClick={handleResetFilters}
-                disabled={activeFiltersCount === 0 && datePreset === '7days' && !debouncedSearch}
+                disabled={activeFiltersCount === 0 && !debouncedSearch}
                 className="h-9 px-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-card hover:bg-muted/80 text-xs font-semibold text-foreground flex items-center gap-1.5 cursor-pointer shadow-2xs transition-all"
               >
                 <RotateCcw size={13} />
@@ -320,64 +286,12 @@ export const HistoryFilter: React.FC<HistoryFilterProps> = ({
                   <Calendar size={15} className="text-blue-600 dark:text-blue-400" />
                   <span>Khoảng thời gian</span>
                 </label>
-                <span className="text-[11px] text-muted-foreground font-medium">
-                  {datePreset === 'today' && 'Hôm nay'}
-                  {datePreset === '7days' && '7 ngày gần nhất'}
-                  {datePreset === '30days' && '30 ngày gần nhất'}
-                  {datePreset === 'all' && 'Toàn bộ thời gian'}
-                  {datePreset === 'custom' && `${ngayTu || '...'} → ${ngayDen || '...'}`}
-                </span>
               </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 p-1 bg-muted/40 rounded-2xl border border-border/60">
-                {[
-                  { id: 'today', label: 'Hôm nay' },
-                  { id: '7days', label: '7 ngày qua' },
-                  { id: '30days', label: '30 ngày qua' },
-                  { id: 'all', label: 'Tất cả' },
-                  { id: 'custom', label: 'Tùy chỉnh' }
-                ].map((p) => {
-                  const isActive = datePreset === p.id;
-                  return (
-                    <button
-                      key={p.id}
-                      type="button"
-                      className={cn(
-                        "w-full py-2 px-1 text-center rounded-xl font-semibold text-xs transition-all cursor-pointer truncate",
-                        isActive
-                          ? "bg-blue-600 text-white shadow-xs font-bold"
-                          : "text-muted-foreground hover:text-foreground hover:bg-card"
-                      )}
-                      onClick={() => handleDatePreset(p.id as typeof datePreset)}
-                    >
-                      {p.label}
-                    </button>
-                  );
-                })}
-              </div>
-
-              {datePreset === 'custom' && (
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50/90 dark:bg-slate-900/50 rounded-2xl border border-slate-100 dark:border-slate-800 mt-1 animate-in fade-in duration-150">
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-semibold text-muted-foreground block">Từ ngày</label>
-                    <Input
-                      type="date"
-                      value={ngayTu}
-                      onChange={(e) => { setNgayTu(e.target.value); setPage(1); }}
-                      className="w-full h-9 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium shadow-2xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    />
-                  </div>
-                  <div className="flex flex-col gap-1.5">
-                    <label className="text-[11px] font-semibold text-muted-foreground block">Đến ngày</label>
-                    <Input
-                      type="date"
-                      value={ngayDen}
-                      onChange={(e) => { setNgayDen(e.target.value); setPage(1); }}
-                      className="w-full h-9 px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-xs font-medium shadow-2xs focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
-                    />
-                  </div>
-                </div>
-              )}
+              <HistoryDateRangePicker 
+                date={dateRange} 
+                setDate={(val) => { setDateRange(val); setPage(1); }} 
+              />
             </div>
 
             <Separator className="opacity-60" />

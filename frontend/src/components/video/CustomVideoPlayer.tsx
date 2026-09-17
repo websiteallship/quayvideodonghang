@@ -7,6 +7,7 @@ import {
   Maximize,
   Minimize
 } from 'lucide-react';
+import { Spinner } from '@/components/ui/Spinner';
 import { formatDuration } from '@/utils/format';
 
 interface CustomVideoPlayerProps {
@@ -20,7 +21,7 @@ interface CustomVideoPlayerProps {
 export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   src,
   expectedDuration = 0,
-  title: _title,
+  title,
   className = '',
   onError,
 }) => {
@@ -34,8 +35,14 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   const [volume, setVolume] = useState(1);
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [isBuffering, setIsBuffering] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const [showControls, setShowControls] = useState(true);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Reset loading state when source changes
+  useEffect(() => {
+    setIsLoading(true);
+  }, [src]);
 
   // Thời lượng hiển thị: ưu tiên expectedDuration từ DB, fallback sang videoDuration nếu hợp lệ
   const totalDuration = useMemo(() => {
@@ -211,26 +218,49 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         autoPlay
         preload="metadata"
         onClick={togglePlay}
+        onLoadStart={() => setIsLoading(true)}
+        onLoadedData={() => setIsLoading(false)}
+        onCanPlay={() => {
+          setIsLoading(false);
+          setIsBuffering(false);
+        }}
         onLoadedMetadata={handleLoadedMetadata}
         onTimeUpdate={handleTimeUpdate}
         onPlay={() => setIsPlaying(true)}
         onPause={() => setIsPlaying(false)}
         onWaiting={() => setIsBuffering(true)}
-        onPlaying={() => setIsBuffering(false)}
+        onPlaying={() => {
+          setIsLoading(false);
+          setIsBuffering(false);
+        }}
         onEnded={() => setIsPlaying(false)}
-        onError={() => onError?.()}
+        onError={() => {
+          setIsLoading(false);
+          setIsBuffering(false);
+          onError?.();
+        }}
         className="w-full h-full object-contain cursor-pointer"
       />
 
-      {/* Buffering Spinner */}
-      {isBuffering && (
-        <div className="absolute inset-0 pointer-events-none flex items-center justify-center bg-black/30">
-          <div className="w-10 h-10 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
+      {/* Buffering / Loading Spinner */}
+      {(isLoading || isBuffering) && (
+        <div className="absolute inset-0 pointer-events-none flex flex-col items-center justify-center gap-2.5 bg-black/40 backdrop-blur-[2px] z-30">
+          <Spinner size={36} className="text-white" />
+          <span className="text-xs font-medium text-white/90 select-none">
+            {isLoading ? 'Đang tải video...' : 'Đang nạp dữ liệu...'}
+          </span>
         </div>
       )}
 
-      {/* Center Big Play Button (khi đang pause) */}
-      {!isPlaying && !isBuffering && (
+      {/* Title / Watermark Overlay */}
+      {title && (
+        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-xs text-[11px] font-mono text-white/90 z-20 pointer-events-none select-none">
+          {title}
+        </div>
+      )}
+
+      {/* Center Big Play Button (khi đang pause và không loading) */}
+      {!isPlaying && !isBuffering && !isLoading && (
         <button
           type="button"
           onClick={togglePlay}
