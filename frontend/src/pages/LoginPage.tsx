@@ -1,8 +1,11 @@
 import React, { useState, useRef } from 'react';
-import { Video, ArrowRight, Eye, EyeOff, AlertCircle, Loader2 } from 'lucide-react';
-import { useAuthStore } from '@/stores/auth-store';
 import { useNavigate } from 'react-router-dom';
+import { useAuthStore } from '@/stores/auth-store';
+import { Video, AlertCircle, ArrowRight, Loader2, Eye, EyeOff } from 'lucide-react';
 import { APP_CONFIG } from '@/config/constants';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { API_ENDPOINTS } from '@/config/api';
 
 export const LoginPage: React.FC = () => {
@@ -103,53 +106,53 @@ export const LoginPage: React.FC = () => {
   };
 
   return (
-    <div className="login-wrapper">
-      <div className="login-card">
+    <div className="min-h-screen flex flex-col items-center justify-center p-6 bg-background relative overflow-hidden">
+      <div className="w-full max-w-md p-8 flex flex-col gap-6 bg-card border border-border rounded-2xl shadow-lg relative z-10">
         {/* Header */}
-        <div className="login-header">
-          <div className="login-logo">
+        <div className="flex flex-col items-center text-center gap-2">
+          <div className="size-13 rounded-xl bg-primary flex items-center justify-center text-primary-foreground shadow-md mb-2">
             <Video size={24} />
           </div>
-          <h1 className="login-title">Quay Video Đóng Hàng</h1>
-          <p className="login-subtitle">
+          <h1 className="text-xl font-bold text-foreground tracking-tight">Quay Video Đóng Hàng</h1>
+          <p className="text-xs text-muted-foreground leading-relaxed">
             Hệ thống kiểm soát & lưu trữ đóng gói kho vận
           </p>
         </div>
 
         {/* Form */}
-        <form onSubmit={handleLogin} className="login-form">
+        <form onSubmit={handleLogin} className="flex flex-col gap-4">
           {/* Mã nhân viên */}
-          <div className="login-field-group">
-            <div className="login-field-header">
-              <label htmlFor="ma_nhan_vien">Mã nhân viên</label>
-            </div>
-            <input
+          <div className="flex flex-col gap-1.5">
+            <label htmlFor="ma_nhan_vien" className="text-xs font-medium text-foreground">
+              Mã nhân viên
+            </label>
+            <Input
               id="ma_nhan_vien"
               type="text"
               placeholder="Nhập mã nhân viên..."
               value={maNhanVien}
               onChange={(e) => setMaNhanVien(e.target.value)}
-              className="input-field input-mono"
+              className="font-mono tracking-wider"
               autoFocus
               autoComplete="username"
             />
           </div>
 
           {/* Mã PIN 4 số */}
-          <div className="login-field-group">
-            <div className="login-field-header">
+          <div className="flex flex-col gap-1.5">
+            <div className="flex items-center justify-between text-xs font-medium text-foreground mb-0.5">
               <label>Mã PIN (4 số)</label>
               <button
                 type="button"
                 onClick={() => setShowPin(!showPin)}
-                className="login-toggle-btn"
+                className="inline-flex items-center gap-1 bg-transparent border-none p-0 text-xs font-medium text-muted-foreground hover:text-foreground cursor-pointer transition-colors"
                 aria-label={showPin ? "Ẩn số PIN" : "Hiện số PIN"}
               >
                 {showPin ? <EyeOff size={13} /> : <Eye size={13} />}
                 <span>{showPin ? 'Ẩn' : 'Hiện'}</span>
               </button>
             </div>
-            <div className="pin-inputs-grid">
+            <div className="grid grid-cols-4 gap-2 w-full">
               {pin.map((digit, index) => (
                 <input
                   key={index}
@@ -170,17 +173,18 @@ export const LoginPage: React.FC = () => {
 
           {/* Error Banner */}
           {error && (
-            <div className="alert-banner alert-banner--error" role="alert">
+            <Alert variant="destructive" className="py-2.5">
               <AlertCircle size={16} />
-              <span>{error}</span>
-            </div>
+              <AlertDescription className="text-xs font-semibold">{error}</AlertDescription>
+            </Alert>
           )}
 
           {/* Submit CTA */}
-          <button
+          <Button
             type="submit"
             disabled={isLoading}
-            className="btn btn-primary btn-large login-submit-btn"
+            size="lg"
+            className="w-full h-14 text-base font-bold mt-2"
           >
             {isLoading ? (
               <>
@@ -193,11 +197,11 @@ export const LoginPage: React.FC = () => {
                 <ArrowRight size={18} />
               </>
             )}
-          </button>
+          </Button>
         </form>
 
         {/* Footer */}
-        <div className="login-footer">
+        <div className="text-center text-xs text-muted-foreground">
           Hệ thống nội bộ kho vận • Phiên bản {APP_CONFIG.VERSION}
         </div>
       </div>

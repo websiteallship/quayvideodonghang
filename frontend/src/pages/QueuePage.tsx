@@ -199,12 +199,12 @@ const QueueCard: React.FC<{
             )}
 
             {/* Thumbnail Preview */}
-            <div className="queue-thumb relative shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-muted">
+            <div className="relative shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-xl overflow-hidden bg-muted">
               {thumbnail ? (
                 <img
                   src={thumbnail}
                   alt={`Thumbnail ${item.ma_van_don}`}
-                  className="queue-thumb__img object-cover w-full h-full"
+                  className="object-cover w-full h-full"
                 />
               ) : (
                 <div className="w-full h-full flex items-center justify-center">
@@ -212,7 +212,7 @@ const QueueCard: React.FC<{
                 </div>
               )}
               {/* Play icon overlay */}
-              <div className="queue-card__play-overlay absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity hover:opacity-100">
+              <div className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 transition-opacity hover:opacity-100">
                 <Play size={16} className="text-white fill-white" />
               </div>
             </div>

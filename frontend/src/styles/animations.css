@@ -2,55 +2,7 @@
    KEYFRAME ANIMATIONS — PWA QUAY VIDEO KHO VẬN
    ========================================================================== */
 
-/* Recording Pulse (Viền đỏ nhấp nháy báo hiệu đang quay) */
-@keyframes recordPulse {
-  0% {
-    box-shadow: 0 0 0 0 rgba(255, 23, 68, 0.7);
-    transform: scale(1);
-  }
-  50% {
-    box-shadow: 0 0 0 16px rgba(255, 23, 68, 0);
-    transform: scale(1.02);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(255, 23, 68, 0);
-    transform: scale(1);
-  }
-}
-
-/* Red Dot Blink */
-@keyframes dotBlink {
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.2; }
-}
-
-/* Barcode Laser Scan Beam */
-@keyframes scanLaser {
-  0% {
-    top: 5%;
-    opacity: 0.8;
-  }
-  50% {
-    top: 95%;
-    opacity: 1;
-  }
-  100% {
-    top: 5%;
-    opacity: 0.8;
-  }
-}
-
-/* Spinner Rotate */
-@keyframes spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
-}
-
-/* Fade In Up (Modal, Toast, Cards) */
+/* Fade In Up (Modal, Cards) */
 @keyframes fadeInUp {
   from {
     opacity: 0;
@@ -62,7 +14,7 @@
   }
 }
 
-/* Toast Slide In Top/Bottom */
+/* Toast Slide In Down */
 @keyframes slideInDown {
   from {
     opacity: 0;
@@ -72,33 +24,6 @@
     opacity: 1;
     transform: translateY(0);
   }
-}
-
-/* Shimmer Loading Effect */
-@keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-}
-
-/* Utility animation classes */
-.animate-record-pulse {
-  animation: recordPulse 2s infinite ease-in-out;
-}
-
-.animate-dot-blink {
-  animation: dotBlink 1s infinite ease-in-out;
-}
-
-.animate-scan-laser {
-  animation: scanLaser 2.2s infinite ease-in-out;
-}
-
-.animate-spin {
-  animation: spin 0.8s linear infinite;
 }
 
 .animate-fade-in {

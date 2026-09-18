@@ -77,6 +77,7 @@ describe('bien-ban-service', () => {
       };
 
       vi.spyOn(apiClient, 'get').mockResolvedValue({
+        ok: true,
         json: () => Promise.resolve(mockData),
       } as unknown as Response);
 
