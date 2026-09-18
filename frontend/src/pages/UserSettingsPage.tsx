@@ -244,7 +244,7 @@ export const UserSettingsPage: React.FC = () => {
   }, [selectedDeviceId, devices, facingMode]);
 
   return (
-    <div className="flex flex-col gap-4 p-4 pb-24 lg:gap-6 lg:p-6 lg:pb-8 max-w-5xl mx-auto w-full">
+    <div className="flex flex-col gap-4 lg:gap-6 w-full">
       {/* ─── Page Header (Desktop) ─── */}
       <div className="hidden lg:block">
         <h2 className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl">

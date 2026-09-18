@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   Users,
   Search,
@@ -17,7 +17,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Separator } from '@/components/ui/separator';
+import { Pagination, PaginationInfo, PaginationLimitSelect } from '@/components/ui/pagination';
 import {
   Dialog,
   DialogContent,
@@ -454,6 +454,19 @@ export const AdminEmployeesPage: React.FC = () => {
   const [toggleOpen, setToggleOpen] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Pagination states
+  const [page, setPage] = useState(1);
+  const [limit, setLimit] = useState(10);
+
+  const totalEmployees = employees.length;
+  const totalPages = Math.max(1, Math.ceil(totalEmployees / limit));
+  const startIndex = totalEmployees === 0 ? 0 : (page - 1) * limit + 1;
+  const endIndex = Math.min(page * limit, totalEmployees);
+  const paginatedEmployees = useMemo(() => {
+    const start = (page - 1) * limit;
+    return employees.slice(start, start + limit);
+  }, [employees, page, limit]);
+
   const fetchEmployees = useCallback(async () => {
     try {
       const params = new URLSearchParams();
@@ -530,7 +543,7 @@ export const AdminEmployeesPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-6 max-w-5xl mx-auto w-full">
+    <div className="flex flex-col gap-4 lg:gap-6 w-full">
       {/* Page Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
@@ -557,15 +570,21 @@ export const AdminEmployeesPage: React.FC = () => {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" aria-hidden="true" />
             <Input
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={(e) => {
+                setSearch(e.target.value);
+                setPage(1);
+              }}
               placeholder="Tìm theo mã hoặc tên nhân viên..."
               className="h-11 rounded-xl text-xs pl-10"
             />
           </div>
           <select
             value={filterStatus}
-            onChange={(e) => setFilterStatus(e.target.value)}
-            className="h-11 rounded-xl border border-border bg-muted/40 px-3 text-xs font-medium text-foreground focus:outline-none shrink-0 w-full sm:w-48"
+            onChange={(e) => {
+              setFilterStatus(e.target.value);
+              setPage(1);
+            }}
+            className="h-11 rounded-xl border border-border bg-muted/40 px-3 text-xs font-medium text-foreground focus:outline-none shrink-0 w-full sm:w-48 cursor-pointer"
           >
             <option value="">Tất cả (trừ đã xóa)</option>
             <option value="hoat_dong">Hoạt động</option>
@@ -591,15 +610,196 @@ export const AdminEmployeesPage: React.FC = () => {
         </Card>
       ) : (
         <div className="flex flex-col gap-3">
-          {employees.map((emp) => (
-            <Card key={emp.ma} className="rounded-2xl shadow-xs hover:shadow-sm transition-shadow">
-              <CardContent className="p-4">
-                <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                  {/* Avatar + Info */}
-                  <div className="flex items-center gap-3 flex-1 min-w-0">
+          {/* Desktop Table List View */}
+          <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden shadow-2xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="border-b border-border/80 bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
+                    <th className="py-3.5 px-4">Nhân viên</th>
+                    <th className="py-3.5 px-3 text-center">Vai trò</th>
+                    <th className="py-3.5 px-3 text-center">Trạng thái</th>
+                    <th className="py-3.5 px-4 text-center">Video hôm nay</th>
+                    <th className="py-3.5 px-4 text-center">Đăng nhập cuối</th>
+                    <th className="py-3.5 px-4 text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/50">
+                  {paginatedEmployees.map((emp) => (
+                    <tr
+                      key={emp.ma}
+                      className={cn(
+                        'hover:bg-muted/30 transition-colors group',
+                        emp.trang_thai === 'vo_hieu_hoa' && 'bg-amber-500/[0.02]',
+                        emp.trang_thai === 'da_xoa' && 'opacity-60 bg-muted/20'
+                      )}
+                    >
+                      {/* Nhân viên info */}
+                      <td className="py-3 px-4 font-medium text-foreground">
+                        <div className="flex items-center gap-3">
+                          <div
+                            className={cn(
+                              'flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-black text-white shadow-2xs',
+                              emp.vai_tro === 'admin'
+                                ? 'bg-gradient-to-br from-violet-500 to-purple-600'
+                                : 'bg-gradient-to-br from-sky-500 to-blue-600'
+                            )}
+                          >
+                            {emp.ten
+                              .split(/\s+/)
+                              .map((w) => w.charAt(0))
+                              .join('')
+                              .toUpperCase()
+                              .slice(0, 2)}
+                          </div>
+                          <div className="min-w-0 flex flex-col">
+                            <span className="text-xs font-bold text-foreground font-mono">
+                              {emp.ma}
+                            </span>
+                            <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                              {emp.ten}
+                            </span>
+                          </div>
+                        </div>
+                      </td>
+
+                      {/* Vai trò */}
+                      <td className="py-3 px-3 text-center">
+                        <RoleBadge role={emp.vai_tro} />
+                      </td>
+
+                      {/* Trạng thái */}
+                      <td className="py-3 px-3 text-center">
+                        <StatusBadge status={emp.trang_thai} />
+                      </td>
+
+                      {/* Video hôm nay */}
+                      <td className="py-3 px-4 text-center font-mono font-bold text-xs text-foreground">
+                        {emp.so_video_hom_nay ?? 0}
+                      </td>
+
+                      {/* Đăng nhập cuối */}
+                      <td className="py-3 px-4 text-center font-mono text-[11px] text-muted-foreground">
+                        {emp.dang_nhap_cuoi
+                          ? new Date(emp.dang_nhap_cuoi).toLocaleString('vi-VN', {
+                              day: '2-digit',
+                              month: '2-digit',
+                              hour: '2-digit',
+                              minute: '2-digit',
+                            })
+                          : '—'}
+                      </td>
+
+                      {/* Thao tác */}
+                      <td className="py-3 px-4 text-right">
+                        <div className="flex items-center justify-end gap-1">
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 rounded-lg cursor-pointer hover:bg-muted"
+                            title="Chỉnh sửa"
+                            onClick={() => {
+                              setEditTarget(emp);
+                              setEditOpen(true);
+                            }}
+                          >
+                            <Pencil className="size-3.5" aria-hidden="true" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 rounded-lg cursor-pointer hover:bg-muted"
+                            title={emp.trang_thai === 'hoat_dong' ? 'Vô hiệu hóa' : 'Kích hoạt lại'}
+                            onClick={() => {
+                              setToggleTarget(emp);
+                              setToggleOpen(true);
+                            }}
+                            disabled={emp.trang_thai === 'da_xoa'}
+                          >
+                            {emp.trang_thai === 'hoat_dong' ? (
+                              <ShieldOff className="size-3.5 text-amber-500" aria-hidden="true" />
+                            ) : (
+                              <ShieldCheck className="size-3.5 text-emerald-500" aria-hidden="true" />
+                            )}
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 rounded-lg cursor-pointer hover:bg-muted"
+                            title="Đặt lại PIN"
+                            onClick={() => {
+                              setResetPinTarget(emp);
+                              setResetPinOpen(true);
+                            }}
+                            disabled={emp.trang_thai !== 'hoat_dong'}
+                          >
+                            <KeyRound className="size-3.5 text-amber-500" aria-hidden="true" />
+                          </Button>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="size-8 rounded-lg text-destructive hover:bg-destructive/10 cursor-pointer"
+                            title="Xóa"
+                            onClick={() => {
+                              setDeleteTarget(emp);
+                              setDeleteOpen(true);
+                            }}
+                            disabled={emp.trang_thai === 'da_xoa'}
+                          >
+                            <Trash2 className="size-3.5" aria-hidden="true" />
+                          </Button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Desktop Pagination Footer */}
+            <div className="px-4 py-3 border-t border-border/70 bg-muted/10 flex items-center justify-between flex-wrap gap-3 text-xs text-muted-foreground select-none">
+              <div className="flex items-center gap-3 flex-wrap">
+                <PaginationInfo
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  totalItems={totalEmployees}
+                  label="nhân viên"
+                />
+                <PaginationLimitSelect
+                  limit={limit}
+                  onLimitChange={(val) => {
+                    setLimit(val);
+                    setPage(1);
+                  }}
+                  options={[10, 20, 50]}
+                />
+              </div>
+
+              <Pagination
+                currentPage={page}
+                totalPages={totalPages}
+                onPageChange={setPage}
+                showFirstLast
+              />
+            </div>
+          </div>
+
+          {/* Mobile Card List View */}
+          <div className="flex flex-col gap-2.5 md:hidden">
+            {paginatedEmployees.map((emp) => (
+              <div
+                key={emp.ma}
+                className={cn(
+                  'rounded-2xl border p-3.5 bg-card flex flex-col gap-2.5 shadow-2xs transition-all',
+                  emp.trang_thai === 'vo_hieu_hoa' && 'bg-amber-500/[0.02] border-amber-500/30',
+                  emp.trang_thai === 'da_xoa' && 'opacity-60 border-border/50'
+                )}
+              >
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2.5 min-w-0">
                     <div
                       className={cn(
-                        'flex size-11 shrink-0 items-center justify-center rounded-2xl text-sm font-black text-white shadow-xs',
+                        'flex size-9 shrink-0 items-center justify-center rounded-xl text-xs font-black text-white shadow-2xs',
                         emp.vai_tro === 'admin'
                           ? 'bg-gradient-to-br from-violet-500 to-purple-600'
                           : 'bg-gradient-to-br from-sky-500 to-blue-600'
@@ -612,106 +812,157 @@ export const AdminEmployeesPage: React.FC = () => {
                         .toUpperCase()
                         .slice(0, 2)}
                     </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="text-sm font-bold text-foreground font-mono">
-                          {emp.ma}
-                        </span>
-                        <RoleBadge role={emp.vai_tro} />
-                        <StatusBadge status={emp.trang_thai} />
-                      </div>
-                      <div className="text-xs text-muted-foreground mt-0.5 truncate">
+                    <div className="min-w-0 flex flex-col">
+                      <span className="text-xs font-bold text-foreground font-mono">
+                        {emp.ma}
+                      </span>
+                      <span className="text-xs text-muted-foreground truncate">
                         {emp.ten}
-                      </div>
+                      </span>
                     </div>
                   </div>
 
-                  {/* Stats */}
-                  <div className="flex items-center gap-4 text-[11px] text-muted-foreground shrink-0">
-                    <div className="text-center">
-                      <div className="font-mono font-bold text-foreground text-sm">
-                        {emp.so_video_hom_nay ?? 0}
-                      </div>
-                      <div>Video hôm nay</div>
-                    </div>
-                    <Separator orientation="vertical" className="h-8" />
-                    <div className="text-center min-w-[80px]">
-                      <div className="font-mono font-semibold text-foreground text-[11px]">
-                        {emp.dang_nhap_cuoi
-                          ? new Date(emp.dang_nhap_cuoi).toLocaleString('vi-VN', {
-                              day: '2-digit',
-                              month: '2-digit',
-                              hour: '2-digit',
-                              minute: '2-digit',
-                            })
-                          : '—'}
-                      </div>
-                      <div>Đăng nhập cuối</div>
-                    </div>
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center gap-1.5 shrink-0">
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-9 rounded-xl"
-                      title="Chỉnh sửa"
-                      onClick={() => {
-                        setEditTarget(emp);
-                        setEditOpen(true);
-                      }}
-                    >
-                      <Pencil className="size-4" aria-hidden="true" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-9 rounded-xl"
-                      title={emp.trang_thai === 'hoat_dong' ? 'Vô hiệu hóa' : 'Kích hoạt lại'}
-                      onClick={() => {
-                        setToggleTarget(emp);
-                        setToggleOpen(true);
-                      }}
-                      disabled={emp.trang_thai === 'da_xoa'}
-                    >
-                      {emp.trang_thai === 'hoat_dong' ? (
-                        <ShieldOff className="size-4 text-amber-500" aria-hidden="true" />
-                      ) : (
-                        <ShieldCheck className="size-4 text-emerald-500" aria-hidden="true" />
-                      )}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-9 rounded-xl"
-                      title="Đặt lại PIN"
-                      onClick={() => {
-                        setResetPinTarget(emp);
-                        setResetPinOpen(true);
-                      }}
-                      disabled={emp.trang_thai !== 'hoat_dong'}
-                    >
-                      <KeyRound className="size-4 text-amber-500" aria-hidden="true" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="size-9 rounded-xl text-destructive hover:text-destructive"
-                      title="Xóa"
-                      onClick={() => {
-                        setDeleteTarget(emp);
-                        setDeleteOpen(true);
-                      }}
-                      disabled={emp.trang_thai === 'da_xoa'}
-                    >
-                      <Trash2 className="size-4" aria-hidden="true" />
-                    </Button>
+                  <div className="flex items-center gap-1 shrink-0">
+                    <RoleBadge role={emp.vai_tro} />
+                    <StatusBadge status={emp.trang_thai} />
                   </div>
                 </div>
-              </CardContent>
-            </Card>
-          ))}
+
+                {/* Stats */}
+                <div className="flex items-center justify-between px-3 py-1.5 rounded-xl bg-muted/40 text-[11px] text-muted-foreground">
+                  <div>
+                    Video hôm nay:{' '}
+                    <strong className="text-foreground font-mono font-bold">
+                      {emp.so_video_hom_nay ?? 0}
+                    </strong>
+                  </div>
+                  <div>
+                    Đăng nhập:{' '}
+                    <span className="text-foreground font-mono">
+                      {emp.dang_nhap_cuoi
+                        ? new Date(emp.dang_nhap_cuoi).toLocaleString('vi-VN', {
+                            day: '2-digit',
+                            month: '2-digit',
+                            hour: '2-digit',
+                            minute: '2-digit',
+                          })
+                        : '—'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Actions */}
+                <div className="flex items-center justify-end gap-1 pt-2 border-t border-border/40">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2.5 rounded-lg text-xs gap-1 cursor-pointer"
+                    onClick={() => {
+                      setEditTarget(emp);
+                      setEditOpen(true);
+                    }}
+                  >
+                    <Pencil className="size-3.5" aria-hidden="true" />
+                    <span>Sửa</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 rounded-lg text-xs gap-1 cursor-pointer"
+                    title={emp.trang_thai === 'hoat_dong' ? 'Vô hiệu hóa' : 'Kích hoạt lại'}
+                    onClick={() => {
+                      setToggleTarget(emp);
+                      setToggleOpen(true);
+                    }}
+                    disabled={emp.trang_thai === 'da_xoa'}
+                  >
+                    {emp.trang_thai === 'hoat_dong' ? (
+                      <>
+                        <ShieldOff className="size-3.5 text-amber-500" aria-hidden="true" />
+                        <span className="text-amber-600">Khóa</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShieldCheck className="size-3.5 text-emerald-500" aria-hidden="true" />
+                        <span className="text-emerald-600">Mở</span>
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 rounded-lg text-xs gap-1 text-amber-600 cursor-pointer"
+                    title="Đặt lại PIN"
+                    onClick={() => {
+                      setResetPinTarget(emp);
+                      setResetPinOpen(true);
+                    }}
+                    disabled={emp.trang_thai !== 'hoat_dong'}
+                  >
+                    <KeyRound className="size-3.5" aria-hidden="true" />
+                    <span>PIN</span>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 rounded-lg text-xs text-destructive hover:bg-destructive/10 cursor-pointer"
+                    title="Xóa"
+                    onClick={() => {
+                      setDeleteTarget(emp);
+                      setDeleteOpen(true);
+                    }}
+                    disabled={emp.trang_thai === 'da_xoa'}
+                  >
+                    <Trash2 className="size-3.5" aria-hidden="true" />
+                  </Button>
+                </div>
+              </div>
+            ))}
+
+            {/* Mobile Pagination Footer */}
+            <div className="p-3.5 rounded-2xl border border-border bg-card shadow-2xs flex flex-col gap-3 select-none">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <PaginationInfo
+                  startIndex={startIndex}
+                  endIndex={endIndex}
+                  totalItems={totalEmployees}
+                  label="nhân viên"
+                />
+                <PaginationLimitSelect
+                  limit={limit}
+                  onLimitChange={(val) => {
+                    setLimit(val);
+                    setPage(1);
+                  }}
+                  options={[10, 20, 50]}
+                />
+              </div>
+
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/70">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                  disabled={page === 1}
+                  className="h-8 px-3 rounded-lg text-xs cursor-pointer"
+                >
+                  Trước
+                </Button>
+                <span className="text-xs font-bold text-foreground">
+                  Trang {page} / {totalPages}
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={page >= totalPages}
+                  className="h-8 px-3 rounded-lg text-xs cursor-pointer"
+                >
+                  Tiếp
+                </Button>
+              </div>
+            </div>
+          </div>
         </div>
       )}
 

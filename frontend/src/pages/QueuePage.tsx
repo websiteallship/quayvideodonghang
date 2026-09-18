@@ -4,8 +4,6 @@ import {
   RefreshCw,
   Search,
   Filter,
-  ChevronLeft,
-  ChevronRight,
   X,
   Clock,
   HardDrive,
@@ -21,6 +19,7 @@ import {
   Download,
   Check
 } from 'lucide-react';
+import { Pagination } from '@/components/ui/pagination';
 import { useUploadQueue } from '@/hooks/use-upload-queue';
 import { useAuthStore } from '@/stores/auth-store';
 import { Badge } from '@/components/ui/badge';
@@ -872,7 +871,7 @@ export const QueuePage: React.FC = () => {
   }, [uploadTargets, uploadSingle, processAll, uploadSelected, queue, checkTokenValid]);
 
   return (
-    <div className="flex flex-col gap-3 pb-2 data-[has-selection=true]:pb-20" data-has-selection={selectedIds.size > 0}>
+    <div className="flex flex-col gap-3 pb-2 data-[has-selection=true]:pb-20 w-full" data-has-selection={selectedIds.size > 0}>
       {/* 1. Top Queue Header */}
       <div className="flex justify-between items-start flex-wrap gap-3 mb-1">
         <div>
@@ -1160,56 +1159,13 @@ export const QueuePage: React.FC = () => {
 
       {/* 9. Pagination Controls */}
       {totalPages > 1 && (
-        <div className="flex items-center justify-center gap-1.5 pt-1.5">
-          <button
-            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
-            className="flex items-center justify-center w-8 h-8 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none"
-            aria-label="Trang trước"
-          >
-            <ChevronLeft size={15} />
-          </button>
-
-          {Array.from({ length: totalPages }, (_, i) => i + 1)
-            .filter((page) => page === 1 || page === totalPages || Math.abs(page - currentPage) <= 1)
-            .reduce<(number | 'dots')[]>((acc, page, idx, arr) => {
-              if (idx > 0 && page - (arr[idx - 1] as number) > 1) {
-                acc.push('dots');
-              }
-              acc.push(page);
-              return acc;
-            }, [])
-            .map((item, idx) =>
-              item === 'dots' ? (
-                <span
-                  key={`dots-${idx}`}
-                  className="text-muted-foreground text-[11px] px-1"
-                >
-                  …
-                </span>
-              ) : (
-                <button
-                  key={item}
-                  onClick={() => setCurrentPage(item as number)}
-                  className={`flex items-center justify-center w-8 h-8 rounded-md border text-sm font-medium transition-colors ${
-                    currentPage === item 
-                      ? 'border-primary bg-primary text-primary-foreground' 
-                      : 'border-input bg-background hover:bg-accent hover:text-accent-foreground'
-                  }`}
-                >
-                  {item}
-                </button>
-              )
-            )}
-
-          <button
-            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
-            className="flex items-center justify-center w-8 h-8 rounded-md border border-input bg-background hover:bg-accent hover:text-accent-foreground text-sm font-medium transition-colors disabled:opacity-50 disabled:pointer-events-none"
-            aria-label="Trang sau"
-          >
-            <ChevronRight size={15} />
-          </button>
+        <div className="flex items-center justify-center pt-1.5 pb-20">
+          <Pagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+            siblingCount={1}
+          />
         </div>
       )}
 

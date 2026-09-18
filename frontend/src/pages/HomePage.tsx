@@ -121,15 +121,19 @@ export const HomePage: React.FC = () => {
   const {
     queue,
     pendingCount,
-    completedCount,
     enqueue,
     storageWarning,
     loadQueue,
   } = useUploadQueue({ isRecording });
 
-  // Get recent completed items (max 2)
+  // "Đã quay hôm nay": tổng tất cả video enqueue trong ngày hôm nay (mọi trạng thái)
+  const todayStart = new Date();
+  todayStart.setHours(0, 0, 0, 0);
+  const todayStartMs = todayStart.getTime();
+  const todayRecordedCount = queue.filter((item) => item.created_at >= todayStartMs).length;
+
+  // "Vừa quay gần nhất": 2 video mới nhất (mọi trạng thái: chờ, đang upload, đã upload)
   const recentCompletedItems = queue
-    .filter((item) => item.status === 'da_upload')
     .sort((a, b) => b.created_at - a.created_at)
     .slice(0, 2);
 
@@ -576,7 +580,7 @@ export const HomePage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-5">
+    <div className="flex flex-col gap-5 w-full">
       {/* Storage Quota Warning if < 500MB */}
       {storageWarning && (
         <Alert variant="destructive">
@@ -860,7 +864,7 @@ export const HomePage: React.FC = () => {
             <div className="grid grid-cols-2 gap-3">
               <div className="p-3 rounded-2xl bg-muted/40 border border-border/80 flex flex-col">
                 <span className="text-[11px] text-muted-foreground">Đã quay hôm nay</span>
-                <span className="text-2xl font-black text-foreground mt-1">{completedCount}</span>
+                <span className="text-2xl font-black text-foreground mt-1">{todayRecordedCount}</span>
               </div>
               <div className="p-3 rounded-2xl bg-muted/40 border border-border/80 flex flex-col">
                 <span className="text-[11px] text-muted-foreground">Đang đợi tải</span>
@@ -883,7 +887,17 @@ export const HomePage: React.FC = () => {
                         {item.don_vi_vc} • {item.loai_bien_ban === 'dong_goi' ? 'Đóng gói' : 'Khui hàng'} • {formatDuration(item.thoi_luong_video)}
                       </div>
                     </div>
-                    <span className="text-emerald-600 font-bold text-[11px] shrink-0">Đã lưu</span>
+                    <span className={`font-bold text-[11px] shrink-0 ${
+                      item.status === 'da_upload'
+                        ? 'text-emerald-600'
+                        : item.status === 'dang_upload'
+                        ? 'text-blue-500'
+                        : item.status === 'loi'
+                        ? 'text-destructive'
+                        : 'text-amber-500'
+                    }`}>
+                      {item.status === 'da_upload' ? 'Đã lưu' : item.status === 'dang_upload' ? 'Đang tải' : item.status === 'loi' ? 'Lỗi' : 'Chờ tải'}
+                    </span>
                   </div>
                 ))
               ) : (

@@ -4,6 +4,7 @@ import { AppShell } from './components/layout/AppShell';
 import { HomePage } from './pages/HomePage';
 import { QueuePage } from './pages/QueuePage';
 import { HistoryPage } from './pages/HistoryPage';
+import { VideoDetailPage } from './pages/VideoDetailPage';
 import { UserSettingsPage } from './pages/UserSettingsPage';
 import { AdminSettingsPage } from './pages/AdminSettingsPage';
 import { AdminEmployeesPage } from './pages/AdminEmployeesPage';
@@ -63,6 +64,10 @@ const router = createBrowserRouter([
       {
         path: '/history',
         element: <HistoryPage />,
+      },
+      {
+        path: '/history/:id',
+        element: <VideoDetailPage />,
       },
       {
         path: '/settings',

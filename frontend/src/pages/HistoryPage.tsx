@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Search,
   X,
@@ -11,26 +12,18 @@ import {
   Play,
   ChevronLeft,
   ChevronRight,
-  ChevronsLeft,
-  ChevronsRight,
   AlertCircle,
   Copy,
   Check,
-  SlidersHorizontal,
   Scan,
   FileVideo,
+  SlidersHorizontal,
 } from 'lucide-react';
+import { Pagination, PaginationInfo, PaginationLimitSelect } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
 import { Skeleton } from '@/components/ui/skeleton';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import {
   Dialog,
   DialogContent,
@@ -47,15 +40,13 @@ import { useBarcodeGun } from '@/hooks/use-barcode-gun';
 import { CameraPreview } from '@/components/camera/CameraPreview';
 import { ScannerOverlay } from '@/components/scanner/ScannerOverlay';
 import { HistoryFilter } from '@/components/history/HistoryFilter';
-import { VideoDetailModal } from '@/components/video/VideoDetailModal';
 import { DateRange } from 'react-day-picker';
 import { subDays, format } from 'date-fns';
 import {
   fetchBienBanList,
-  fetchBienBanViewUrl,
   type BienBanFilterParams,
 } from '@/services/bien-ban-service';
-import { getStoredToken, apiClient, API_BASE } from '@/services/api-client';
+import { apiClient, API_BASE } from '@/services/api-client';
 import { formatDateTimeVN, formatDuration, formatBytes } from '@/utils/format';
 import { feedbackSuccess } from '@/utils/barcode-feedback';
 import { DON_VI_VAN_CHUYEN_LIST } from '@/config/constants';
@@ -144,6 +135,7 @@ type BienBanItem = BienBan & { ten_nhan_vien?: string };
 export const HistoryPage: React.FC = () => {
   const { user } = useAuthStore();
   const isAdmin = user?.vai_tro === 'admin';
+  const navigate = useNavigate();
 
   // 1. Search state & Debounce (300ms)
   const [searchInput, setSearchInput] = useState('');
@@ -189,12 +181,7 @@ export const HistoryPage: React.FC = () => {
   // 4. Copy state
   const [copiedId, setCopiedId] = useState<string | null>(null);
 
-  // 5. Video View Modal
-  const [videoModalItem, setVideoModalItem] = useState<BienBanItem | null>(null);
-  const [viewUrl, setViewUrl] = useState<string | null>(null);
-  const [streamUrl, setStreamUrl] = useState<string | null>(null);
-  const [isVideoLoading, setIsVideoLoading] = useState(false);
-  const [videoError, setVideoError] = useState<string | null>(null);
+
 
   // Copy text helper
   const handleCopyText = (e: React.MouseEvent, text: string, id: string) => {
@@ -331,28 +318,9 @@ export const HistoryPage: React.FC = () => {
     void loadData();
   }, [loadData]);
 
-  // Open Video Modal
-  const handleOpenVideo = async (item: BienBanItem) => {
-    setVideoModalItem(item);
-    setViewUrl(null);
-    setStreamUrl(null);
-    setVideoError(null);
-    setIsVideoLoading(true);
-
-    const res = await fetchBienBanViewUrl(item.id);
-
-    if (res.success && res.data?.view_url) {
-      setViewUrl(res.data.view_url);
-      if (res.data.stream_url) {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-        const token = getStoredToken();
-        const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
-        setStreamUrl(`${baseUrl}${res.data.stream_url}${tokenParam}`);
-      }
-    } else {
-      setVideoError(res.error?.message || 'Không thể tải đường dẫn xem video.');
-    }
-    setIsVideoLoading(false);
+  // Navigate to video detail page
+  const handleOpenVideo = (item: BienBanItem) => {
+    navigate(`/history/${item.id}`);
   };
 
   // Scanner modal
@@ -379,32 +347,15 @@ export const HistoryPage: React.FC = () => {
     [items, totalItems]
   );
 
-  // Pagination helpers
   const startIndex = (page - 1) * limit + 1;
   const endIndex = Math.min(page * limit, totalItems);
-
-  const getPageNumbers = (): (number | '...')[] => {
-    const pages: (number | '...')[] = [];
-    if (totalPages <= 5) {
-      for (let i = 1; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      if (page > 3) pages.push('...');
-      for (let i = Math.max(2, page - 1); i <= Math.min(totalPages - 1, page + 1); i++) {
-        pages.push(i);
-      }
-      if (page < totalPages - 2) pages.push('...');
-      pages.push(totalPages);
-    }
-    return pages;
-  };
 
   // =========================================================================
   // RENDER
   // =========================================================================
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-5 pb-6">
+    <div className="flex flex-col gap-4 lg:gap-5 pb-6 w-full">
       {/* ------------------------------------------------------------------ */}
       {/* Page Header */}
       {/* ------------------------------------------------------------------ */}
@@ -892,98 +843,19 @@ export const HistoryPage: React.FC = () => {
             {/* Desktop Pagination Footer */}
             <div className="px-5 py-3.5 border-t border-border/80 bg-muted/10 flex items-center justify-between flex-wrap gap-4 text-xs text-muted-foreground">
               <div className="flex items-center gap-4 flex-wrap">
-                <div>
-                  Hiển thị{' '}
-                  <strong className="text-foreground font-semibold">
-                    {startIndex} - {endIndex}
-                  </strong>{' '}
-                  trong tổng số{' '}
-                  <strong className="text-foreground font-semibold">{totalItems}</strong> biên bản
-                </div>
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-medium text-muted-foreground">Hiển thị</span>
-                  <Select
-                    value={String(limit)}
-                    onValueChange={(val) => { setLimit(Number(val)); setPage(1); }}
-                  >
-                    <SelectTrigger
-                      size="sm"
-                      className="h-8 w-auto min-w-[100px] px-2.5 rounded-lg border border-input bg-card hover:bg-muted/50 text-foreground font-semibold text-xs cursor-pointer shadow-2xs transition-all focus-visible:ring-1 focus-visible:ring-primary"
-                    >
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent align="center" className="rounded-xl min-w-[100px] shadow-md">
-                      <SelectItem value="10" className="text-xs font-medium cursor-pointer">10 / trang</SelectItem>
-                      <SelectItem value="20" className="text-xs font-medium cursor-pointer">20 / trang</SelectItem>
-                      <SelectItem value="25" className="text-xs font-medium cursor-pointer">25 / trang</SelectItem>
-                      <SelectItem value="50" className="text-xs font-medium cursor-pointer">50 / trang</SelectItem>
-                      <SelectItem value="100" className="text-xs font-medium cursor-pointer">100 / trang</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
+                <PaginationInfo startIndex={startIndex} endIndex={endIndex} totalItems={totalItems} />
+                <PaginationLimitSelect 
+                  limit={limit} 
+                  onLimitChange={(val) => { setLimit(val); setPage(1); }} 
+                />
               </div>
 
-              <div className="flex items-center gap-1.5 select-none">
-                <button
-                  type="button"
-                  onClick={() => setPage(1)}
-                  disabled={page === 1}
-                  title="Trang đầu tiên"
-                  className="size-8 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
-                >
-                  <ChevronsLeft size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                  disabled={page === 1}
-                  title="Trang trước"
-                  className="size-8 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
-                >
-                  <ChevronLeft size={14} />
-                </button>
-
-                {getPageNumbers().map((pageNum, idx) =>
-                  pageNum === '...' ? (
-                    <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground">
-                      ...
-                    </span>
-                  ) : (
-                    <button
-                      key={pageNum}
-                      type="button"
-                      onClick={() => setPage(pageNum)}
-                      className={cn(
-                        'size-8 rounded-lg font-bold text-xs flex items-center justify-center transition-all cursor-pointer',
-                        page === pageNum
-                          ? 'bg-blue-600 text-white shadow-xs'
-                          : 'border border-border bg-card hover:bg-muted text-foreground'
-                      )}
-                    >
-                      {pageNum}
-                    </button>
-                  )
-                )}
-
-                <button
-                  type="button"
-                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                  disabled={page === totalPages}
-                  title="Trang kế tiếp"
-                  className="size-8 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
-                >
-                  <ChevronRight size={14} />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setPage(totalPages)}
-                  disabled={page === totalPages}
-                  title="Trang cuối cùng"
-                  className="size-8 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
-                >
-                  <ChevronsRight size={14} />
-                </button>
-              </div>
+              <Pagination 
+                currentPage={page} 
+                totalPages={totalPages} 
+                onPageChange={setPage} 
+                showFirstLast 
+              />
             </div>
           </div>
 
@@ -1071,35 +943,19 @@ export const HistoryPage: React.FC = () => {
             })}
           </div>
 
-          {/* Mobile Pagination */}
           <div className="lg:hidden mt-2 p-3.5 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-3 select-none">
             <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <div>
-                Hiển thị{' '}
-                <strong className="text-foreground font-semibold">
-                  {startIndex} - {endIndex}
-                </strong>{' '}
-                / <strong className="text-foreground font-semibold">{totalItems}</strong>
-              </div>
-              <div className="flex items-center gap-1.5">
-                <span className="text-xs text-muted-foreground">Hiển thị</span>
-                <Select
-                  value={String(limit)}
-                  onValueChange={(val) => { setLimit(Number(val)); setPage(1); }}
-                >
-                  <SelectTrigger
-                    size="sm"
-                    className="h-7 w-auto min-w-[94px] px-2 rounded-lg border border-input bg-card hover:bg-muted/50 text-foreground font-semibold text-xs cursor-pointer shadow-2xs transition-all"
-                  >
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="end" className="rounded-xl min-w-[96px] shadow-md">
-                    <SelectItem value="10" className="text-xs font-medium cursor-pointer">10 / trang</SelectItem>
-                    <SelectItem value="20" className="text-xs font-medium cursor-pointer">20 / trang</SelectItem>
-                    <SelectItem value="50" className="text-xs font-medium cursor-pointer">50 / trang</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
+              <PaginationInfo 
+                startIndex={startIndex} 
+                endIndex={endIndex} 
+                totalItems={totalItems} 
+                label="" 
+              />
+              <PaginationLimitSelect 
+                limit={limit} 
+                onLimitChange={(val) => { setLimit(val); setPage(1); }} 
+                options={[10, 20, 50]} 
+              />
             </div>
 
             <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/70">
@@ -1135,28 +991,7 @@ export const HistoryPage: React.FC = () => {
         </>
       )}
 
-      {/* ================================================================== */}
-      {/* Video Detail Modal */}
-      {/* ================================================================== */}
-      <VideoDetailModal
-        isOpen={!!videoModalItem}
-        onClose={() => {
-          setVideoModalItem(null);
-          setViewUrl(null);
-          setStreamUrl(null);
-          setVideoError(null);
-        }}
-        item={videoModalItem}
-        viewUrl={viewUrl}
-        streamUrl={streamUrl}
-        isVideoLoading={isVideoLoading}
-        videoError={videoError}
-        onRetry={() => {
-          if (videoModalItem) {
-            void handleOpenVideo(videoModalItem);
-          }
-        }}
-      />
+
 
       {/* ================================================================== */}
       {/* Barcode Scanner Dialog */}

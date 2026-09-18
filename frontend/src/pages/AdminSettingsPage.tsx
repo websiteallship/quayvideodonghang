@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
   HardDrive,
@@ -20,6 +20,7 @@ import {
   Star,
   MapPin,
   Check,
+  Search,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -28,6 +29,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { Separator } from '@/components/ui/separator';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
+import { Pagination, PaginationInfo, PaginationLimitSelect } from '@/components/ui/pagination';
 import {
   Dialog,
   DialogContent,
@@ -177,6 +179,30 @@ export const AdminSettingsPage: React.FC = () => {
     trang_thai: 'hoat_dong',
   });
   const [submittingWarehouse, setSubmittingWarehouse] = useState(false);
+
+  // ─── Warehouse Pagination & Filter State ───
+  const [warehousePage, setWarehousePage] = useState(1);
+  const [warehouseLimit, setWarehouseLimit] = useState(10);
+  const [warehouseSearch, setWarehouseSearch] = useState('');
+
+  const filteredWarehouses = useMemo(() => {
+    if (!warehouseSearch.trim()) return warehouses;
+    const q = warehouseSearch.trim().toLowerCase();
+    return warehouses.filter(
+      (k) =>
+        k.ten.toLowerCase().includes(q) ||
+        (k.dia_chi && k.dia_chi.toLowerCase().includes(q))
+    );
+  }, [warehouses, warehouseSearch]);
+
+  const totalWarehouseItems = filteredWarehouses.length;
+  const warehouseTotalPages = Math.max(1, Math.ceil(totalWarehouseItems / warehouseLimit));
+  const warehouseStartIndex = totalWarehouseItems === 0 ? 0 : (warehousePage - 1) * warehouseLimit + 1;
+  const warehouseEndIndex = Math.min(warehousePage * warehouseLimit, totalWarehouseItems);
+  const paginatedWarehouses = useMemo(() => {
+    const start = (warehousePage - 1) * warehouseLimit;
+    return filteredWarehouses.slice(start, start + warehouseLimit);
+  }, [filteredWarehouses, warehousePage, warehouseLimit]);
 
   // Fetch admin warehouses
   const fetchWarehouses = useCallback(async () => {
@@ -416,7 +442,7 @@ export const AdminSettingsPage: React.FC = () => {
       : 0;
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-6 max-w-4xl mx-auto w-full">
+    <div className="flex flex-col gap-4 lg:gap-6 w-full">
       {/* Page Header */}
       <div>
         <h2 className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl">
@@ -730,29 +756,60 @@ export const AdminSettingsPage: React.FC = () => {
             description="Cấu hình danh sách kho vận chuẩn và chỉ định kho mặc định cho toàn bộ trạm làm việc"
           >
             <div className="flex flex-col gap-4">
-              {/* Top Controls */}
+              {/* Top Controls & Search Bar */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border/40">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-muted-foreground">Tổng số kho:</span>
-                  <Badge variant="secondary" className="font-mono text-xs px-2.5">
-                    {warehouses.length}
-                  </Badge>
+                <div className="flex items-center gap-2.5 flex-1 max-w-sm">
+                  <div className="relative w-full">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
+                    <Input
+                      type="text"
+                      placeholder="Tìm kiếm kho theo tên, địa chỉ..."
+                      value={warehouseSearch}
+                      onChange={(e) => {
+                        setWarehouseSearch(e.target.value);
+                        setWarehousePage(1);
+                      }}
+                      className="h-9.5 pl-9 pr-8 text-xs rounded-xl bg-muted/30 border-border/70 focus-visible:ring-1"
+                    />
+                    {warehouseSearch && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setWarehouseSearch('');
+                          setWarehousePage(1);
+                        }}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer"
+                        title="Xóa tìm kiếm"
+                      >
+                        <X className="size-3.5" />
+                      </button>
+                    )}
+                  </div>
                 </div>
-                <Button
-                  onClick={() => {
-                    setWarehouseForm({
-                      ten: '',
-                      dia_chi: '',
-                      la_mac_dinh: false,
-                      trang_thai: 'hoat_dong',
-                    });
-                    setCreateWarehouseOpen(true);
-                  }}
-                  className="h-10 gap-1.5 rounded-xl text-xs font-semibold"
-                >
-                  <Plus className="size-4" aria-hidden="true" />
-                  Thêm kho mới
-                </Button>
+
+                <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                  <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                    <span>Tổng:</span>
+                    <Badge variant="secondary" className="font-mono text-xs px-2 py-0.5">
+                      {totalWarehouseItems}
+                    </Badge>
+                  </div>
+                  <Button
+                    onClick={() => {
+                      setWarehouseForm({
+                        ten: '',
+                        dia_chi: '',
+                        la_mac_dinh: false,
+                        trang_thai: 'hoat_dong',
+                      });
+                      setCreateWarehouseOpen(true);
+                    }}
+                    className="h-9.5 gap-1.5 rounded-xl text-xs font-semibold shadow-xs cursor-pointer"
+                  >
+                    <Plus className="size-4" aria-hidden="true" />
+                    Thêm kho mới
+                  </Button>
+                </div>
               </div>
 
               {/* Warehouse List */}
@@ -766,37 +823,77 @@ export const AdminSettingsPage: React.FC = () => {
                   <p className="text-sm font-semibold">Chưa có kho vận nào trong hệ thống</p>
                   <p className="text-xs mt-1">Bấm "Thêm kho mới" để tạo kho đầu tiên</p>
                 </div>
+              ) : filteredWarehouses.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
+                  <Search className="size-8 mb-2 stroke-[1.5] text-muted-foreground/60" />
+                  <p className="text-sm font-semibold">Không tìm thấy kho vận phù hợp</p>
+                  <p className="text-xs mt-1">Thử tìm kiếm với từ khóa khác</p>
+                </div>
               ) : (
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3.5">
-                  {warehouses.map((k) => (
-                    <Card
-                      key={k.id}
-                      className={cn(
-                        'rounded-2xl border transition-all shadow-none',
-                        k.la_mac_dinh
-                          ? 'border-amber-500/50 bg-amber-500/[0.03]'
-                          : 'border-border/60 hover:border-border'
-                      )}
-                    >
-                      <CardContent className="p-4 flex flex-col justify-between h-full gap-3">
-                        <div className="flex flex-col gap-1.5">
-                          <div className="flex items-start justify-between gap-2">
-                            <div className="flex items-center gap-2 min-w-0">
-                              <Building2 className="size-4 text-amber-500 shrink-0" aria-hidden="true" />
-                              <span className="font-bold text-sm text-foreground truncate">
-                                {k.ten}
-                              </span>
-                            </div>
-                            <div className="flex items-center gap-1.5 shrink-0">
-                              {k.la_mac_dinh ? (
-                                <Badge
-                                  variant="secondary"
-                                  className="gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30"
-                                >
-                                  <Star className="size-3 fill-amber-500 text-amber-500" aria-hidden="true" />
-                                  Mặc định
-                                </Badge>
-                              ) : (
+                <div className="flex flex-col gap-3">
+                  {/* Desktop Table List View */}
+                  <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden shadow-2xs">
+                    <div className="overflow-x-auto">
+                      <table className="w-full text-left border-collapse text-xs">
+                        <thead>
+                          <tr className="border-b border-border/80 bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
+                            <th className="py-3 px-4">Tên kho vận</th>
+                            <th className="py-3 px-4">Địa chỉ chi tiết</th>
+                            <th className="py-3 px-3 text-center">Trạng thái</th>
+                            <th className="py-3 px-4 text-right">Thao tác</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/50">
+                          {paginatedWarehouses.map((k) => (
+                            <tr
+                              key={k.id}
+                              className={cn(
+                                'hover:bg-muted/30 transition-colors group',
+                                k.la_mac_dinh && 'bg-amber-500/[0.03]'
+                              )}
+                            >
+                              {/* Tên kho */}
+                              <td className="py-3.5 px-4 font-medium text-foreground">
+                                <div className="flex items-center gap-2.5">
+                                  <div
+                                    className={cn(
+                                      'size-8 rounded-xl flex items-center justify-center shrink-0 border',
+                                      k.la_mac_dinh
+                                        ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
+                                        : 'bg-muted/40 border-border/60 text-muted-foreground'
+                                    )}
+                                  >
+                                    <Building2 className="size-4" />
+                                  </div>
+                                  <div className="flex items-center gap-2 min-w-0">
+                                    <span className="font-bold text-xs text-foreground truncate max-w-[200px]">
+                                      {k.ten}
+                                    </span>
+                                    {k.la_mac_dinh && (
+                                      <Badge
+                                        variant="secondary"
+                                        className="gap-1 text-[10px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30 px-1.5 py-0"
+                                      >
+                                        <Star className="size-2.5 fill-amber-500 text-amber-500" />
+                                        Mặc định
+                                      </Badge>
+                                    )}
+                                  </div>
+                                </div>
+                              </td>
+
+                              {/* Địa chỉ */}
+                              <td className="py-3.5 px-4 text-muted-foreground max-w-[280px]">
+                                <div className="flex items-center gap-1.5">
+                                  <MapPin className="size-3.5 shrink-0 text-muted-foreground/60" />
+                                  <span className="truncate" title={k.dia_chi || ''}>
+                                    {k.dia_chi || 'Chưa có thông tin địa chỉ'}
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* Trạng thái */}
+                              <td className="py-3.5 px-3 text-center">
                                 <Badge
                                   variant="outline"
                                   className={cn(
@@ -808,19 +905,160 @@ export const AdminSettingsPage: React.FC = () => {
                                 >
                                   {k.trang_thai === 'hoat_dong' ? 'Hoạt động' : 'Tạm dừng'}
                                 </Badge>
-                              )}
-                            </div>
-                          </div>
+                              </td>
 
-                          <div className="flex items-start gap-1.5 text-xs text-muted-foreground">
-                            <MapPin className="size-3.5 shrink-0 mt-0.5 text-muted-foreground/70" aria-hidden="true" />
-                            <span className="line-clamp-2">
-                              {k.dia_chi || 'Chưa có thông tin địa chỉ'}
-                            </span>
+                              {/* Thao tác */}
+                              <td className="py-3.5 px-4 text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  {!k.la_mac_dinh && (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      onClick={async () => {
+                                        try {
+                                          const res = await apiClient
+                                            .put(API_ENDPOINTS.ADMIN.KHO_HANG.SET_DEFAULT(k.id))
+                                            .json<{ success: boolean }>();
+                                          if (res.success) {
+                                            showToast.success('Đã lưu cấu hình', `Đã đặt "${k.ten}" làm kho mặc định`);
+                                            void fetchWarehouses();
+                                            void useConfigStore.getState().fetchWarehouses();
+                                          }
+                                        } catch {
+                                          showToast.error('Lỗi khi đổi kho mặc định');
+                                        }
+                                      }}
+                                      className="h-8 text-xs font-semibold gap-1 text-muted-foreground hover:text-amber-600 px-2 cursor-pointer"
+                                      title="Đặt làm kho mặc định"
+                                    >
+                                      <Star className="size-3.5" />
+                                      <span className="hidden xl:inline">Mặc định</span>
+                                    </Button>
+                                  )}
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => {
+                                      setWarehouseForm({
+                                        ten: k.ten,
+                                        dia_chi: k.dia_chi || '',
+                                        la_mac_dinh: k.la_mac_dinh,
+                                        trang_thai: k.trang_thai,
+                                      });
+                                      setEditWarehouse(k);
+                                    }}
+                                    className="h-8 text-xs font-semibold gap-1 px-2.5 hover:bg-muted text-foreground cursor-pointer"
+                                    title="Chỉnh sửa kho"
+                                  >
+                                    <Pencil className="size-3.5 text-muted-foreground group-hover:text-foreground" />
+                                    <span>Sửa</span>
+                                  </Button>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    onClick={() => setDeleteWarehouse(k)}
+                                    className="h-8 text-xs font-semibold gap-1 px-2 text-destructive hover:bg-destructive/10 cursor-pointer"
+                                    title="Xóa kho"
+                                  >
+                                    <Trash2 className="size-3.5" />
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+
+                    {/* Desktop Pagination Footer */}
+                    <div className="px-4 py-3 border-t border-border/70 bg-muted/10 flex items-center justify-between flex-wrap gap-3 text-xs text-muted-foreground select-none">
+                      <div className="flex items-center gap-3 flex-wrap">
+                        <PaginationInfo
+                          startIndex={warehouseStartIndex}
+                          endIndex={warehouseEndIndex}
+                          totalItems={totalWarehouseItems}
+                          label="kho"
+                        />
+                        <PaginationLimitSelect
+                          limit={warehouseLimit}
+                          onLimitChange={(val) => {
+                            setWarehouseLimit(val);
+                            setWarehousePage(1);
+                          }}
+                          options={[5, 10, 20]}
+                        />
+                      </div>
+
+                      <Pagination
+                        currentPage={warehousePage}
+                        totalPages={warehouseTotalPages}
+                        onPageChange={setWarehousePage}
+                        showFirstLast
+                      />
+                    </div>
+                  </div>
+
+                  {/* Mobile Card List View */}
+                  <div className="flex flex-col gap-2.5 md:hidden">
+                    {paginatedWarehouses.map((k) => (
+                      <div
+                        key={k.id}
+                        className={cn(
+                          'rounded-2xl border p-3.5 bg-card flex flex-col gap-2.5 shadow-2xs transition-all',
+                          k.la_mac_dinh
+                            ? 'border-amber-500/40 bg-amber-500/[0.02]'
+                            : 'border-border/70'
+                        )}
+                      >
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex items-center gap-2.5 min-w-0">
+                            <div
+                              className={cn(
+                                'size-8 rounded-xl flex items-center justify-center shrink-0 border',
+                                k.la_mac_dinh
+                                  ? 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
+                                  : 'bg-muted/40 border-border/60 text-muted-foreground'
+                              )}
+                            >
+                              <Building2 className="size-4" />
+                            </div>
+                            <div className="flex flex-col min-w-0">
+                              <span className="font-bold text-xs text-foreground truncate">
+                                {k.ten}
+                              </span>
+                              <div className="flex items-center gap-1.5 mt-0.5">
+                                {k.la_mac_dinh && (
+                                  <Badge
+                                    variant="secondary"
+                                    className="gap-1 text-[9px] font-bold text-amber-600 dark:text-amber-400 bg-amber-500/10 border-amber-500/30 px-1.5 py-0"
+                                  >
+                                    <Star className="size-2.5 fill-amber-500 text-amber-500" />
+                                    Mặc định
+                                  </Badge>
+                                )}
+                                <Badge
+                                  variant="outline"
+                                  className={cn(
+                                    'text-[9px] font-bold px-1.5 py-0',
+                                    k.trang_thai === 'hoat_dong'
+                                      ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600'
+                                      : 'border-muted bg-muted/60 text-muted-foreground'
+                                  )}
+                                >
+                                  {k.trang_thai === 'hoat_dong' ? 'Hoạt động' : 'Tạm dừng'}
+                                </Badge>
+                              </div>
+                            </div>
                           </div>
                         </div>
 
-                        {/* Action Buttons */}
+                        <div className="flex items-start gap-1.5 text-xs text-muted-foreground pl-1">
+                          <MapPin className="size-3.5 shrink-0 mt-0.5 text-muted-foreground/60" />
+                          <span className="line-clamp-2">
+                            {k.dia_chi || 'Chưa có thông tin địa chỉ'}
+                          </span>
+                        </div>
+
                         <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-border/40">
                           {!k.la_mac_dinh && (
                             <Button
@@ -840,10 +1078,10 @@ export const AdminSettingsPage: React.FC = () => {
                                   showToast.error('Lỗi khi đổi kho mặc định');
                                 }
                               }}
-                              className="h-8 text-xs font-semibold gap-1 text-muted-foreground hover:text-amber-600 px-2.5"
+                              className="h-8 text-xs font-semibold gap-1 text-muted-foreground hover:text-amber-600 px-2 cursor-pointer"
                             >
-                              <Star className="size-3.5" aria-hidden="true" />
-                              Đặt mặc định
+                              <Star className="size-3.5" />
+                              <span>Đặt mặc định</span>
                             </Button>
                           )}
                           <Button
@@ -858,23 +1096,67 @@ export const AdminSettingsPage: React.FC = () => {
                               });
                               setEditWarehouse(k);
                             }}
-                            className="h-8 text-xs font-semibold gap-1 px-2.5"
+                            className="h-8 text-xs font-semibold gap-1 px-2.5 cursor-pointer"
                           >
-                            <Pencil className="size-3.5" aria-hidden="true" />
-                            Sửa
+                            <Pencil className="size-3.5" />
+                            <span>Sửa</span>
                           </Button>
                           <Button
                             variant="ghost"
                             size="sm"
                             onClick={() => setDeleteWarehouse(k)}
-                            className="h-8 text-xs font-semibold gap-1 px-2 text-destructive hover:bg-destructive/10"
+                            className="h-8 text-xs font-semibold gap-1 px-2 text-destructive hover:bg-destructive/10 cursor-pointer"
                           >
-                            <Trash2 className="size-3.5" aria-hidden="true" />
+                            <Trash2 className="size-3.5" />
                           </Button>
                         </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                      </div>
+                    ))}
+
+                    {/* Mobile Pagination Footer */}
+                    <div className="p-3.5 rounded-2xl border border-border bg-card shadow-2xs flex flex-col gap-3 select-none">
+                      <div className="flex items-center justify-between text-xs text-muted-foreground">
+                        <PaginationInfo
+                          startIndex={warehouseStartIndex}
+                          endIndex={warehouseEndIndex}
+                          totalItems={totalWarehouseItems}
+                          label="kho"
+                        />
+                        <PaginationLimitSelect
+                          limit={warehouseLimit}
+                          onLimitChange={(val) => {
+                            setWarehouseLimit(val);
+                            setWarehousePage(1);
+                          }}
+                          options={[5, 10, 20]}
+                        />
+                      </div>
+
+                      <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/70">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setWarehousePage((p) => Math.max(p - 1, 1))}
+                          disabled={warehousePage === 1}
+                          className="h-8 px-3 rounded-lg text-xs cursor-pointer"
+                        >
+                          Trước
+                        </Button>
+                        <span className="text-xs font-bold text-foreground">
+                          Trang {warehousePage} / {warehouseTotalPages}
+                        </span>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => setWarehousePage((p) => Math.min(p + 1, warehouseTotalPages))}
+                          disabled={warehousePage >= warehouseTotalPages}
+                          className="h-8 px-3 rounded-lg text-xs cursor-pointer"
+                        >
+                          Tiếp
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
                 </div>
               )}
             </div>
