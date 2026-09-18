@@ -85,6 +85,7 @@ frontend/
 │   │   │   ├── tabs.tsx          # Tab phân nhóm chế độ làm việc
 │   │   │   ├── collapsible.tsx   # Đóng/mở chi tiết đơn hàng
 │   │   │   ├── scroll-area.tsx   # Khung cuộn mượt mà có custom scrollbar
+│   │   │   ├── pagination.tsx    # Phân trang UI (Next, Prev, Pages, Ellipsis)
 │   │   │   └── EmptyState.tsx    # Empty state minh họa SVG
 │   │   │
 │   │   ├── layout/               # Layout components
@@ -106,16 +107,19 @@ frontend/
 │   │   │   ├── RecordTimer.tsx   # Đồng hồ đếm giờ
 │   │   │   └── VideoPreview.tsx  # Xem lại 3 giây cuối + nút Lưu/Quay lại
 │   │   │
-│   │   └── upload/               # Upload queue items
-│   │       ├── QueueItem.tsx     # 1 item trong hàng đợi (status + progress)
-│   │       └── QueueSummary.tsx  # Bộ đếm tổng "12 video — 10 đã lưu, 2 chờ"
+│   │   ├── upload/               # Upload queue items
+│   │   │   ├── QueueItem.tsx     # 1 item trong hàng đợi (status + progress)
+│   │   │   └── QueueSummary.tsx  # Bộ đếm tổng "12 video — 10 đã lưu, 2 chờ"
+│   │   │
+│   │   └── video/                # Video player components
+│   │       └── CustomVideoPlayer.tsx # Custom HTML5 player (controls, PiP, shortcuts, Drive fallback)
 │   │
 │   ├── pages/                    # Route-level page components
 │   │   ├── LoginPage.tsx         # Đăng nhập (Mã NV + PIN)
 │   │   ├── HomePage.tsx          # Giao diện chính Quét & Quay Video
 │   │   ├── QueuePage.tsx         # Hàng đợi upload đồng bộ
 │   │   ├── HistoryPage.tsx       # Lịch sử biên bản & video
-│   │   ├── VideoDetailPage.tsx   # Chi tiết biên bản video
+│   │   ├── VideoDetailPage.tsx   # Chi tiết biên bản video (/history/:id)
 │   │   ├── UserSettingsPage.tsx  # Cài đặt người dùng cá nhân (/settings)
 │   │   ├── AdminSettingsPage.tsx # Cấu hình hệ thống toàn cục (/admin/settings)
 │   │   ├── AdminCarriersPage.tsx # Quản lý ĐVVC ListView phân trang (/admin/carriers)
@@ -148,14 +152,16 @@ frontend/
   <Route element={<ProtectedRoute />}>
     <Route element={<AppShell />}>
       <Route path="/" element={<HomePage />} />
-      <Route path="/scan" element={<ScanPage />} />
-      <Route path="/record" element={<RecordPage />} />
       <Route path="/queue" element={<QueuePage />} />
       <Route path="/history" element={<HistoryPage />} />
+      <Route path="/history/:id" element={<VideoDetailPage />} />
+      <Route path="/settings" element={<UserSettingsPage />} />
 
       {/* Admin only */}
-      <Route element={<AdminRoute />}>
-        <Route path="/settings" element={<SettingsPage />} />
+      <Route element={<AdminGuard />}>
+        <Route path="/admin/settings" element={<AdminSettingsPage />} />
+        <Route path="/admin/carriers" element={<AdminCarriersPage />} />
+        <Route path="/admin/employees" element={<AdminEmployeesPage />} />
       </Route>
     </Route>
   </Route>

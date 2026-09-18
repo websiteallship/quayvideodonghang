@@ -205,21 +205,32 @@ Backend tự động kích hoạt append 1 dòng mới vào Sheet trong backgrou
 
 ---
 
-## 9. Chính sách Retention & Cleanup (chi tiết)
+## 9. Chính sách Retention & Cleanup 2 Giai đoạn (Cập nhật)
 
-| Thời gian | Hành động |
-|---|---|
-| 0–6 tháng | Giữ đầy đủ video trên Drive + metadata trong D1 |
-| > 6 tháng | **Tự động xoá video trên Drive** (Cloudflare Workers Cron, chạy 2h sáng mỗi ngày). Metadata trong D1 giữ lại (đánh dấu `da_xoa_video`). |
-| Metadata | Giữ vĩnh viễn trong D1 (dung lượng rất nhỏ, không cần cleanup) |
+Hệ thống quản lý vòng đời video tự động theo **2 giai đoạn** độc lập (tính theo đơn vị **ngày**):
 
-**Cron trigger (wrangler.toml):**
-```
-[triggers]
-crons = ["0 2 * * *"]
-```
+| Giai đoạn | Thời gian mặc định | File trên Drive | Trạng thái D1 (`bien_ban`) | Cột L Google Sheet | Cột K Google Sheet |
+|:---:|:---:|:---:|:---:|:---:|:---:|
+| **Mới tải lên** | 0 – 30 ngày | Giữ nguyên | `da_upload` | `Đã lưu` | Giữ link video |
+| **Giai đoạn 1: Lưu trữ (Archive)** | Sau **30 ngày** (`retention_archive_days`) | **Giữ nguyên vẹn** (không xoá) | `da_luu_tru` | `Đã lưu trữ` | Giữ link video |
+| **Giai đoạn 2: Xoá vĩnh viễn (Delete)** | Sau **60 ngày** (`retention_delete_days`) | **Xoá file thật** trên Google Drive | `da_xoa` (clear `drive_file_id`) | `Đã xoá` | **Xoá link** (`""`) |
 
-**Logic:** Tìm bản ghi `da_upload` với `thoi_gian_upload < 6 tháng trước` → gọi Drive API xoá file → cập nhật D1.
+> **Lưu ý chuyển đổi cấu hình (Migration & Deprecation):**
+> - Khóa cấu hình cũ `retention_thang` chính thức được **deprecate**.
+> - Thay thế bằng 2 khóa mới trong bảng `cau_hinh`: `retention_archive_days` (mặc định `30`) và `retention_delete_days` (mặc định `60`).
+> - Hệ thống tự động fallback: Nếu chưa thiết lập khóa mới mà còn khóa `retention_thang`, hệ thống quy đổi `retention_thang * 30 ngày` cho archive.
+
+**Cơ chế thực thi:**
+1. **Cron Trigger tự động (`wrangler.toml`):**
+   ```toml
+   [triggers]
+   crons = ["0 2 * * *"] # 02:00 AM mỗi ngày
+   ```
+   Workers gọi `runRetentionCleanup(env)` theo lô (batch limit 50 video/lần) để tránh timeout tại Edge.
+2. **Kích hoạt thủ công (Manual Trigger):**
+   Admin có thể xem số lượng video chờ dọn dẹp và bấm **"Chạy dọn dẹp ngay"** trực tiếp từ trang Admin Settings qua API `POST /api/admin/retention/run`.
+3. **Đồng bộ Google Sheet:**
+   Sử dụng API `spreadsheets.values.batchUpdate` trong 1 request duy nhất để cập nhật cột K (link) và cột L (trạng thái) cho toàn bộ danh sách video xử lý.
 
 ---
 

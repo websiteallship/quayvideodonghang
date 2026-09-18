@@ -13,6 +13,11 @@ export interface SheetRowData {
   drive_file_name: string;
 }
 
+export interface SheetRetentionUpdate {
+  bienBanId: string;
+  action: 'archive' | 'delete';
+}
+
 export class SheetService {
   private driveService: DriveService;
   private sheetId: string;
@@ -72,4 +77,96 @@ export class SheetService {
       return false;
     }
   }
+
+  /**
+   * Cập nhật trạng thái và xoá link Drive (nếu xoá) cho danh sách biên bản trên Google Sheet
+   * Cột B là ID biên bản.
+   * Cột K là Link xem video.
+   * Cột L là Trạng thái ('Đã lưu' -> 'Đã lưu trữ' hoặc 'Đã xoá').
+   */
+  async updateRetentionStatuses(
+    updates: SheetRetentionUpdate[]
+  ): Promise<{ updatedCount: number; errors: string[] }> {
+    if (!this.sheetId || updates.length === 0) {
+      return { updatedCount: 0, errors: [] };
+    }
+
+    const errors: string[] = [];
+    try {
+      const accessToken = await this.driveService.getAccessToken();
+
+      // Đọc cột B (ID biên bản) từ Sheet để map ID sang số hàng (1-indexed)
+      const getUrl = `https://sheets.googleapis.com/v4/spreadsheets/${this.sheetId}/values/${encodeURIComponent('DuLieu!B:B')}`;
+      const getRes = await fetch(getUrl, {
+        headers: { Authorization: `Bearer ${accessToken}` }
+      });
+
+      if (!getRes.ok) {
+        const errText = await getRes.text();
+        errors.push(`Sheet get B:B failed: ${getRes.status} - ${errText}`);
+        return { updatedCount: 0, errors };
+      }
+
+      const getData = (await getRes.json()) as { values?: string[][] };
+      const rows = getData.values || [];
+
+      // Map bienBanId -> row index (1-indexed)
+      const idToRowMap = new Map<string, number>();
+      for (let i = 0; i < rows.length; i++) {
+        const idVal = rows[i]?.[0];
+        if (idVal) {
+          idToRowMap.set(idVal.trim(), i + 1);
+        }
+      }
+
+      const batchData: Array<{ range: string; values: string[][] }> = [];
+
+      for (const update of updates) {
+        const rowNum = idToRowMap.get(update.bienBanId.trim());
+        if (!rowNum) continue;
+
+        if (update.action === 'archive') {
+          batchData.push({
+            range: `DuLieu!L${rowNum}`,
+            values: [['Đã lưu trữ']]
+          });
+        } else if (update.action === 'delete') {
+          batchData.push({
+            range: `DuLieu!K${rowNum}:L${rowNum}`,
+            values: [['', 'Đã xoá']]
+          });
+        }
+      }
+
+      if (batchData.length === 0) {
+        return { updatedCount: 0, errors: [] };
+      }
+
+      const batchUrl = `https://sheets.googleapis.com/v4/spreadsheets/${this.sheetId}/values:batchUpdate`;
+      const batchRes = await fetch(batchUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          valueInputOption: 'USER_ENTERED',
+          data: batchData
+        })
+      });
+
+      if (!batchRes.ok) {
+        const errText = await batchRes.text();
+        errors.push(`Sheet batchUpdate failed: ${batchRes.status} - ${errText}`);
+        return { updatedCount: 0, errors };
+      }
+
+      return { updatedCount: batchData.length, errors: [] };
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      errors.push(`Sheet retention error: ${msg}`);
+      return { updatedCount: 0, errors };
+    }
+  }
 }
+

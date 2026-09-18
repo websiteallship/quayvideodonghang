@@ -37,9 +37,30 @@ export type CauHinhKey =
   | 'quay_lien_tuc'
   | 'watermark'
   | 'don_vi_vc_danh_sach'
+  | 'retention_archive_days'
+  | 'retention_delete_days'
   | 'retention_thang';
 
 export type CauHinhData = Partial<Record<CauHinhKey, string>>;
+
+export interface RetentionStatus {
+  retention_archive_days: number;
+  retention_delete_days: number;
+  retention_thang_deprecated?: number;
+  pending_archive_count: number;
+  pending_delete_count: number;
+  total_archived: number;
+  total_deleted: number;
+  last_run: string | null;
+}
+
+export interface RetentionRunResult {
+  archived_count: number;
+  deleted_count: number;
+  sheet_updated_count: number;
+  errors: string[];
+  execution_time_ms: number;
+}
 
 export interface DriveTestResult {
   ket_noi_ok: boolean;
@@ -49,3 +70,4 @@ export interface DriveTestResult {
   dung_luong_con_lai_gb: number;
   file_test_ok: boolean;
 }
+

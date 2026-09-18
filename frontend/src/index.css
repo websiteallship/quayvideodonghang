@@ -109,3 +109,29 @@ code {
   padding: 4px 8px;
   background: var(--code-bg);
 }
+
+@keyframes slideInRight {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideOutRight {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
+.mobile-menu-panel[data-state="open"] {
+  animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}
+
+.mobile-menu-panel[data-state="closed"] {
+  animation: slideOutRight 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+}

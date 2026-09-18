@@ -728,10 +728,10 @@ export const HistoryPage: React.FC = () => {
       {/* ------------------------------------------------------------------ */}
       {!isLoading && !loadError && items.length > 0 && (
         <>
-          <div className="hidden lg:block rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-card shadow-xs overflow-hidden">
+          <div className="hidden lg:block rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-card shadow-xs">
             <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="border-b border-border/80 bg-muted/30 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
+              <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm shadow-sm rounded-t-2xl">
+                <tr className="border-b border-border/80 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
                   <th className="py-3.5 px-4">Mã vận đơn</th>
                   <th className="py-3.5 px-3">Loại</th>
                   <th className="py-3.5 px-3">Người tạo</th>
@@ -843,7 +843,7 @@ export const HistoryPage: React.FC = () => {
             </table>
 
             {/* Desktop Pagination Footer */}
-            <div className="px-5 py-3.5 border-t border-border/80 bg-muted/10 flex items-center justify-between flex-wrap gap-4 text-xs text-muted-foreground">
+            <div className="sticky bottom-0 z-10 px-5 py-3.5 border-t border-border/80 bg-card flex items-center justify-between flex-wrap gap-4 text-xs text-muted-foreground rounded-b-2xl shadow-[0_-4px_15px_rgba(0,0,0,0.03)]">
               <div className="flex items-center gap-4 flex-wrap">
                 <PaginationInfo startIndex={startIndex} endIndex={endIndex} totalItems={totalItems} />
                 <PaginationLimitSelect 

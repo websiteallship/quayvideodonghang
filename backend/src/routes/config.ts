@@ -1,4 +1,4 @@
-import { Hono } from 'hono';
+import { Hono, Context } from 'hono';
 import { Env } from '../types/env';
 import { successResponse } from '../utils/response';
 
@@ -6,7 +6,7 @@ export const configRouter = new Hono<{
   Bindings: Env;
 }>();
 
-configRouter.get('/public', async (c) => {
+const handleGetPublicConfig = async (c: Context<{ Bindings: Env }>) => {
   let configs: Record<string, string> = {};
   try {
     const rows = await c.env.DB.prepare('SELECT khoa, gia_tri FROM cau_hinh').all<{ khoa: string; gia_tri: string }>();
@@ -50,13 +50,17 @@ configRouter.get('/public', async (c) => {
     bitrate_mbps: parseFloat(configs.bitrate_mbps || '2.5'),
     watermark: configs.watermark !== 'false',
     auto_scan: configs.auto_scan === 'true',
-    quay_lien_tuc: configs.quay_lien_tuc === 'true',
+    retention_archive_days: parseInt(configs.retention_archive_days || (configs.retention_thang ? String(parseInt(configs.retention_thang, 10) * 30) : '30'), 10),
+    retention_delete_days: parseInt(configs.retention_delete_days || '60', 10),
     retention_thang: parseInt(configs.retention_thang || '6', 10),
     don_vi_vc: donViVcList,
     max_duration_seconds: 600,
     chunk_size: parseInt(c.env.UPLOAD_CHUNK_SIZE || '5242880', 10)
   });
-});
+};
+
+configRouter.get('/', handleGetPublicConfig);
+configRouter.get('/public', handleGetPublicConfig);
 
 configRouter.get('/kho-hang', async (c) => {
   try {

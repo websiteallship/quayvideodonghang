@@ -27,7 +27,7 @@ CREATE TABLE IF NOT EXISTS bien_ban (
     thoi_luong_video INTEGER,
     kich_thuoc_bytes INTEGER,
     mime_type        TEXT DEFAULT 'video/webm',
-    trang_thai       TEXT NOT NULL DEFAULT 'cho_upload' CHECK(trang_thai IN ('cho_upload', 'dang_upload', 'da_upload', 'loi')),
+    trang_thai       TEXT NOT NULL DEFAULT 'cho_upload' CHECK(trang_thai IN ('cho_upload', 'dang_upload', 'da_upload', 'loi', 'da_luu_tru', 'da_xoa')),
     drive_file_id    TEXT,
     drive_file_name  TEXT,
     loi_message      TEXT,

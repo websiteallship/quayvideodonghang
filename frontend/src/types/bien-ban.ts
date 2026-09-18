@@ -6,7 +6,7 @@ export type BuiltInCarrier = 'GHN' | 'ViettelPost' | 'BestExpress' | 'NhatTin' |
 /** Cho phép built-in + bất kỳ carrier string nào do Admin thêm */
 export type DonViVanChuyen = BuiltInCarrier | (string & {});
 
-export type UploadStatus = 'cho_upload' | 'dang_upload' | 'da_upload' | 'loi';
+export type UploadStatus = 'cho_upload' | 'dang_upload' | 'da_upload' | 'loi' | 'da_luu_tru' | 'da_xoa';
 
 export type ThietBiType = 'mobile' | 'pc_webcam' | 'laptop';
 

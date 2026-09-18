@@ -406,4 +406,27 @@ export class DriveService {
       headers: responseHeaders
     });
   }
+
+  /**
+   * Xoá vĩnh viễn file trên Google Drive (hỗ trợ cả Shared Drive với supportsAllDrives=true).
+   * Trả về true nếu xoá thành công hoặc file đã không còn tồn tại (404).
+   */
+  async deleteFile(fileId: string): Promise<boolean> {
+    const accessToken = await this.getAccessToken();
+    const res = await fetch(
+      `https://www.googleapis.com/drive/v3/files/${fileId}?supportsAllDrives=true`,
+      {
+        method: 'DELETE',
+        headers: { Authorization: `Bearer ${accessToken}` }
+      }
+    );
+
+    if (res.ok || res.status === 204 || res.status === 404) {
+      return true;
+    }
+
+    const errText = await res.text();
+    throw new Error(`Drive delete error: ${res.status} - ${errText}`);
+  }
 }
+

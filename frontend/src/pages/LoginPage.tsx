@@ -76,7 +76,7 @@ export const LoginPage: React.FC = () => {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
-          ma_nhan_vien: maNhanVien.trim().toUpperCase(),
+          ma_nhan_vien: maNhanVien.trim(),
           pin: fullPin
         })
       });

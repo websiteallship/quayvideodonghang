@@ -15,6 +15,7 @@ import {
   KhoHangUpdateSchema
 } from '../types/schemas';
 import { hashPin } from '../utils/hash';
+import { getRetentionStatus, runRetentionCleanup } from '../services/retention-service';
 
 export const adminRouter = new Hono<{
   Bindings: Env;
@@ -421,6 +422,29 @@ adminRouter.patch('/cau-hinh/batch', zValidator('json', CauHinhBatchUpdateSchema
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : 'Database error';
     return errorResponse(c, 'DATABASE_ERROR', message, 500);
+  }
+});
+
+// ---------------------------------------------------------------------------
+// 2.6 Quản lý Vòng đời & Dọn dẹp Video (Data Retention)
+// ---------------------------------------------------------------------------
+adminRouter.get('/retention/status', async (c) => {
+  try {
+    const status = await getRetentionStatus(c.env);
+    return successResponse(c, status);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Lỗi lấy trạng thái retention';
+    return errorResponse(c, 'DATABASE_ERROR', message, 500);
+  }
+});
+
+adminRouter.post('/retention/run', async (c) => {
+  try {
+    const result = await runRetentionCleanup(c.env);
+    return successResponse(c, result);
+  } catch (err: unknown) {
+    const message = err instanceof Error ? err.message : 'Lỗi thực thi retention cleanup';
+    return errorResponse(c, 'INTERNAL_SERVER_ERROR', message, 500);
   }
 });
 

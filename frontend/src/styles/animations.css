@@ -108,3 +108,52 @@
 .animate-slide-down {
   animation: slideInDown 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
+
+/* ==========================================================================
+   MOBILE MENU / SHEET SLIDE IN/OUT RIGHT ANIMATIONS
+   ========================================================================== */
+@keyframes slideInFromRight {
+  0% {
+    transform: translate3d(100%, 0, 0);
+  }
+  100% {
+    transform: translate3d(0, 0, 0);
+  }
+}
+
+@keyframes slideOutToRight {
+  0% {
+    transform: translate3d(0, 0, 0);
+  }
+  100% {
+    transform: translate3d(100%, 0, 0);
+  }
+}
+
+[data-slot="sheet-content"][data-state="open"],
+.sheet-slide-right[data-state="open"] {
+  animation: slideInFromRight 0.32s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform;
+}
+
+[data-slot="sheet-content"][data-state="closed"],
+.sheet-slide-right[data-state="closed"] {
+  animation: slideOutToRight 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards !important;
+  will-change: transform;
+}
+
+/* Page Transition */
+@keyframes pageEnter {
+  0% {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.page-enter-active {
+  animation: pageEnter 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}

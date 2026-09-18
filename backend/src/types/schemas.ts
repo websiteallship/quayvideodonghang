@@ -85,7 +85,8 @@ export const NhanVienQuerySchema = z.object({
 export const CauHinhUpdateSchema = z.object({
   khoa: z.enum([
     'drive_folder_id', 'sheet_id', 'do_phan_giai', 'bitrate_mbps',
-    'auto_scan', 'quay_lien_tuc', 'watermark', 'don_vi_vc_danh_sach', 'retention_thang'
+    'auto_scan', 'quay_lien_tuc', 'watermark', 'don_vi_vc_danh_sach',
+    'retention_archive_days', 'retention_delete_days', 'retention_thang'
   ]),
   gia_tri: z.string().min(0)
 });
@@ -94,7 +95,8 @@ export const CauHinhBatchUpdateSchema = z.object({
   configs: z.record(
     z.enum([
       'drive_folder_id', 'sheet_id', 'do_phan_giai', 'bitrate_mbps',
-      'auto_scan', 'quay_lien_tuc', 'watermark', 'don_vi_vc_danh_sach', 'retention_thang'
+      'auto_scan', 'quay_lien_tuc', 'watermark', 'don_vi_vc_danh_sach',
+      'retention_archive_days', 'retention_delete_days', 'retention_thang'
     ]),
     z.string()
   )

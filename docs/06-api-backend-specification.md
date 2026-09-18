@@ -448,14 +448,19 @@ Lấy cấu hình hiện tại.
     "auto_scan": false,
     "quay_lien_tuc": false,
     "watermark": true,
-    "don_vi_vc_mac_dinh": ["GHN", "GHTK", "J&T", "VTP", "Ninja Van", "Shopee Express", "Best Express"]
+    "don_vi_vc_mac_dinh": ["GHN", "GHTK", "J&T", "VTP", "Ninja Van", "Shopee Express", "Best Express"],
+    "retention_archive_days": "30",
+    "retention_delete_days": "60",
+    "retention_thang": "6"
   }
 }
 ```
 
+> **Lưu ý**: Khóa `retention_thang` đã bị **deprecate**. Hệ thống sử dụng 2 khóa `retention_archive_days` (mặc định 30) và `retention_delete_days` (mặc định 60).
+
 #### `PUT /api/admin/cau-hinh`
 
-Cập nhật cấu hình.
+Cập nhật cấu hình đơn lẻ hoặc theo batch.
 
 #### `POST /api/admin/cau-hinh/test-drive`
 
@@ -470,6 +475,51 @@ Kiểm tra kết nối Google Drive (tạo 1 file test, xoá ngay).
     "dung_luong_con_lai_gb": 456.7,
     "loai_drive": "shared_drive",
     "ten_drive": "DongGoi_Videos"
+  }
+}
+```
+
+---
+
+### 3.7 Admin — Quản lý Vòng đời & Lưu trữ Video (Data Retention)
+
+> Yêu cầu: `vai_tro = 'admin'`
+
+#### `GET /api/admin/retention/status`
+
+Lấy trạng thái tổng quan về hàng đợi dọn dẹp, số video chờ lưu trữ, số video chờ xoá.
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "retention_archive_days": 30,
+    "retention_delete_days": 60,
+    "retention_thang_deprecated": 6,
+    "pending_archive_count": 12,
+    "pending_delete_count": 3,
+    "total_archived": 150,
+    "total_deleted": 45,
+    "last_run": "2026-09-18T02:00:00.000Z"
+  }
+}
+```
+
+#### `POST /api/admin/retention/run`
+
+Kích hoạt dọn dẹp và lưu trữ thủ công ngay lập tức (không cần chờ Cron Trigger 02:00 AM).
+
+**Response 200:**
+```json
+{
+  "success": true,
+  "data": {
+    "archived_count": 12,
+    "deleted_count": 3,
+    "sheet_updated_count": 15,
+    "errors": [],
+    "execution_time_ms": 1240
   }
 }
 ```

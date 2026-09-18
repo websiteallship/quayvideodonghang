@@ -8,6 +8,7 @@ import { dashboardRouter } from './routes/dashboard';
 import { configRouter } from './routes/config';
 import { adminRouter } from './routes/admin';
 import { errorResponse, successResponse } from './utils/response';
+import { runRetentionCleanup } from './services/retention-service';
 
 const app = new Hono<{ Bindings: Env }>();
 
@@ -47,13 +48,20 @@ app.onError((err, c) => {
   return errorResponse(c, 'INTERNAL_SERVER_ERROR', err.message || 'Lỗi xử lý máy chủ nội bộ', 500);
 });
 
-// Cron Trigger Handler (Dọn dẹp log hoặc video tạm theo cron)
+// Cron Trigger Handler (Dọn dẹp vòng đời video theo cron định kỳ)
 export default {
   fetch: app.fetch,
   async scheduled(event: ScheduledEvent, env: Env, ctx: ExecutionContext) {
     ctx.waitUntil(
       (async () => {
-        console.log(`[CRON_TRIGGER] Chạy lúc ${new Date(event.scheduledTime).toISOString()}`);
+        const timeStr = new Date(event.scheduledTime).toISOString();
+        console.log(`[CRON_TRIGGER] Bắt đầu retention cleanup lúc ${timeStr}`);
+        try {
+          const result = await runRetentionCleanup(env);
+          console.log('[CRON_TRIGGER] Hoàn thành retention cleanup:', JSON.stringify(result));
+        } catch (err) {
+          console.error('[CRON_TRIGGER] Lỗi retention cleanup:', err);
+        }
       })()
     );
   }

@@ -68,7 +68,7 @@ export function WorkModeSelector({
           aria-checked={selectedMode === 'dong_goi'}
           className={`group relative flex items-center gap-3.5 min-h-[64px] p-3.5 sm:p-4 rounded-xl border-2 cursor-pointer text-left transition-all font-sans bg-card text-card-foreground hover:shadow-md active:scale-[0.99] ${
             selectedMode === 'dong_goi'
-              ? 'border-primary bg-primary/10 shadow-[0_0_16px_rgba(234,88,12,0.15)] ring-1 ring-primary/30'
+              ? 'border-primary bg-primary/10 shadow-[0_0_16px_rgba(37,99,235,0.15)] ring-1 ring-primary/30'
               : 'border-border hover:border-primary/50'
           }`}
           onClick={() => onSelectMode('dong_goi')}

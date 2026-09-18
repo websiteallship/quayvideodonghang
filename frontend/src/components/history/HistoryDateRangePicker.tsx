@@ -65,18 +65,39 @@ export function HistoryDateRangePicker({
             )}
           </Button>
         </PopoverTrigger>
-        <PopoverContent className="w-auto p-0 rounded-2xl shadow-xl border-slate-100 dark:border-slate-800 bg-card" align="start">
+        <PopoverContent 
+          className="w-[calc(100vw-2rem)] max-w-[340px] sm:max-w-none sm:w-auto p-0 rounded-2xl shadow-xl border border-border bg-card overflow-hidden" 
+          align="start"
+          sideOffset={6}
+        >
           <div className="flex flex-col sm:flex-row">
-            {/* Presets Sidebar */}
-            <div className="flex flex-col border-b sm:border-b-0 sm:border-r border-slate-100 dark:border-slate-800 p-2 sm:w-36 max-h-40 sm:max-h-[320px] overflow-y-auto">
+            {/* Presets Grid (Mobile: 3-column clean layout, no truncation) */}
+            <div className="grid grid-cols-3 gap-1.5 p-2.5 bg-muted/20 border-b border-border sm:hidden">
               {PRESETS.map((preset) => (
                 <button
                   key={preset.label}
                   type="button"
-                  className="px-3 py-2 text-left text-xs sm:text-sm font-medium hover:bg-muted rounded-xl transition-colors truncate text-slate-700 dark:text-slate-300 hover:text-foreground"
+                  className="px-1.5 py-1.5 text-center text-[11px] font-medium bg-card hover:bg-muted text-foreground rounded-lg transition-colors border border-border/60 active:scale-[0.98] cursor-pointer"
                   onClick={() => {
                     setDate(preset.getValue());
-                    setIsOpen(false); // Optionally close after selecting a preset
+                    setIsOpen(false);
+                  }}
+                >
+                  {preset.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Presets Sidebar (Desktop) */}
+            <div className="hidden sm:flex sm:flex-col gap-0.5 border-r border-border p-2 sm:w-36 sm:max-h-[340px] sm:overflow-y-auto bg-muted/10">
+              {PRESETS.map((preset) => (
+                <button
+                  key={preset.label}
+                  type="button"
+                  className="px-3 py-2 text-left text-xs font-medium text-slate-700 dark:text-slate-300 hover:text-foreground hover:bg-muted rounded-xl transition-colors truncate cursor-pointer"
+                  onClick={() => {
+                    setDate(preset.getValue());
+                    setIsOpen(false);
                   }}
                 >
                   {preset.label}
@@ -85,7 +106,7 @@ export function HistoryDateRangePicker({
             </div>
             
             {/* Calendar */}
-            <div className="p-2">
+            <div className="p-3 pb-4 flex items-center justify-center">
               <Calendar
                 mode="range"
                 defaultMonth={date?.from}
@@ -93,7 +114,7 @@ export function HistoryDateRangePicker({
                 onSelect={setDate}
                 numberOfMonths={1}
                 locale={vi}
-                className="bg-transparent"
+                className="bg-transparent p-0"
               />
             </div>
           </div>

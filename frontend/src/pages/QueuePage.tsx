@@ -19,6 +19,7 @@ import {
   Download,
   Check
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Pagination } from '@/components/ui/pagination';
 import { useUploadQueue } from '@/hooks/use-upload-queue';
 import { useAuthStore } from '@/stores/auth-store';
@@ -26,7 +27,6 @@ import { Badge } from '@/components/ui/badge';
 import { EmptyState } from '@/components/ui/EmptyState';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { SessionRecoveryModal } from '@/components/auth/SessionRecoveryModal';
 import { Card } from '@/components/ui/card';
 import { Progress } from '@/components/ui/progress';
@@ -871,120 +871,127 @@ export const QueuePage: React.FC = () => {
   }, [uploadTargets, uploadSingle, processAll, uploadSelected, queue, checkTokenValid]);
 
   return (
-    <div className="flex flex-col gap-3 pb-2 data-[has-selection=true]:pb-20 w-full" data-has-selection={selectedIds.size > 0}>
+    <div className="flex flex-col gap-2.5 pb-2 data-[has-selection=true]:pb-20 w-full" data-has-selection={selectedIds.size > 0}>
       {/* 1. Top Queue Header */}
-      <div className="flex justify-between items-start flex-wrap gap-3 mb-1">
-        <div>
-          <h2 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
-            Hàng đợi tải lên (Upload Queue)
+      <div className="flex justify-between items-center gap-2 mb-0.5">
+        <div className="flex-1 min-w-0">
+          <h2 className="text-lg lg:text-3xl font-bold tracking-tight text-foreground truncate">
+            Hàng đợi tải lên
           </h2>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-sm text-muted-foreground mt-1 hidden lg:block">
             Tự động lưu tạm video vào bộ nhớ IndexedDB và đồng bộ lên Google Drive khi có mạng
           </p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1.5 shrink-0">
           {(pendingCount > 0 || errorCount > 0) && (
             <Button
               onClick={handleRequestUploadAll}
               disabled={isSyncing}
-              className="h-10 px-4 rounded-xl font-semibold shadow-xs"
+              size="sm"
+              className="h-8 px-2.5 rounded-lg font-semibold shadow-xs text-[11px] sm:text-xs"
             >
-              <UploadCloud size={16} className="mr-2" />
-              {isSyncing ? 'Đang tải...' : `Tải lên tất cả (${pendingCount + errorCount})`}
+              <UploadCloud size={14} className="sm:mr-1.5" />
+              <span className="hidden sm:inline">{isSyncing ? 'Đang tải...' : `Tải lên tất cả (${pendingCount + errorCount})`}</span>
             </Button>
           )}
           {completedCount > 0 && (
             <Button
               variant="secondary"
+              size="sm"
               onClick={() => removeCompleted()}
-              className="h-10 px-3 rounded-xl font-semibold shadow-xs"
+              className="h-8 px-2.5 rounded-lg font-semibold shadow-xs text-[11px] sm:text-xs"
             >
-              <Trash2 size={16} className="mr-1.5" />
-              Dọn dẹp
+              <Trash2 size={14} className="sm:mr-1.5 text-destructive" />
+              <span className="hidden sm:inline text-destructive">Dọn dẹp</span>
             </Button>
           )}
           <Button
             variant="secondary"
+            size="sm"
             onClick={() => loadQueue()}
-            className="h-10 px-3 rounded-xl font-semibold shadow-xs"
+            className="h-8 w-8 p-0 rounded-lg font-semibold shadow-xs flex items-center justify-center shrink-0"
             title="Làm mới hàng đợi"
           >
-            <RefreshCw size={16} />
+            <RefreshCw size={14} />
           </Button>
         </div>
       </div>
 
-      {/* 2. Metric Cards Grid */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 lg:gap-4 mb-2">
-        <div className="p-3 lg:p-4 rounded-2xl border border-border bg-card shadow-xs flex items-center gap-2.5 lg:gap-3">
-          <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
-            <UploadCloud className="w-4 h-4 lg:w-5 lg:h-5" />
+      {/* 2. Metric Cards Grid (Compact on mobile) */}
+      <div className="grid grid-cols-4 gap-2 lg:gap-4 mb-1">
+        <div className="p-2 lg:p-4 rounded-xl border border-border bg-card shadow-xs flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-center lg:text-left">
+          <div className="lg:w-10 lg:h-10 rounded-lg lg:bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
+            <UploadCloud className="w-5 h-5" />
           </div>
-          <div>
-            <div className="text-[10px] lg:text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Đang tải</div>
-            <div className="text-sm lg:text-xl font-bold text-foreground">{uploadingCount} video</div>
-          </div>
-        </div>
-
-        <div className="p-3 lg:p-4 rounded-2xl border border-border bg-card shadow-xs flex items-center gap-2.5 lg:gap-3">
-          <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
-            <Clock className="w-4 h-4 lg:w-5 lg:h-5" />
-          </div>
-          <div>
-            <div className="text-[10px] lg:text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Chờ tải</div>
-            <div className="text-sm lg:text-xl font-bold text-foreground">{pendingCount + errorCount} video</div>
+          <div className="min-w-0">
+            <div className="hidden lg:block text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Đang tải</div>
+            <div className="text-sm lg:text-xl font-bold text-foreground leading-none lg:mt-0.5">{uploadingCount} <span className="hidden lg:inline text-sm font-normal text-muted-foreground">video</span></div>
+            <div className="lg:hidden text-[9px] text-muted-foreground font-medium uppercase tracking-tighter mt-1 truncate">Đang tải</div>
           </div>
         </div>
 
-        <div className="p-3 lg:p-4 rounded-2xl border border-border bg-card shadow-xs flex items-center gap-2.5 lg:gap-3">
-          <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
-            <Check className="w-4 h-4 lg:w-5 lg:h-5" />
+        <div className="p-2 lg:p-4 rounded-xl border border-border bg-card shadow-xs flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-center lg:text-left">
+          <div className="lg:w-10 lg:h-10 rounded-lg lg:bg-amber-500/10 text-amber-600 flex items-center justify-center shrink-0">
+            <Clock className="w-5 h-5" />
           </div>
-          <div>
-            <div className="text-[10px] lg:text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Đã tải xong</div>
-            <div className="text-sm lg:text-xl font-bold text-foreground">{completedCount} video</div>
+          <div className="min-w-0">
+            <div className="hidden lg:block text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Chờ tải</div>
+            <div className="text-sm lg:text-xl font-bold text-foreground leading-none lg:mt-0.5">{pendingCount + errorCount} <span className="hidden lg:inline text-sm font-normal text-muted-foreground">video</span></div>
+            <div className="lg:hidden text-[9px] text-muted-foreground font-medium uppercase tracking-tighter mt-1 truncate">Chờ tải</div>
           </div>
         </div>
 
-        <div className="p-3 lg:p-4 rounded-2xl border border-border bg-card shadow-xs flex items-center gap-2.5 lg:gap-3">
-          <div className="w-8 h-8 lg:w-10 lg:h-10 rounded-xl bg-slate-500/10 text-slate-600 flex items-center justify-center shrink-0">
-            <HardDrive className="w-4 h-4 lg:w-5 lg:h-5" />
+        <div className="p-2 lg:p-4 rounded-xl border border-border bg-card shadow-xs flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-center lg:text-left">
+          <div className="lg:w-10 lg:h-10 rounded-lg lg:bg-emerald-500/10 text-emerald-600 flex items-center justify-center shrink-0">
+            <Check className="w-5 h-5" />
           </div>
-          <div>
-            <div className="text-[10px] lg:text-[11px] text-muted-foreground font-medium uppercase tracking-wider">IndexedDB</div>
-            <div className="text-sm lg:text-xl font-bold text-foreground">
-              {storageEstimate?.usage ? formatBytes(storageEstimate.usage) : '0 B'}
+          <div className="min-w-0">
+            <div className="hidden lg:block text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Đã xong</div>
+            <div className="text-sm lg:text-xl font-bold text-foreground leading-none lg:mt-0.5">{completedCount} <span className="hidden lg:inline text-sm font-normal text-muted-foreground">video</span></div>
+            <div className="lg:hidden text-[9px] text-muted-foreground font-medium uppercase tracking-tighter mt-1 truncate">Đã xong</div>
+          </div>
+        </div>
+
+        <div className="p-2 lg:p-4 rounded-xl border border-border bg-card shadow-xs flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-center lg:text-left">
+          <div className="lg:w-10 lg:h-10 rounded-lg lg:bg-slate-500/10 text-slate-600 flex items-center justify-center shrink-0">
+            <HardDrive className="w-5 h-5" />
+          </div>
+          <div className="min-w-0 max-w-full">
+            <div className="hidden lg:block text-[11px] text-muted-foreground font-medium uppercase tracking-wider">IndexedDB</div>
+            <div className="text-sm lg:text-xl font-bold text-foreground leading-none tracking-tighter lg:mt-0.5 truncate">
+              {storageEstimate?.usage ? formatBytes(storageEstimate.usage).replace(' ', '') : '0B'}
             </div>
+            <div className="lg:hidden text-[9px] text-muted-foreground font-medium uppercase tracking-tighter mt-1 truncate">Bộ nhớ</div>
           </div>
         </div>
       </div>
 
       {/* Storage warning alert */}
       {storageWarning && (
-        <div className="alert-banner alert-banner--error" style={{ padding: '8px 12px', fontSize: '11px' }}>
-          <AlertTriangle size={15} style={{ flexShrink: 0 }} />
+        <div className="alert-banner alert-banner--error" style={{ padding: '6px 10px', fontSize: '11px' }}>
+          <AlertTriangle size={14} style={{ flexShrink: 0 }} />
           <span>{storageWarning}</span>
         </div>
       )}
 
       {/* 3. Global Syncing Progress Banner (When syncing) */}
       {isSyncing && (
-        <Card className="flex flex-col gap-2.5 p-3 bg-blue-500/10 border-blue-500/20">
+        <Card className="flex flex-col gap-2 p-2.5 bg-blue-500/10 border-blue-500/20">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-1.5 text-xs font-semibold text-blue-500">
-              <UploadCloud size={15} />
+            <div className="flex items-center gap-1.5 text-[11px] sm:text-xs font-semibold text-blue-500">
+              <UploadCloud size={14} />
               <span>
-                Đang đồng bộ Google Drive ({syncedInSession}/{totalToSync || 1} video)
+                Đang đồng bộ ({syncedInSession}/{totalToSync || 1})
               </span>
             </div>
             <Button
               variant="outline"
               size="sm"
               onClick={abortSync}
-              className="h-6 px-2 text-[11px] border-blue-200 hover:bg-blue-100 text-blue-700 bg-white/50"
+              className="h-6 px-2 text-[10px] sm:text-[11px] border-blue-200 hover:bg-blue-100 text-blue-700 bg-white/50"
             >
-              <Pause size={11} className="mr-1" />
+              <Pause size={10} className="mr-1" />
               Tạm dừng
             </Button>
           </div>
@@ -995,57 +1002,66 @@ export const QueuePage: React.FC = () => {
         </Card>
       )}
 
-      {/* 4. TYPE SEGMENTED FILTER BAR (Tabs) */}
-      <Tabs
-        value={filterType}
-        onValueChange={(val) => setFilterType(val as FilterType)}
-        className="w-full mt-1"
-      >
-        <TabsList className="w-full justify-start h-auto p-1 bg-muted/50 rounded-lg flex-wrap">
-          <TabsTrigger value="all" className="flex-1 min-w-[100px] h-10 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md">
-            <Check size={16} className="text-primary" />
-            <span className="font-semibold">Tất cả</span>
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] rounded-full">{queue.length}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="dong_goi" className="flex-1 min-w-[100px] h-10 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md">
-            <Package size={16} className="text-indigo-500" />
-            <span className="font-semibold">Đóng gói</span>
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] rounded-full">{dongGoiCount}</Badge>
-          </TabsTrigger>
-          <TabsTrigger value="khui_hang" className="flex-1 min-w-[100px] h-10 gap-2 data-[state=active]:bg-background data-[state=active]:shadow-sm rounded-md">
-            <PackageOpen size={16} className="text-amber-500" />
-            <span className="font-semibold">Khui hàng</span>
-            <Badge variant="secondary" className="ml-1 h-5 px-1.5 text-[10px] rounded-full">{khuiHangCount}</Badge>
-          </TabsTrigger>
-        </TabsList>
-      </Tabs>
+      {/* 4. Filter & Search Row (HistoryPage Layout Style) */}
+      <div className="flex flex-col lg:flex-row lg:items-center lg:p-1.5 lg:rounded-2xl lg:border lg:border-slate-200/90 dark:lg:border-slate-800 lg:bg-card lg:shadow-xs gap-2 lg:gap-3 mt-1 lg:mt-2">
+        {/* Type Filter (Segmented Pills) */}
+        <div className="inline-flex bg-muted/60 p-1 rounded-xl border border-border/60 shrink-0 w-full lg:w-auto overflow-x-auto no-scrollbar">
+          {[
+            { id: 'all' as const, label: 'Tất cả', count: queue.length, icon: null },
+            { id: 'dong_goi' as const, label: 'Đóng gói', count: dongGoiCount, icon: <Package size={14} className="text-blue-500" /> },
+            { id: 'khui_hang' as const, label: 'Khui hàng', count: khuiHangCount, icon: <PackageOpen size={14} className="text-amber-500" /> },
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              type="button"
+              onClick={() => setFilterType(tab.id)}
+              className={cn(
+                'flex-1 lg:flex-none px-3 lg:px-4 py-1.5 lg:py-2 rounded-lg text-[11px] lg:text-xs font-semibold flex items-center justify-center gap-1.5 transition-all cursor-pointer whitespace-nowrap',
+                filterType === tab.id
+                  ? 'bg-card text-foreground shadow-xs border border-border/70'
+                  : 'text-muted-foreground hover:text-foreground'
+              )}
+            >
+              {tab.icon}
+              <span>{tab.label}</span>
+              <span className="px-1.5 py-0.5 rounded-full text-[9px] lg:text-[10px] bg-muted font-bold text-foreground">
+                ({tab.count})
+              </span>
+            </button>
+          ))}
+        </div>
 
-      {/* 5. Search Bar (Clean SaaS Form Input) */}
-      <div className="relative">
-        <Input
-          type="text"
-          placeholder="Tìm mã vận đơn, đơn vị vận chuyển…"
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="w-full h-[42px] pl-9 pr-8 text-[13px] bg-background border-border shadow-sm focus-visible:ring-primary"
-        />
-        <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
-        {searchQuery && (
-          <button
-            onClick={() => setSearchQuery('')}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 rounded-md hover:bg-muted transition-colors border-none bg-transparent cursor-pointer"
-            aria-label="Xóa tìm kiếm"
-          >
-            <X size={14} />
-          </button>
-        )}
+        {/* Search */}
+        <div className="relative flex-1 lg:max-w-md lg:ml-auto">
+          <Input
+            type="text"
+            placeholder="Tìm theo mã vận đơn..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="w-full h-8 lg:h-10 pl-8 pr-8 lg:pl-9 lg:pr-9 text-[11px] lg:text-xs font-mono bg-background lg:bg-muted/30 border-border lg:rounded-xl focus-visible:ring-2 focus-visible:ring-blue-500/20 focus-visible:border-blue-500 rounded-lg shadow-sm lg:shadow-none"
+          />
+          <Search size={14} className="absolute left-2.5 lg:left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+          {searchQuery && (
+            <button
+              onClick={() => setSearchQuery('')}
+              className="absolute right-1 lg:right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground p-1.5 rounded-md hover:bg-muted transition-colors border-none bg-transparent cursor-pointer"
+            >
+              <X size={14} />
+            </button>
+          )}
+        </div>
       </div>
 
-      {/* 6. Status Filter Horizontal Pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar">
+      {/* 5. Status Filter Horizontal Pills */}
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar mt-0.5">
         {[
-          { id: 'all' as const, label: 'Tất cả trạng thái', count: queue.length, dot: null },
-          { id: 'cho_upload' as const, label: 'Chờ tải', count: pendingCount, dot: 'bg-amber-500' },
+          { id: 'all' as const, label: 'Tất cả', count: queue.length },
+          {
+            id: 'cho_upload' as const,
+            label: 'Chờ tải',
+            count: pendingCount,
+            icon: (isActive: boolean) => <Clock size={12} className={`shrink-0 ${isActive ? 'text-primary-foreground' : 'text-amber-500'}`} />
+          },
           {
             id: 'dang_upload' as const,
             label: 'Đang tải',
@@ -1059,8 +1075,18 @@ export const QueuePage: React.FC = () => {
               />
             ),
           },
-          { id: 'loi' as const, label: 'Lỗi', count: errorCount, dot: 'bg-destructive' },
-          { id: 'da_upload' as const, label: 'Đã tải', count: completedCount, dot: 'bg-emerald-500' },
+          {
+            id: 'loi' as const,
+            label: 'Lỗi',
+            count: errorCount,
+            icon: (isActive: boolean) => <AlertTriangle size={12} className={`shrink-0 ${isActive ? 'text-primary-foreground' : 'text-destructive'}`} />
+          },
+          {
+            id: 'da_upload' as const,
+            label: 'Đã tải',
+            count: completedCount,
+            icon: (isActive: boolean) => <Check size={12} className={`shrink-0 ${isActive ? 'text-primary-foreground' : 'text-emerald-500'}`} />
+          },
         ].map((item) => {
           const isActive = filterStatus === item.id;
           return (
@@ -1068,23 +1094,16 @@ export const QueuePage: React.FC = () => {
               key={item.id}
               type="button"
               onClick={() => setFilterStatus(item.id)}
-              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full border text-xs font-medium whitespace-nowrap min-h-[30px] cursor-pointer transition-all shrink-0 ${
+              className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-[11px] sm:text-xs font-medium whitespace-nowrap min-h-[26px] cursor-pointer transition-all shrink-0 ${
                 isActive
                   ? 'bg-primary text-primary-foreground border-primary shadow-xs font-semibold'
                   : 'bg-background text-muted-foreground border-border hover:bg-muted/80 hover:text-foreground'
               }`}
             >
-              {item.dot && (
-                <span
-                  className={`w-2 h-2 rounded-full shrink-0 ${
-                    isActive ? 'bg-primary-foreground' : item.dot
-                  }`}
-                />
-              )}
               {item.icon && item.icon(isActive)}
               <span>{item.label}</span>
               <span
-                className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full min-w-4 text-center leading-none ${
+                className={`text-[9px] font-bold px-1.5 py-0.5 rounded-full min-w-4 text-center leading-none ${
                   isActive
                     ? 'bg-primary-foreground/20 text-primary-foreground'
                     : 'bg-muted text-muted-foreground'

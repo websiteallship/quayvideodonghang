@@ -51,9 +51,9 @@ function createMockEnv() {
                 return (found ? { ...found } : null) as T;
               }
 
-              if (normalizedSql.includes('SELECT ma, ten, pin_hash, vai_tro, trang_thai FROM nhan_vien WHERE ma = ?')) {
+              if (normalizedSql.includes('SELECT ma, ten, pin_hash, vai_tro, trang_thai FROM nhan_vien') && (normalizedSql.includes('WHERE ma = ?') || normalizedSql.includes('WHERE LOWER(ma) = LOWER(?)'))) {
                 const ma = String(params[0]).toUpperCase();
-                const found = nhanVienList.find(nv => nv.ma === ma);
+                const found = nhanVienList.find(nv => nv.ma.toUpperCase() === ma);
                 return (found ? { ...found } : null) as T;
               }
 

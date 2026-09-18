@@ -106,7 +106,7 @@ Thay thế hoàn toàn `Modal.tsx` và `.modal-backdrop`:
 - **A11y Rule BẮT BUỘC**: Mọi `<DialogContent>` / `<AlertDialogContent>` PHẢI chứa `<DialogTitle>` (hoặc `<AlertDialogTitle>`). Nếu tiêu đề không muốn hiện trên màn hình, phải bọc class `sr-only` của Tailwind để thiết bị Screen Reader đọc được.
 - Dùng `<DialogTrigger asChild>` để truyền sự kiện xuống nút bấm con mà không sinh thẻ lồng không hợp lệ.
 - **Ứng dụng**:
-  - `Dialog`: Popup xác nhận quét mã (`ScanResult`), Modal xem lại video Drive từ trang Lịch sử.
+  - `Dialog`: Popup xác nhận quét mã (`ScanResult`), Form thêm/sửa nhân viên, Form thêm/sửa ĐVVC. *(Lưu ý: Trình xem chi tiết video đã được tách thành trang URL riêng `/history/:id`)*.
   - `AlertDialog`: Modal xác nhận xoá video cục bộ, Thoát tiến trình quay khẩn cấp.
 
 ### 2.6 Alert (`@/components/ui/alert.tsx`)
@@ -129,6 +129,7 @@ Hệ thống Toast hiện đại, nhẹ và không chiếm dụng DOM:
 - Cung cấp hiệu ứng tải trang (shimmer loading) định hình trước bố cục (thay cho spinner vô định):
   - Khối danh sách đơn trong HistoryPage, QueuePage.
   - Cụm thông số thống kê Dashboard trên HomePage.
+  - Khối Video Player & Metadata Card trong `VideoDetailPage`.
 
 ### 2.10 Separator (`@/components/ui/separator.tsx`)
 - Phân cách nội dung (`orientation="horizontal"` hoặc `"vertical"`) theo chuẩn ngữ nghĩa của Radix UI thay thế `<hr>`.
@@ -144,6 +145,14 @@ Hệ thống Toast hiện đại, nhẹ và không chiếm dụng DOM:
 
 ### 2.14 ScrollArea (`@/components/ui/scroll-area.tsx`)
 - Vùng cuộn tuỳ biến với thanh cuộn thanh mảnh, không phá vỡ layout trên cả Windows và iOS.
+
+### 2.15 Pagination (`@/components/ui/pagination.tsx`)
+- Hệ thống phân trang chuẩn hoá, tối ưu responsive cho cả mobile và desktop.
+- Hỗ trợ: `PaginationContent`, `PaginationItem`, `PaginationLink`, `PaginationPrevious`, `PaginationNext`, `PaginationEllipsis`.
+- **Ứng dụng**:
+  - Phân trang danh sách biên bản video trong `HistoryPage` (hỗ trợ nhảy trang trực tiếp, trang trước/sau, rút gọn ellipsis).
+  - Phân trang bảng danh sách ĐVVC trong `AdminCarriersPage` (tích hợp kèm bộ đếm kết quả và chọn số dòng/trang 5/10/20).
+  - Phân trang bảng danh sách nhân viên trong `AdminEmployeesPage` và danh mục kho trong `AdminSettingsPage`.
 
 ---
 
@@ -408,6 +417,35 @@ Hệ thống Toast hiện đại, nhẹ và không chiếm dụng DOM:
 ├─────────────┴────────────────────────────────────────────────┤
 │                         v1.0.0                               │
 └──────────────────────────────────────────────────────────────┘
+```
+
+### 3.8 Video Detail Page (`/history/:id` — Desktop ≥1024px: 7/12 & 5/12)
+
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│ [← Lịch sử]  Lịch sử > GHN0123456789                      NV003 👤      │
+├───────────────────────────────────────┬─────────────────────────────────┤
+│ ┌───────────────────────────────────┐ │ ┌─────────────────────────────┐ │
+│ │                                   │ │ │ THÔNG TIN ĐƠN HÀNG          │ │
+│ │          CUSTOM VIDEO             │ │ │ Mã đơn: GHN0123456789 [📋]  │ │
+│ │             PLAYER                │ │ │ ĐVVC: Giao Hàng Nhanh       │ │
+│ │       (Controls, 5s skip,         │ │ │ Loại: Đóng gói đơn hàng     │ │
+│ │        PiP, Speed, Fullscreen)    │ │ └─────────────────────────────┘ │
+│ │                                   │ │ ┌─────────────────────────────┐ │
+│ └───────────────────────────────────┘ │ │ MỐC THỜI GIAN & THỜI LƯỢNG  │ │
+│  [Chế độ Stream gốc ▼]  [Tải video] │ │ │ Bắt đầu: 14:30:15           │ │
+│  [Sao chép link]        [Mở Drive]  │ │ │ Kết thúc: 14:31:20 (01:05)  │ │
+│                                       │ │ └─────────────────────────────┘ │
+│                                       │ │ ┌─────────────────────────────┐ │
+│                                       │ │ │ THÔNG SỐ KỸ THUẬT VIDEO     │ │
+│                                       │ │ │ 18.2 MB · 1280x720 · 30 FPS │ │
+│                                       │ │ └─────────────────────────────┘ │
+│                                       │ │ ┌─────────────────────────────┐ │
+│                                       │ │ │ NHÂN SỰ & GOOGLE DRIVE      │ │
+│                                       │ │ │ NV: Nguyễn Văn A (NV003)    │ │
+│                                       │ │ │ Drive ID: 1A2b3C... [📋]    │ │
+│                                       │ │ └─────────────────────────────┘ │
+└───────────────────────────────────────┴─────────────────────────────────┘
 ```
 
 ---

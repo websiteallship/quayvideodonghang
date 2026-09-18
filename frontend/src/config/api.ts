@@ -42,6 +42,10 @@ export const API_ENDPOINTS = {
       BATCH: `${BASE_URL}/api/admin/cau-hinh/batch`,
       TEST_DRIVE: `${BASE_URL}/api/admin/cau-hinh/test-drive`,
     },
+    RETENTION: {
+      STATUS: `${BASE_URL}/api/admin/retention/status`,
+      RUN: `${BASE_URL}/api/admin/retention/run`,
+    },
     KHO_HANG: {
       LIST: `${BASE_URL}/api/admin/kho-hang`,
       CREATE: `${BASE_URL}/api/admin/kho-hang`,

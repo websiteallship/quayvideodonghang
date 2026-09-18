@@ -8,10 +8,10 @@ import {
   Settings,
   PanelLeftClose,
   PanelLeftOpen,
-  Shield,
   Settings2,
   Users,
   Truck,
+  Building2,
 } from 'lucide-react';
 import { useConfigStore } from '@/stores/config-store';
 import { useUploadStore } from '@/stores/upload-store';
@@ -43,6 +43,7 @@ export const Sidebar: React.FC = () => {
 
   const adminItems = [
     { to: '/admin/settings', label: 'Cấu hình hệ thống', icon: Settings2 },
+    { to: '/admin/warehouses', label: 'Quản lý kho', icon: Building2 },
     { to: '/admin/carriers', label: 'Đơn vị vận chuyển', icon: Truck },
     { to: '/admin/employees', label: 'Quản lý nhân viên', icon: Users },
   ];
@@ -153,7 +154,7 @@ export const Sidebar: React.FC = () => {
       </div>
 
       {/* Sidebar Navigation Items */}
-      <nav className="flex-1 px-3 py-4 flex flex-col gap-1.5">
+      <nav className="flex-1 overflow-y-auto px-3 py-4 flex flex-col gap-1.5">
         {!sidebarCollapsed && (
           <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
             Chức năng
@@ -170,15 +171,8 @@ export const Sidebar: React.FC = () => {
             </div>
 
             {!sidebarCollapsed && (
-              <div className="px-3 pb-1 flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-wider text-violet-500">
-                <Shield size={12} className="shrink-0" aria-hidden="true" />
+              <div className="px-3 pb-1 text-[10px] font-bold uppercase tracking-wider text-violet-500">
                 Quản trị
-              </div>
-            )}
-
-            {sidebarCollapsed && (
-              <div className="flex justify-center py-1">
-                <Shield size={14} className="text-violet-500" aria-hidden="true" />
               </div>
             )}
 

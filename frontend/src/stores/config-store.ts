@@ -14,7 +14,9 @@ export interface SystemConfig {
   watermark: boolean;
   auto_scan: boolean;
   quay_lien_tuc: boolean;
-  retention_thang: number;
+  retention_archive_days: number;
+  retention_delete_days: number;
+  retention_thang?: number; // Deprecated
   don_vi_vc: string[];
   max_duration_seconds?: number;
   chunk_size?: number;
@@ -28,8 +30,10 @@ export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
   watermark: true,
   auto_scan: false,
   quay_lien_tuc: false,
+  retention_archive_days: 30,
+  retention_delete_days: 60,
   retention_thang: 6,
-  don_vi_vc: ['GHN', 'GHTK', 'J&T', 'ViettelPost', 'ShopeeXpress', 'Khac'],
+  don_vi_vc: ['GHN', 'ViettelPost', 'BestExpress', 'NhatTin', 'LazadaExpress', 'ShopeeXpress', 'J&T', 'VNPost', 'GHTK', 'Khac'],
   max_duration_seconds: 600,
   chunk_size: 5242880,
 };

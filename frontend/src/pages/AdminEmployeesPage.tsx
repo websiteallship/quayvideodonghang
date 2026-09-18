@@ -611,11 +611,11 @@ export const AdminEmployeesPage: React.FC = () => {
       ) : (
         <div className="flex flex-col gap-3">
           {/* Desktop Table List View */}
-          <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden shadow-2xs">
+          <div className="hidden md:block rounded-2xl border border-border bg-card shadow-2xs">
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-border/80 bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
+                <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm shadow-sm rounded-t-2xl">
+                  <tr className="border-b border-border/80 text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
                     <th className="py-3.5 px-4">Nhân viên</th>
                     <th className="py-3.5 px-3 text-center">Vai trò</th>
                     <th className="py-3.5 px-3 text-center">Trạng thái</th>
@@ -757,7 +757,7 @@ export const AdminEmployeesPage: React.FC = () => {
             </div>
 
             {/* Desktop Pagination Footer */}
-            <div className="px-4 py-3 border-t border-border/70 bg-muted/10 flex items-center justify-between flex-wrap gap-3 text-xs text-muted-foreground select-none">
+            <div className="sticky bottom-0 z-10 px-4 py-3 border-t border-border/70 bg-card flex items-center justify-between flex-wrap gap-3 text-xs text-muted-foreground select-none rounded-b-2xl shadow-[0_-4px_15px_rgba(0,0,0,0.03)]">
               <div className="flex items-center gap-3 flex-wrap">
                 <PaginationInfo
                   startIndex={startIndex}

@@ -20,9 +20,9 @@ authRouter.post('/login', loginRateLimiter, zValidator('json', LoginRequestSchem
 
   try {
     const userRow = await c.env.DB.prepare(
-      'SELECT ma, ten, pin_hash, vai_tro, trang_thai FROM nhan_vien WHERE ma = ?'
+      'SELECT ma, ten, pin_hash, vai_tro, trang_thai FROM nhan_vien WHERE LOWER(ma) = LOWER(?)'
     )
-      .bind(ma_nhan_vien.toUpperCase())
+      .bind(ma_nhan_vien.trim())
       .first<{
         ma: string;
         ten: string;

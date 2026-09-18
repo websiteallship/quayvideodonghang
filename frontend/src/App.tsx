@@ -1,20 +1,23 @@
 import React, { useEffect } from 'react';
 import { createBrowserRouter, RouterProvider, Navigate } from 'react-router-dom';
 import { AppShell } from './components/layout/AppShell';
-import { HomePage } from './pages/HomePage';
-import { QueuePage } from './pages/QueuePage';
-import { HistoryPage } from './pages/HistoryPage';
-import { VideoDetailPage } from './pages/VideoDetailPage';
-import { UserSettingsPage } from './pages/UserSettingsPage';
-import { AdminSettingsPage } from './pages/AdminSettingsPage';
-import { AdminCarriersPage } from './pages/AdminCarriersPage';
-import { AdminEmployeesPage } from './pages/AdminEmployeesPage';
 import { LoginPage } from './pages/LoginPage';
 import { useAuthStore } from './stores/auth-store';
 import { useConfigStore } from './stores/config-store';
 import { toast } from 'sonner';
 import { ToastContainer } from './components/ui/Toast';
 import { Toaster } from './components/ui/sonner';
+
+// Tải lazy loading cho các trang
+const HomePage = React.lazy(() => import('./pages/HomePage').then((m) => ({ default: m.HomePage })));
+const QueuePage = React.lazy(() => import('./pages/QueuePage').then((m) => ({ default: m.QueuePage })));
+const HistoryPage = React.lazy(() => import('./pages/HistoryPage').then((m) => ({ default: m.HistoryPage })));
+const VideoDetailPage = React.lazy(() => import('./pages/VideoDetailPage').then((m) => ({ default: m.VideoDetailPage })));
+const UserSettingsPage = React.lazy(() => import('./pages/UserSettingsPage').then((m) => ({ default: m.UserSettingsPage })));
+const AdminSettingsPage = React.lazy(() => import('./pages/AdminSettingsPage').then((m) => ({ default: m.AdminSettingsPage })));
+const AdminCarriersPage = React.lazy(() => import('./pages/AdminCarriersPage').then((m) => ({ default: m.AdminCarriersPage })));
+const AdminEmployeesPage = React.lazy(() => import('./pages/AdminEmployeesPage').then((m) => ({ default: m.AdminEmployeesPage })));
+const AdminWarehousesPage = React.lazy(() => import('./pages/AdminWarehousesPage').then((m) => ({ default: m.AdminWarehousesPage })));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, user, verifyToken } = useAuthStore();
@@ -95,6 +98,14 @@ const router = createBrowserRouter([
         element: (
           <AdminGuard>
             <AdminEmployeesPage />
+          </AdminGuard>
+        ),
+      },
+      {
+        path: '/admin/warehouses',
+        element: (
+          <AdminGuard>
+            <AdminWarehousesPage />
           </AdminGuard>
         ),
       },

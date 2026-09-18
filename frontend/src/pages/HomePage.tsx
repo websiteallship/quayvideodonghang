@@ -58,7 +58,13 @@ export const HomePage: React.FC = () => {
   const [activeBarcode, setActiveBarcode] = useState<BarcodeResult | null>(null);
   const [manualCodeInput, setManualCodeInput] = useState('');
   const serverCarrierList = useConfigStore((s) => s.systemConfig.don_vi_vc);
+  const fetchSystemConfig = useConfigStore((s) => s.fetchSystemConfig);
   const mergedCarriers = useMemo(() => getMergedCarrierList(serverCarrierList), [serverCarrierList]);
+
+  useEffect(() => {
+    void fetchSystemConfig();
+  }, [fetchSystemConfig]);
+
   const [manualCarrier, setManualCarrier] = useState<DonViVanChuyen>('GHN');
   const [isCarrierCustomized, setIsCarrierCustomized] = useState(false);
   const [recordingMessage, setRecordingMessage] = useState<string | null>(null);
@@ -203,19 +209,19 @@ export const HomePage: React.FC = () => {
   const handleBarcodeDetected = useCallback(
     async (result: BarcodeResult) => {
       feedbackSuccess();
-      
+
       // Nếu bật Auto-scan, ta tạm thời LƯU KẾT QUẢ, nhưng CHƯA set activeBarcode để KHÔNG hiện popup
       // Popup chỉ hiện khi thực sự là mã trùng hoặc Auto-scan tắt.
       // Dùng một state ẩn hoặc chỉ cần không mở Dialog.
       // Tuy nhiên Dialog đang gắn với activeBarcode. Để ko mở Dialog, ta lưu vào 1 ref hoặc state riêng.
-      
+
       // Thay vì sửa cấu trúc nhiều, ta set activeBarcode để render ScanResult NẾU không auto scan
       // NẾU auto scan, ta sẽ chờ kết quả checkCode.
-      
+
       // We need a way to track the current scan without opening the Dialog if it's a valid auto-scan
       // For now, let's just use activeBarcode but modify the Dialog open condition.
       setActiveBarcode(result);
-      
+
       // Check duplicate from backend API + local IndexedDB (filtered by loai_bien_ban)
       await checkCode(result.rawValue, workMode ?? 'dong_goi');
     },
@@ -376,7 +382,7 @@ export const HomePage: React.FC = () => {
       if (!isDuplicate && !checkError) {
         // Hợp lệ và không trùng -> Đếm ngược 500ms
         setAutoScanCountdown(500);
-        
+
         const detectedCarrier = activeBarcode.carrier || detectCarrier(activeBarcode.rawValue);
 
         // Không nhận diện được ĐVVC → chặn auto-scan, buộc user chọn thủ công qua popup
@@ -416,8 +422,8 @@ export const HomePage: React.FC = () => {
         setAutoScanCountdown(null);
       }
     } else {
-       // Đang kiểm tra, không quét, v.v..
-       setAutoScanCountdown(null);
+      // Đang kiểm tra, không quét, v.v..
+      setAutoScanCountdown(null);
     }
   }, [
     activeBarcode,
@@ -676,22 +682,20 @@ export const HomePage: React.FC = () => {
         <div className="hidden lg:inline-flex bg-muted/80 p-1 rounded-2xl border shadow-xs">
           <button
             onClick={() => { setWorkMode('dong_goi'); setModeError(null); }}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
-              workMode === 'dong_goi'
+            className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${workMode === 'dong_goi'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'text-muted-foreground hover:text-foreground'
-            }`}
+              }`}
           >
             <Package className="w-4 h-4" />
             <span>1. ĐÓNG GÓI HÀNG</span>
           </button>
           <button
             onClick={() => { setWorkMode('khui_hang'); setModeError(null); }}
-            className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${
-              workMode === 'khui_hang'
+            className={`px-5 py-2.5 rounded-xl text-xs font-bold flex items-center gap-2 transition-all cursor-pointer ${workMode === 'khui_hang'
                 ? 'bg-amber-600 text-white shadow-md'
                 : 'text-muted-foreground hover:text-foreground'
-            }`}
+              }`}
           >
             <PackageOpen className="w-4 h-4" />
             <span>2. KHUI HÀNG / TRẢ HÀNG</span>
@@ -702,22 +706,20 @@ export const HomePage: React.FC = () => {
         <div className="grid lg:hidden grid-cols-2 gap-1.5 bg-muted/70 p-1 rounded-2xl border">
           <button
             onClick={() => { setWorkMode('dong_goi'); setModeError(null); }}
-            className={`h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              workMode === 'dong_goi'
+            className={`h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${workMode === 'dong_goi'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'text-muted-foreground hover:text-foreground'
-            }`}
+              }`}
           >
             <Package className="w-4 h-4" />
             <span>1. ĐÓNG GÓI</span>
           </button>
           <button
             onClick={() => { setWorkMode('khui_hang'); setModeError(null); }}
-            className={`h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${
-              workMode === 'khui_hang'
+            className={`h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${workMode === 'khui_hang'
                 ? 'bg-amber-600 text-white shadow-md'
                 : 'text-muted-foreground hover:text-foreground'
-            }`}
+              }`}
           >
             <PackageOpen className="w-4 h-4" />
             <span>2. KHUI HÀNG</span>
@@ -729,7 +731,7 @@ export const HomePage: React.FC = () => {
       <div className="grid grid-cols-1 xl:grid-cols-3 gap-6">
         {/* Left Col (2/3): Camera Viewport & Actions */}
         <div className="xl:col-span-2 flex flex-col gap-4">
-          
+
           {/* 1. Active Recording View */}
           {currentView === 'recording' && (
             <RecordingView
@@ -841,11 +843,10 @@ export const HomePage: React.FC = () => {
           {currentView === 'idle' && (
             <Card className="min-h-[260px]">
               <CardContent className="flex flex-col items-center justify-center text-center gap-4 p-6">
-                <div className={`w-[72px] h-[72px] rounded-full flex items-center justify-center border-2 transition-all ${
-                  workMode === 'khui_hang'
+                <div className={`w-[72px] h-[72px] rounded-full flex items-center justify-center border-2 transition-all ${workMode === 'khui_hang'
                     ? 'bg-amber-500/20 border-amber-500 text-amber-500 shadow-[0_0_24px_rgba(245,158,11,0.25)]'
-                    : 'bg-primary/20 border-primary text-primary shadow-[0_0_24px_rgba(234,88,12,0.25)]'
-                }`}>
+                    : 'bg-primary/20 border-primary text-primary shadow-[0_0_24px_rgba(37,99,235,0.25)]'
+                  }`}>
                   <Camera size={36} />
                 </div>
 
@@ -854,8 +855,8 @@ export const HomePage: React.FC = () => {
                     {workMode === 'dong_goi'
                       ? 'Sẵn sàng quét đơn Đóng gói'
                       : workMode === 'khui_hang'
-                      ? 'Sẵn sàng quét đơn Khui hàng'
-                      : 'Sẵn sàng quét mã đơn'}
+                        ? 'Sẵn sàng quét đơn Khui hàng'
+                        : 'Sẵn sàng quét mã đơn'}
                   </h2>
                   <p className="text-sm text-muted-foreground max-w-[340px] mx-auto">
                     {workMode
@@ -866,19 +867,18 @@ export const HomePage: React.FC = () => {
 
                 <Button
                   size="lg"
-                  className={`w-full max-w-[340px] font-bold text-sm tracking-wide ${
-                    workMode === 'khui_hang'
+                  className={`w-full max-w-[340px] font-bold text-sm tracking-wide ${workMode === 'khui_hang'
                       ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20'
                       : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20'
-                  }`}
+                    }`}
                   onClick={handleOpenScanner}
                 >
                   <ScanLine data-icon="inline-start" />
                   {workMode === 'dong_goi'
                     ? 'BẮT ĐẦU QUÉT ĐÓNG GÓI'
                     : workMode === 'khui_hang'
-                    ? 'BẮT ĐẦU QUÉT KHUI HÀNG'
-                    : 'CHỌN CHẾ ĐỘ & BẮT ĐẦU QUÉT'}
+                      ? 'BẮT ĐẦU QUÉT KHUI HÀNG'
+                      : 'CHỌN CHẾ ĐỘ & BẮT ĐẦU QUÉT'}
                 </Button>
               </CardContent>
             </Card>
@@ -905,8 +905,8 @@ export const HomePage: React.FC = () => {
               </div>
               <span className={cn(
                 "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold shrink-0",
-                workMode === 'khui_hang' 
-                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" 
+                workMode === 'khui_hang'
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20"
                   : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
               )}>
                 <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse", workMode === 'khui_hang' ? "bg-amber-500" : "bg-emerald-500")} />
@@ -1025,15 +1025,14 @@ export const HomePage: React.FC = () => {
                         {item.don_vi_vc} • {item.loai_bien_ban === 'dong_goi' ? 'Đóng gói' : 'Khui hàng'} • {formatDuration(item.thoi_luong_video)}
                       </div>
                     </div>
-                    <span className={`font-bold text-[11px] shrink-0 ${
-                      item.status === 'da_upload'
+                    <span className={`font-bold text-[11px] shrink-0 ${item.status === 'da_upload'
                         ? 'text-emerald-600'
                         : item.status === 'dang_upload'
-                        ? 'text-blue-500'
-                        : item.status === 'loi'
-                        ? 'text-destructive'
-                        : 'text-amber-500'
-                    }`}>
+                          ? 'text-blue-500'
+                          : item.status === 'loi'
+                            ? 'text-destructive'
+                            : 'text-amber-500'
+                      }`}>
                       {item.status === 'da_upload' ? 'Đã lưu' : item.status === 'dang_upload' ? 'Đang tải' : item.status === 'loi' ? 'Lỗi' : 'Chờ tải'}
                     </span>
                   </div>
@@ -1063,11 +1062,11 @@ export const HomePage: React.FC = () => {
       </div>
 
       {/* Scan Result Modal Popup */}
-      <Dialog 
+      <Dialog
         open={
-          !!activeBarcode && 
+          !!activeBarcode &&
           (!autoRecordAfterScan || activeBarcode.source !== 'gun' || (!isChecking && (isDuplicate || !!checkError)) || (activeBarcode.carrier || detectCarrier(activeBarcode.rawValue)) === 'Khac')
-        } 
+        }
         onOpenChange={(open) => !open && handleRescan()}
       >
         <DialogContent className="max-w-[440px] p-0 border-none bg-transparent shadow-none" showCloseButton={false}>

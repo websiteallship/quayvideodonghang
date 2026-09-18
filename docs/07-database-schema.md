@@ -35,7 +35,7 @@ erDiagram
         int thoi_luong_video "Giây"
         int kich_thuoc_bytes
         string mime_type "video/webm | video/mp4"
-        string trang_thai "cho_upload | dang_upload | da_upload | loi"
+        string trang_thai "cho_upload | dang_upload | da_upload | loi | da_luu_tru | da_xoa"
         string drive_file_id "nullable"
         string drive_file_name "nullable"
         string loi_message "nullable - lý do lỗi"
@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS bien_ban (
     thoi_luong_video INTEGER,
     kich_thuoc_bytes INTEGER,
     mime_type       TEXT DEFAULT 'video/webm',
-    trang_thai      TEXT NOT NULL DEFAULT 'cho_upload' CHECK(trang_thai IN ('cho_upload', 'dang_upload', 'da_upload', 'loi')),
+    trang_thai      TEXT NOT NULL DEFAULT 'cho_upload' CHECK(trang_thai IN ('cho_upload', 'dang_upload', 'da_upload', 'loi', 'da_luu_tru', 'da_xoa')),
     drive_file_id   TEXT,
     drive_file_name TEXT,
     loi_message     TEXT,
@@ -314,26 +314,38 @@ Backend ghi metadata vào Google Sheet khi upload thành công. Cấu trúc cộ
 
 ---
 
-## 8. Data Retention & Cleanup
+## 8. Data Retention & Cleanup 2 Giai đoạn (Cập nhật)
 
-**Chính sách:** Giữ metadata trong D1 vĩnh viễn (rất nhỏ), xoá video trên Drive sau **6 tháng**.
+**Chính sách vòng đời video (tính theo ngày):**
+- **Giai đoạn 1: Lưu trữ (Archive)** — Mặc định **30 ngày** (`retention_archive_days`):
+  - Chuyển `trang_thai` trong D1 thành `'da_luu_tru'`.
+  - Giữ nguyên file trên Google Drive.
+  - Cập nhật Google Sheet: cột L đổi thành `'Đã lưu trữ'`.
+- **Giai đoạn 2: Xoá vĩnh viễn (Delete)** — Mặc định **60 ngày** (`retention_delete_days`):
+  - Xoá file video vật lý khỏi Google Drive bằng Google Drive API (`files.delete`).
+  - Cập nhật `trang_thai` trong D1 thành `'da_xoa'`, gán `drive_file_id = NULL`.
+  - Cập nhật Google Sheet: cột K xoá link Drive (`""`), cột L đổi thành `'Đã xoá'`.
 
-Triển khai bằng **Cloudflare Workers Cron Trigger** (chạy 1 lần/ngày):
+> **Khóa cấu hình cũ `retention_thang`:** Đã bị **deprecate**, thay bằng `retention_archive_days` (30) và `retention_delete_days` (60).
 
-```js
-// wrangler.toml
-[triggers]
-crons = ["0 2 * * *"]  // Chạy lúc 2h sáng mỗi ngày
-
-// Cron handler: tìm video > 6 tháng, xoá trên Drive, đánh dấu trong D1
-```
+**Triển khai:**
+1. **Cloudflare Workers Cron Trigger** (`0 2 * * *` lúc 02:00 AM mỗi ngày).
+2. **API Admin chạy thủ công** (`POST /api/admin/retention/run`).
 
 ```sql
--- Tìm video cần xoá
+-- 1. Tìm video quá hạn cần xoá vĩnh viễn (Giai đoạn 2)
 SELECT id, drive_file_id FROM bien_ban
+WHERE trang_thai IN ('da_upload', 'da_luu_tru')
+  AND datetime(thoi_gian_tao) <= datetime('now', '-' || ? || ' days')
+ORDER BY thoi_gian_tao ASC
+LIMIT 50;
+
+-- 2. Tìm video quá hạn cần lưu trữ (Giai đoạn 1)
+SELECT id FROM bien_ban
 WHERE trang_thai = 'da_upload'
-  AND thoi_gian_upload < datetime('now', '-6 months')
-  AND drive_file_id IS NOT NULL;
+  AND datetime(thoi_gian_tao) <= datetime('now', '-' || ? || ' days')
+ORDER BY thoi_gian_tao ASC
+LIMIT 50;
 ```
 
 ---

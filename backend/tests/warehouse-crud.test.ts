@@ -176,10 +176,12 @@ function createMockEnv() {
   const env: Env = {
     DB: mockDb as any,
     JWT_SECRET: 'test-jwt-secret-key-at-least-32-chars-long!',
+    JWT_EXPIRES_IN: '86400',
+    ALLOWED_ORIGINS: '*',
+    DRIVE_FOLDER_ID: '',
+    GOOGLE_SHEET_ID: '',
     UPLOAD_CHUNK_SIZE: '5242880',
-    MAX_VIDEO_DURATION_SECONDS: '600',
-    GOOGLE_SERVICE_ACCOUNT_JSON: '{}',
-    ENVIRONMENT: 'development'
+    GOOGLE_SERVICE_ACCOUNT_JSON: '{}'
   };
 
   return { env, khoList };

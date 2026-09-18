@@ -651,13 +651,17 @@ gantt
    - `GET /api/bien-ban/:id` — Single record detail
    - `GET /api/bien-ban/:id/view-url` — Generate temp Drive view URL
    - Access control: `nhan_vien` only sees own records, `admin` sees all
-2. Frontend `HistoryPage`:
+2. Frontend `HistoryPage` & `VideoDetailPage`:
    - Search bar: text input + scan-to-search icon (reuse barcode scanner)
    - Filters: date range (default today), carrier, type, status, employee (admin only)
    - Results list: mã đơn, carrier badge, employee, time, duration, status badge
-   - Tap item → expand detail + "Xem video" button
-   - Video playback: embed Drive preview URL in `<iframe>` or `<video>`
-   - Pagination: load more on scroll or page buttons
+   - Phân trang chuẩn hóa: `@/components/ui/pagination.tsx` (số trang, previous/next, ellipsis)
+   - Bấm item → Chuyển hướng sang trang chi tiết riêng `/history/:id` (`VideoDetailPage`, thay thế modal cũ):
+     - Layout Desktop 2 cột (7/12 player & actions, 5/12 metadata chi tiết)
+     - Layout Mobile/Tablet xếp chồng dọc tối ưu màn hình cảm ứng
+     - Video player chuyên dụng `CustomVideoPlayer` (tua 5s, timeline, phím tắt space/mũi tên, PiP, fullscreen, chuyển đổi Google Drive iframe / native stream)
+     - Công cụ: tải video, sao chép link xem, mở trên Google Drive
+     - Breadcrumb & nút "Quay lại" (`navigate(-1)`) giữ nguyên filter và vị trí cuộn trên `/history`
    - Debounce search input (300ms)
 
 **Verification:**
@@ -667,8 +671,8 @@ gantt
 - [x] Filter by status "loi" → only failed uploads
 - [x] `nhan_vien` → only own videos visible
 - [x] `admin` → all employees' videos visible
-- [x] Tap "Xem video" → video plays from Google Drive
-- [x] Pagination → smooth load-more
+- [x] Bấm xem video → chuyển hướng `/history/:id`, phát video mượt mà từ Google Drive
+- [x] Phân trang pagination → chuyển trang mượt mà, đầy đủ số trang & ellipsis
 
 ---
 

@@ -18,4 +18,6 @@ INSERT OR IGNORE INTO cau_hinh (khoa, gia_tri) VALUES
     ('quay_lien_tuc', 'false'),
     ('watermark', 'true'),
     ('don_vi_vc_danh_sach', 'GHN,GHTK,J&T,ViettelPost,ShopeeXpress,Khac'),
+    ('retention_archive_days', '30'),
+    ('retention_delete_days', '60'),
     ('retention_thang', '6');

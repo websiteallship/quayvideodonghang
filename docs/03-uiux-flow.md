@@ -131,11 +131,23 @@ Hàng đợi upload được thiết kế tối ưu cho vận hành kho, đảm 
 
 ---
 
-## 5. Màn hình Lịch sử / Tra cứu
+## 5. Màn hình Lịch sử / Tra cứu & Chi tiết Video
 
+### 5.1 Danh sách Lịch sử (`/history`)
 - Ô tìm kiếm to ở đầu, có 2 cách nhập: **gõ tay mã đơn** hoặc **bấm icon camera để quét lại mã** (nhanh hơn khi đang cầm đơn hàng cần tra cứu).
 - Bộ lọc: theo ngày (mặc định hôm nay), theo đơn vị vận chuyển, theo nhân viên, theo loại biên bản (đóng gói/khui hàng), theo trạng thái upload.
-- Kết quả dạng danh sách, mỗi dòng: mã đơn — đơn vị VC — nhân viên — thời gian — thời lượng video — trạng thái, bấm vào để phát video (stream trực tiếp từ Google Drive qua link được backend cấp quyền xem tạm thời).
+- Kết quả hiển thị dạng danh sách / card với phân trang (`Pagination`), mỗi dòng hiển thị: mã đơn — đơn vị VC — nhân viên — thời gian — thời lượng video — trạng thái upload.
+- Bấm vào bất kỳ dòng biên bản nào sẽ chuyển hướng trực tiếp sang **Trang Chi tiết Video** (`/history/:id`).
+
+### 5.2 Trang Chi tiết Video (`/history/:id`)
+Thay vì dùng modal che màn hình, hệ thống sử dụng trang URL riêng biệt:
+- **Định danh duy nhất**: Sử dụng `bien_ban.id` (UUID) trên URL (ví dụ: `/history/550e8400-e29b-41d4-a716-446655440000`), hỗ trợ chia sẻ đường dẫn nội bộ và deep link trực tiếp.
+- **Điều hướng mượt mà**: Nút "Quay lại" kích hoạt `navigate(-1)`, bảo toàn chính xác vị trí cuộn trang (scroll), từ khóa tìm kiếm và các bộ lọc đã chọn trước đó trên `/history`. Breadcrumb: `Lịch sử > {ma_van_don}`.
+- **Bố cục Desktop (≥ 1024px) - Chia 2 cột (7/12 & 5/12)**:
+  - **Cột trái (7/12)**: Trình phát video chuyên dụng (`CustomVideoPlayer` hỗ trợ tua 5s, timeline, phím tắt space/mũi tên, PiP, toàn màn hình, chuyển đổi giữa Stream gốc và Iframe Google Drive) kèm thanh công cụ: *Tải video về máy*, *Sao chép link xem*, *Mở file trên Drive*.
+  - **Cột phải (5/12)**: Hệ thống thẻ Metadata chi tiết (Thông tin đơn & ĐVVC, Mốc thời gian & thời lượng, Thông số video kỹ thuật gồm FPS/độ phân giải/dung lượng, Thông tin nhân sự thực hiện & Google Drive File ID).
+- **Bố cục Mobile / Tablet (< 1024px)**: Chế độ xếp chồng dọc (stacked layout), video player cố định phía trên, các cụm metadata cuộn độc lập bên dưới.
+
 
 ---
 

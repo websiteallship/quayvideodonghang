@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
+import { cn } from '@/lib/utils';
 import { CustomVideoPlayer } from '@/components/video/CustomVideoPlayer';
 import { showToast } from '@/stores/toast-store';
 import { formatDuration, formatBytes, formatDateTimeVN } from '@/utils/format';
@@ -387,59 +388,89 @@ export const VideoDetailPage: React.FC = () => {
   return (
     <div className="flex flex-col gap-4 lg:gap-5 pb-6 w-full">
       {/* ---------------------------------------------------------------- */}
-      {/* Breadcrumb + Back Button */}
+      {/* Breadcrumb + Header Info */}
       {/* ---------------------------------------------------------------- */}
-      <div className="flex items-center justify-between flex-wrap gap-3">
-        <div className="flex items-center gap-2 text-sm min-w-0">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+        {/* Top: Breadcrumb & Tracking Code */}
+        <div className="flex items-center gap-1.5 sm:gap-2 text-sm min-w-0">
           <Button
             variant="ghost"
             onClick={handleGoBack}
-            className="h-8 px-2.5 rounded-lg text-xs font-semibold gap-1 cursor-pointer text-muted-foreground hover:text-foreground shrink-0"
+            className="h-8 px-2 sm:px-2.5 rounded-lg text-xs font-semibold gap-1 cursor-pointer text-muted-foreground hover:text-foreground shrink-0"
           >
-            <ArrowLeft size={15} />
+            <ArrowLeft size={16} />
             <span className="hidden sm:inline">Lịch sử</span>
           </Button>
 
-          <ChevronRight size={14} className="text-muted-foreground/50 shrink-0" />
+          <ChevronRight size={14} className="text-muted-foreground/40 shrink-0" />
 
-          <div className="flex items-center gap-2 min-w-0">
-            <span className="font-mono font-bold text-foreground tracking-tight truncate">
+          <div className="flex items-center gap-1.5 sm:gap-2 min-w-0 flex-1 sm:flex-initial">
+            <span className="font-mono font-bold text-sm sm:text-base text-foreground tracking-tight select-all truncate">
               {item.ma_van_don}
             </span>
             <Button
               variant="ghost"
               size="sm"
               onClick={() => void handleCopyTrackingCode()}
-              className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer rounded-md shrink-0"
+              className="h-7 w-7 p-0 sm:w-auto sm:h-7 sm:px-2 text-xs text-muted-foreground hover:text-foreground hover:bg-muted cursor-pointer rounded-lg shrink-0"
               title="Sao chép mã đơn"
             >
-              {copiedCode ? <Check size={13} className="text-emerald-500" /> : <Copy size={13} />}
-              <span className="text-[11px] ml-1">{copiedCode ? 'Đã chép' : 'Chép mã'}</span>
+              {copiedCode ? <Check size={14} className="text-emerald-500" /> : <Copy size={14} />}
+              <span className="text-[11px] ml-1 hidden sm:inline">{copiedCode ? 'Đã chép' : 'Chép mã'}</span>
             </Button>
+
+            {/* Desktop Badges */}
+            <div className="hidden sm:flex items-center gap-2">
+              <Badge
+                variant="outline"
+                className={getCarrierBadgeColor(item.don_vi_vc)}
+              >
+                {getCarrierLabel(item.don_vi_vc)}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={
+                  isDongGoi
+                    ? 'bg-blue-500/10 text-blue-600 border-blue-500/25 dark:text-blue-400'
+                    : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400'
+                }
+              >
+                {isDongGoi ? <PackageCheck size={12} className="mr-1 inline" /> : <PackageOpen size={12} className="mr-1 inline" />}
+                {isDongGoi ? 'Đóng gói' : 'Khui hàng'}
+              </Badge>
+            </div>
+          </div>
+        </div>
+
+        {/* Sub-row on mobile (Badges + Metadata) / Desktop Metadata */}
+        <div className="flex items-center justify-between sm:justify-end gap-2 text-xs text-muted-foreground flex-wrap pl-1 sm:pl-0">
+          {/* Mobile Badges (Đưa 2 badge xuống dưới trên mobile) */}
+          <div className="flex sm:hidden items-center gap-1.5">
             <Badge
               variant="outline"
-              className={getCarrierBadgeColor(item.don_vi_vc)}
+              className={cn("text-[11px] px-2 py-0.5 font-medium", getCarrierBadgeColor(item.don_vi_vc))}
             >
               {getCarrierLabel(item.don_vi_vc)}
             </Badge>
             <Badge
               variant="outline"
-              className={
+              className={cn(
+                "text-[11px] px-2 py-0.5 font-medium",
                 isDongGoi
                   ? 'bg-blue-500/10 text-blue-600 border-blue-500/25 dark:text-blue-400'
                   : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400'
-              }
+              )}
             >
-              {isDongGoi ? <PackageCheck size={12} className="mr-1 inline" /> : <PackageOpen size={12} className="mr-1 inline" />}
+              {isDongGoi ? <PackageCheck size={11} className="mr-1 inline" /> : <PackageOpen size={11} className="mr-1 inline" />}
               {isDongGoi ? 'Đóng gói' : 'Khui hàng'}
             </Badge>
           </div>
-        </div>
 
-        <div className="text-xs text-muted-foreground flex items-center gap-2 shrink-0">
-          <span>Thời lượng: {formatDuration(item.thoi_luong_video)}</span>
-          <span>•</span>
-          <span>Dung lượng: {formatBytes(item.kich_thuoc_bytes)}</span>
+          <div className="flex items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-muted-foreground shrink-0 ml-auto sm:ml-0">
+            <span>Thời lượng: <strong className="text-foreground font-semibold">{formatDuration(item.thoi_luong_video)}</strong></span>
+            <span>•</span>
+            <span>Dung lượng: <strong className="text-foreground font-semibold">{formatBytes(item.kich_thuoc_bytes)}</strong></span>
+          </div>
         </div>
       </div>
 
