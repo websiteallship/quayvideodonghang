@@ -179,6 +179,10 @@ export const UserSettingsPage: React.FC = () => {
     setVideoResolution,
     isResolutionOverridden,
     resetResolutionToSystem,
+    videoFps,
+    setVideoFps,
+    isFpsOverridden,
+    resetFpsToSystem,
     autoRecordAfterScan,
     setAutoRecordAfterScan,
     soundBeepEnabled,
@@ -189,6 +193,7 @@ export const UserSettingsPage: React.FC = () => {
 
   const sysDefaultRes = systemConfig?.do_phan_giai === '1920x1080' ? '1080p' : '720p';
   const effectiveRes = isResolutionOverridden ? videoResolution : sysDefaultRes;
+  const effectiveFps = isFpsOverridden ? videoFps : 30;
 
   const {
     coords,
@@ -462,6 +467,84 @@ export const UserSettingsPage: React.FC = () => {
                     Tiết kiệm dung lượng bộ nhớ
                   </span>
                 </Button>
+              </div>
+            </div>
+
+            {/* FPS Selector */}
+            <div className="flex flex-col gap-2.5">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-semibold text-foreground">Tốc độ khung hình (FPS)</span>
+                  <Badge
+                    variant="outline"
+                    className={cn(
+                      'text-[10px] font-bold',
+                      isFpsOverridden
+                        ? 'bg-amber-500/10 text-amber-600 border-transparent'
+                        : 'text-muted-foreground'
+                    )}
+                  >
+                    {isFpsOverridden ? (
+                      <>{effectiveFps}fps (Tùy chỉnh)</>
+                    ) : (
+                      <>30fps (Mặc định)</>
+                    )}
+                  </Badge>
+                  {isFpsOverridden && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        resetFpsToSystem();
+                        showToast.info('Đã hoàn tác', 'FPS quay lại mặc định (30fps)');
+                      }}
+                    >
+                      Đặt lại mặc định
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {([
+                  { fps: 15 as const, label: '15 fps', desc: 'Siêu tiết kiệm', note: 'Camera cố định' },
+                  { fps: 20 as const, label: '20 fps', desc: 'Tiết kiệm', note: 'Đóng gói chậm' },
+                  { fps: 24 as const, label: '24 fps', desc: 'Chuẩn phim', note: 'Cân bằng tốt' },
+                  { fps: 30 as const, label: '30 fps', desc: 'Mặc định', note: 'Khuyên dùng' },
+                  { fps: 48 as const, label: '48 fps', desc: 'Mượt cao', note: 'Thao tác nhanh' },
+                  { fps: 60 as const, label: '60 fps', desc: 'Siêu mượt', note: 'Tốn dung lượng' },
+                ]).map((opt) => (
+                  <Button
+                    key={opt.fps}
+                    type="button"
+                    variant={effectiveFps === opt.fps ? 'default' : 'outline'}
+                    className={cn(
+                      'h-auto min-h-[48px] flex-col items-start justify-center p-2.5 rounded-2xl text-left transition-all',
+                      effectiveFps === opt.fps && 'shadow-xs border-primary'
+                    )}
+                    onClick={() => {
+                      setVideoFps(opt.fps);
+                      showToast.success('Đã lưu cài đặt', `Tốc độ khung hình: ${opt.label}`);
+                    }}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-xs font-bold">{opt.label}</span>
+                      {effectiveFps === opt.fps && <Check className="size-3.5 shrink-0" />}
+                    </div>
+                    <span
+                      className={cn(
+                        'text-[10px] font-normal mt-0.5',
+                        effectiveFps === opt.fps
+                          ? 'text-primary-foreground/80'
+                          : 'text-muted-foreground'
+                      )}
+                    >
+                      {opt.desc} • {opt.note}
+                    </span>
+                  </Button>
+                ))}
               </div>
             </div>
 

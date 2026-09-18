@@ -105,9 +105,10 @@ export const HomePage: React.FC = () => {
     stopCamera,
   } = useCamera();
 
-  // Đồng bộ cấu hình bitrate từ máy chủ hệ thống (mặc định 2.5 Mbps -> 2_500_000 bps)
+  // Đồng bộ cấu hình bitrate từ máy chủ hệ thống (mặc định 2.0 Mbps -> 2_000_000 bps)
   const systemConfig = useConfigStore((s) => s.systemConfig);
-  const targetBitrate = Math.round((systemConfig?.bitrate_mbps ?? 2.5) * 1_000_000);
+  const targetBitrate = Math.round((systemConfig?.bitrate_mbps ?? 2.0) * 1_000_000);
+  const effectiveFps = useUserSettingsStore((s) => s.isFpsOverridden ? s.videoFps : 30);
 
   // Sprint 2.1 — Video Recording Hook
   const {
@@ -122,6 +123,7 @@ export const HomePage: React.FC = () => {
   } = useMediaRecorder({
     stream,
     bitrate: targetBitrate,
+    fps: effectiveFps,
     overlayInfo: activeOverlayInfo ?? {
       maVanDon: '',
       donViVc: 'GHN',

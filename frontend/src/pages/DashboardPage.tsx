@@ -489,7 +489,7 @@ function HardwarePanel({
               <div>
                 <div className="font-bold text-foreground">{deviceLabel}</div>
                 <div className="text-[11px] text-muted-foreground">
-                  Độ phân giải {effectiveResolution} @ 30fps
+                  Độ phân giải {effectiveResolution} @ {userSettings.isFpsOverridden ? userSettings.videoFps : 30}fps
                 </div>
               </div>
             </div>

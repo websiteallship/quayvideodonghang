@@ -61,8 +61,17 @@ export const RESOLUTION_CHAIN_720P: ResolutionConstraint[] = [
   { width: { ideal: 640 }, height: { ideal: 480 }, frameRate: { ideal: 24 } },
 ];
 
-export function getResolutionChain(resolution: '1080p' | '720p'): ResolutionConstraint[] {
-  return resolution === '1080p' ? RESOLUTION_CHAIN_1080P : RESOLUTION_CHAIN_720P;
+/**
+ * Build resolution chain with dynamic FPS.
+ * When fps > 30, camera may fallback to lower resolution — this is expected browser behavior.
+ */
+export function getResolutionChain(resolution: '1080p' | '720p', fps: number = 30): ResolutionConstraint[] {
+  const base = resolution === '1080p' ? RESOLUTION_CHAIN_1080P : RESOLUTION_CHAIN_720P;
+  if (fps === 30) return base;
+  return base.map((c) => ({
+    ...c,
+    frameRate: { ideal: fps },
+  }));
 }
 
 // ---------------------------------------------------------------------------

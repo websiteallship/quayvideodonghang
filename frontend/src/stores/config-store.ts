@@ -26,7 +26,7 @@ export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
   app_name: 'Quay Video Kho Vận',
   version: '1.0.0',
   do_phan_giai: '1280x720',
-  bitrate_mbps: 2.5,
+  bitrate_mbps: 2.0,
   watermark: true,
   auto_scan: false,
   quay_lien_tuc: false,
