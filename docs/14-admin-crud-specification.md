@@ -380,7 +380,8 @@ const CauHinhUpdateSchema = z.object({
 | Route | Component | Quyền | Mô tả |
 |---|---|---|---|
 | `/settings` | `UserSettingsPage` | Tất cả NV | Camera, resolution override, bíp, tên bàn, GPS, PWA info |
-| `/admin/settings` | `AdminSettingsPage` | Chỉ Admin | Google Drive, ĐVVC, video mặc định, watermark, retention |
+| `/admin/settings` | `AdminSettingsPage` | Chỉ Admin | Google Drive, Camera/Video mặc định, watermark, retention, CRUD kho hàng |
+| `/admin/carriers` | `AdminCarriersPage` | Chỉ Admin | Quản lý ĐVVC (ListView phân trang, tìm kiếm/lọc, CRUD ĐVVC tự thêm, khóa ĐVVC built-in) |
 | `/admin/employees` | `AdminEmployeesPage` | Chỉ Admin | CRUD nhân viên, reset PIN |
 
 ### 5.2 Navigation
@@ -388,6 +389,7 @@ const CauHinhUpdateSchema = z.object({
 - **Sidebar / Bottom Nav:** "Cài đặt" -> `/settings` (User Settings)
 - **Sidebar chỉ hiện với Admin:** "Quản trị" -> sub-menu:
   - "Cấu hình hệ thống" -> `/admin/settings`
+  - "Đơn vị vận chuyển" -> `/admin/carriers`
   - "Quản lý nhân viên" -> `/admin/employees`
 
 ---

@@ -7,8 +7,8 @@
 import { useState, useMemo, useCallback } from 'react';
 import { Package, PackageOpen, Video, RotateCcw, ChevronDown, AlertTriangle, Loader2, Trash2 } from 'lucide-react';
 import type { BarcodeResult, DonViVanChuyen, LoaiBienBan } from '../../types';
-import { DON_VI_VAN_CHUYEN_LIST } from '../../config/constants';
-import { detectCarrier, getCarrierLabel } from '../../utils/detect-carrier';
+import { detectCarrier, getCarrierLabel, getMergedCarrierList } from '../../utils/detect-carrier';
+import { useConfigStore } from '../../stores/config-store';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -57,8 +57,15 @@ export function ScanResult({
   onStartRecording,
   onRescan,
 }: ScanResultProps) {
-  // Auto-detect carrier from scanned code
-  const detectedCarrier = useMemo(() => detectCarrier(result.rawValue), [result.rawValue]);
+  // Lấy danh sách ĐVVC từ server config (đã đồng bộ)
+  const serverCarrierList = useConfigStore((s) => s.systemConfig.don_vi_vc);
+  const mergedCarriers = useMemo(() => getMergedCarrierList(serverCarrierList), [serverCarrierList]);
+
+  // Auto-detect carrier from scanned code (hoặc dùng ĐVVC người dùng đã chọn trước nếu có)
+  const detectedCarrier = useMemo(
+    () => (result.carrier ? result.carrier : detectCarrier(result.rawValue)),
+    [result.rawValue, result.carrier]
+  );
 
   const [selectedCarrier, setSelectedCarrier] = useState<DonViVanChuyen>(detectedCarrier);
   // Cố định theo chế độ làm việc đã chọn trước khi quét (Mode-First, tránh bypass check trùng)
@@ -144,7 +151,7 @@ export function ScanResult({
             value={selectedCarrier}
             onChange={(e) => setSelectedCarrier(e.target.value as DonViVanChuyen)}
           >
-            {DON_VI_VAN_CHUYEN_LIST.map((carrier) => (
+            {mergedCarriers.map((carrier) => (
               <option key={carrier.id} value={carrier.id}>
                 {carrier.label}
               </option>
@@ -154,7 +161,7 @@ export function ScanResult({
         </div>
         {detectedCarrier !== 'Khac' && detectedCarrier === selectedCarrier && (
           <span className="scan-result__auto-detected">
-            Tự động nhận diện: {getCarrierLabel(detectedCarrier)}
+            Tự động nhận diện: {getCarrierLabel(detectedCarrier, serverCarrierList)}
           </span>
         )}
       </div>

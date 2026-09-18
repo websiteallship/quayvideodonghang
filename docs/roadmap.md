@@ -795,35 +795,46 @@ gantt
    - Response bổ sung: `dung_luong_da_dung_gb`, `dung_luong_tong_gb`, `dung_luong_con_lai_gb`, `file_test_ok`
 
 **Verification:**
-- [ ] `GET /api/admin/cau-hinh` → response là object (không phải array)
-- [ ] `PUT` với `khoa: "invalid_key"` → 400 validation error
-- [ ] `PATCH .../batch` → update 3 keys cùng lúc → tất cả persist
-- [ ] `POST .../test-drive` → trả `dung_luong_con_lai_gb` + `file_test_ok: true`
-- [ ] Update config → frontend fetch lại → hiển thị giá trị mới
+- [x] `GET /api/admin/cau-hinh` → response là object (không phải array)
+- [x] `PUT` với `khoa: "invalid_key"` → 400 validation error
+- [x] `PATCH .../batch` → update 3 keys cùng lúc → tất cả persist
+- [x] `POST .../test-drive` → trả `dung_luong_con_lai_gb` + `file_test_ok: true`
+- [x] Update config → frontend fetch lại → hiển thị giá trị mới
 
 ---
 
 ### Step 3.4D — Frontend Admin Pages (Chỉ Admin)
 
 **Routes mới:**
-- `/admin/settings` → `AdminSettingsPage` — Cấu hình hệ thống
+- `/admin/settings` → `AdminSettingsPage` — Cấu hình hệ thống (Google Drive, Camera/Video, Tính năng & Toggles, Kho vận)
+- `/admin/carriers` → `AdminCarriersPage` — Quản lý Đơn vị Vận chuyển (ListView phân trang, tìm kiếm/bộ lọc, CRUD ĐVVC tự thêm, khóa ĐVVC built-in)
 - `/admin/employees` → `AdminEmployeesPage` — Quản lý nhân viên
 
 **Công việc:**
 1. **Routing & Guard:**
-   - Thêm 2 routes mới trong router, bọc `AdminGuard` (check `vai_tro === 'admin'`)
+   - Thêm 3 routes mới trong router, bọc `AdminGuard` (check `vai_tro === 'admin'`)
    - Sidebar: thêm menu "Quản trị" (icon `Shield`) chỉ hiện với Admin, sub-items:
      - "Cấu hình hệ thống" → `/admin/settings`
+     - "Đơn vị vận chuyển" → `/admin/carriers`
      - "Quản lý nhân viên" → `/admin/employees`
 2. **`AdminSettingsPage`:**
    - Google Drive connection card: Service Account email, Shared Drive folder, nút "Kiểm tra kết nối" (gọi `POST .../test-drive`)
    - Storage quota progress bar (data từ test-drive response)
    - Video quality settings: độ phân giải mặc định (select), bitrate (input số)
    - Feature toggles (Switch component): auto-scan, quay liên tục, watermark
-   - Carrier list management: editable tag list (thêm/xóa ĐVVC)
+   - Phân hệ Kho vận: CRUD danh mục kho hàng kèm phân trang
+   - Liên kết chuyển hướng nhanh tới trang Quản lý ĐVVC riêng biệt (`/admin/carriers`)
    - Data retention: input số tháng giữ video
    - Nút "Lưu tất cả" → gọi `PATCH .../cau-hinh/batch`
-3. **`AdminEmployeesPage`:**
+3. **`AdminCarriersPage`:**
+   - Data table danh sách ĐVVC: Tên hiển thị, Mã định danh ID (Key), Phân loại (Mặc định / Do Admin thêm), Cơ chế nhận diện (Tự động regex / Chọn thủ công)
+   - Search bar: tìm theo mã ID hoặc tên đơn vị
+   - Filter dropdown: Tất cả / Mặc định hệ thống / Do Admin thêm
+   - CRUD ĐVVC: Thêm mới (Dialog: ID + Tên), Sửa tên hiển thị (Dialog), Xóa ĐVVC (AlertDialog xác nhận)
+   - Khóa cố định ĐVVC mặc định hệ thống (GHN, GHTK, ViettelPost, ShopeeXpress, J&T, VNPost, BestExpress, NhatTin, LazadaExpress, Khac)
+   - Phân trang: PaginationInfo, PaginationLimitSelect, Pagination (options: 5, 10, 20)
+   - Responsive mobile cards view
+4. **`AdminEmployeesPage`:**
    - Data table danh sách NV: mã, tên, vai trò, trạng thái, video hôm nay, đăng nhập cuối
    - Search bar: tìm theo mã/tên
    - Filter: trạng thái (hoạt động / vô hiệu hóa)
@@ -832,13 +843,13 @@ gantt
    - Badge trạng thái: xanh (hoạt động), vàng (vô hiệu hóa), đỏ (đã xóa)
 
 **Verification:**
-- [ ] NV thường truy cập `/admin/*` → redirect về `/settings` hoặc 403 toast
-- [ ] Admin thấy menu "Quản trị" trên sidebar
-- [ ] Tạo NV mới → xuất hiện trong bảng
-- [ ] Vô hiệu hóa NV → NV đó không login được
-- [ ] Reset PIN → NV phải đăng nhập lại bằng PIN mới
-- [ ] Test Drive → hiển thị trạng thái kết nối + dung lượng còn lại
-- [ ] Lưu cấu hình → persist qua sessions, tất cả trạm nhận giá trị mới
+- [x] NV thường truy cập `/admin/*` → redirect về `/settings` hoặc 403 toast
+- [x] Admin thấy menu "Quản trị" trên sidebar
+- [x] Tạo NV mới → xuất hiện trong bảng
+- [x] Vô hiệu hóa NV → NV đó không login được
+- [x] Reset PIN → NV phải đăng nhập lại bằng PIN mới
+- [x] Test Drive → hiển thị trạng thái kết nối + dung lượng còn lại
+- [x] Lưu cấu hình → persist qua sessions, tất cả trạm nhận giá trị mới
 
 ---
 
@@ -954,15 +965,16 @@ gantt
    - Scan detects code → check duplicate API → nếu không trùng: auto-detect ĐVVC & auto-start recording (không cần bấm xác nhận).
    - Cơ chế an toàn (Fail-safe): Nếu phát hiện mã trùng (`isDuplicate === true`) hoặc lỗi API → tự động fallback sang modal `ScanResult` cảnh báo.
    - Cấu hình qua Settings: Chuyển đổi `recordTriggerMode` giữa `'auto'` (Hands-free) và `'confirm'` (Xác nhận thủ công).
-2. Continuous recording mode:
-   - After "Lưu & Tiếp tục": Stay on camera, ready for next scan immediately
-   - Don't navigate back to Home, keep camera stream alive
-   - Queue new scan → new recording → enqueue → repeat
+2. Continuous recording mode (Chỉ áp dụng cho Súng quét Barcode):
+   - **Quy tắc an toàn:** Không áp dụng quét qua Camera khi đang quay để tránh quét nhầm các kiện hàng xung quanh.
+   - Khi đang ghi hình đơn A, bắn súng quét mã đơn B $\rightarrow$ tự động cắt đóng gói đơn A đẩy vào IDB queue và tiếp tục ghi hình đơn B ngay lập tức.
+   - Nếu `quay_lien_tuc = false`, bắn súng khi đang quay sẽ hiển thị cảnh báo yêu cầu bấm Dừng quay trước.
+   - Camera stream duy trì liên tục không bị khởi động lại.
 
 **Verification:**
-- [ ] Auto mode: scan → recording starts within 1 second
-- [ ] Continuous mode: 5 consecutive scans without leaving camera
-- [ ] Toggle on/off via Settings → immediate effect
+- [x] Auto mode: scan bằng súng → recording starts sau 500ms (Camera scan vẫn mở dialog xác nhận)
+- [x] Continuous mode: quét liên tiếp bằng súng không thoát camera (chặn scan camera trong lúc quay)
+- [x] Toggle on/off via Settings → immediate effect
 - [ ] Error during auto-mode → graceful fallback to manual flow
 
 ---

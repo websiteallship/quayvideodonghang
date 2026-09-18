@@ -1,6 +1,10 @@
 export type LoaiBienBan = 'dong_goi' | 'khui_hang';
 
-export type DonViVanChuyen = 'GHN' | 'ViettelPost' | 'BestExpress' | 'NhatTin' | 'LazadaExpress' | 'ShopeeXpress' | 'J&T' | 'VNPost' | 'GHTK' | 'Khac';
+/** Built-in carriers with regex auto-detection — cố định trong codebase, không cho sửa/xóa */
+export type BuiltInCarrier = 'GHN' | 'ViettelPost' | 'BestExpress' | 'NhatTin' | 'LazadaExpress' | 'ShopeeXpress' | 'J&T' | 'VNPost' | 'GHTK' | 'Khac';
+
+/** Cho phép built-in + bất kỳ carrier string nào do Admin thêm */
+export type DonViVanChuyen = BuiltInCarrier | (string & {});
 
 export type UploadStatus = 'cho_upload' | 'dang_upload' | 'da_upload' | 'loi';
 

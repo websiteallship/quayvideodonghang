@@ -49,7 +49,8 @@ import {
 import { apiClient, API_BASE } from '@/services/api-client';
 import { formatDateTimeVN, formatDuration, formatBytes } from '@/utils/format';
 import { feedbackSuccess } from '@/utils/barcode-feedback';
-import { DON_VI_VAN_CHUYEN_LIST } from '@/config/constants';
+import { getCarrierLabel as getCarrierLabelUtil } from '@/utils/detect-carrier';
+import { useConfigStore } from '@/stores/config-store';
 import type { BienBan, BarcodeResult } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -85,9 +86,8 @@ function getCarrierBarColor(donViVc: string): string {
   return map[donViVc] ?? 'bg-blue-500';
 }
 
-function getCarrierLabel(donViVc: string): string {
-  const found = DON_VI_VAN_CHUYEN_LIST.find((c) => c.id === donViVc);
-  return found?.label ?? donViVc;
+function getCarrierLabelLocal(donViVc: string, serverList?: string[]): string {
+  return getCarrierLabelUtil(donViVc, serverList);
 }
 
 function getStatusBadge(trangThai: string) {
@@ -136,6 +136,8 @@ export const HistoryPage: React.FC = () => {
   const { user } = useAuthStore();
   const isAdmin = user?.vai_tro === 'admin';
   const navigate = useNavigate();
+  const serverCarrierList = useConfigStore((s) => s.systemConfig.don_vi_vc);
+  const getCarrierLabel = (donViVc: string) => getCarrierLabelLocal(donViVc, serverCarrierList);
 
   // 1. Search state & Debounce (300ms)
   const [searchInput, setSearchInput] = useState('');

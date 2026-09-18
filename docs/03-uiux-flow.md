@@ -41,14 +41,25 @@ Trong vận hành kho thực tế, nhân viên luôn làm việc theo ca hoặc 
 7. **Quay lại sẵn sàng cho đơn kế tiếp**:
    - Hệ thống tự động trở về trạng thái sẵn sàng quét mã, **vẫn giữ nguyên chế độ làm việc đã chọn**, nhân viên chỉ việc đưa đơn tiếp theo vào quét.
 
-### 2.1 Luồng Tự động quay (Hands-Free / Auto-Record Mode — Tối ưu vượt bậc nhờ Mode-First)
-Nhờ loại biên bản đã được định sẵn từ trước khi quét, tính năng Tự động quay hoạt động trơn tru 100%:
-1. **Quét mã**: Nhân viên đưa kiện hàng trước camera hoặc bấm súng quét USB.
-2. **Nhận diện & Check trùng tức thì**:
+### 2.1 Luồng Tự động quay & Quay liên tục (Chỉ áp dụng cho Súng quét Barcode)
+> **Quy tắc an toàn kho vận:** Cả hai chế độ **Tự động quay sau quét (Auto Scan)** và **Quay liên tục (Continuous Mode)** chỉ áp dụng khi sử dụng **Súng quét barcode (USB / Bluetooth)**. Tuyệt đối **KHÔNG** áp dụng cho camera quét trực tiếp nhằm tránh rủi ro camera quét nhầm mã vạch các kiện hàng xung quanh bàn đóng gói, gây ngắt/cắt video ngoài ý muốn. Khi quét bằng camera, hệ thống luôn yêu cầu nhân viên bấm xác nhận thủ công trên màn hình.
+
+1. **Quét mã bằng súng:** Nhân viên bóp cò súng quét mã vận đơn trên kiện hàng.
+2. **Nhận diện & Check trùng tức thì:**
    - Hệ thống phát âm báo beep ngắn, tự động gán loại biên bản đang active, và gọi API check mã trùng.
    - **Nếu mã hợp lệ & không trùng:** Ứng dụng tự động phát hiện ĐVVC, hiển thị banner HUD "Đang tự động quay [Đóng gói/Khui hàng]..." (đếm lùi 500ms), sau đó **chuyển thẳng sang Màn hình Quay video** mà nhân viên hoàn toàn KHÔNG CẦN chạm vào màn hình hay chuột.
    - **Nếu mã trùng hoặc lỗi:** Ngay lập tức ngắt cơ chế tự động, phát âm cảnh báo `warning_sound_scan.mp3` và bật popup cảnh báo để nhân viên quyết định.
-3. **Quay & Kết thúc**: Nhân viên đóng/khui hàng xong bấm nút "Dừng", tiếp tục quy trình lưu trữ chuẩn hoặc quay liên tục.
+3. **Quay & Kết thúc (hoặc Quay liên tục):**
+   - *Chế độ đơn lẻ (mặc định):* Đóng gói xong bấm nút "Dừng" để kết thúc và lưu video.
+   - *Chế độ quay liên tục (`quay_lien_tuc = true`):* Đang quay đơn A, nhân viên đóng xong chỉ cần bóp cò súng quét đơn B $\rightarrow$ hệ thống tự động chốt cắt video đơn A đưa vào hàng đợi upload, đổi watermark sang đơn B và tiếp tục ghi hình ngay lập tức mà không gián đoạn luồng camera. Nếu `quay_lien_tuc = false`, bắn súng khi đang quay sẽ hiển thị cảnh báo yêu cầu bấm Dừng quay trước.
+
+### 2.2 Luồng Nhập mã thủ công & Chọn ĐVVC (Đặc thù Khui hàng / Trả hàng)
+- **Bài toán thực tế:** Khi bóc kiện hoàn trả (`khui_hang`), mã vận đơn thường bị mờ/rách tem hoặc từ các nhà vận chuyển ngoại sàn.
+- **Thao tác nhanh trên Màn hình Chính:**
+  - Ô nhập mã hỗ trợ cả súng quét USB và gõ bàn phím.
+  - Dropdown ĐVVC hiển thị ngay trong khối nhập mã, hỗ trợ toàn bộ danh sách ĐVVC hệ thống + ĐVVC do Admin tạo mới.
+  - Tự động gợi ý ĐVVC nếu mã nhập khớp regex, đồng thời cho phép nhân viên chủ động chọn ĐVVC theo lô kiện hoàn trả trước khi bấm quay.
+  - Nút bấm **"Bắt đầu quay video khui hàng"** kích hoạt quy trình quay ngay lập tức.
 
 ---
 

@@ -27,6 +27,12 @@ export const Header: React.FC = () => {
         return 'Lịch Sử Biên Bản';
       case '/settings':
         return 'Cài Đặt Hệ Thống';
+      case '/admin/settings':
+        return 'Cấu Hình Hệ Thống';
+      case '/admin/carriers':
+        return 'Đơn Vị Vận Chuyển';
+      case '/admin/employees':
+        return 'Quản Lý Nhân Viên';
       default:
         return 'Kho Vận';
     }

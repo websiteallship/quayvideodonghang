@@ -169,16 +169,22 @@ export const UserSettingsPage: React.FC = () => {
     fetchWarehouses,
     setWarehouse,
     isOnline,
+    systemConfig,
   } = useConfigStore();
   const { user, logout } = useAuthStore();
   const {
     videoResolution,
     setVideoResolution,
+    isResolutionOverridden,
+    resetResolutionToSystem,
     autoRecordAfterScan,
     setAutoRecordAfterScan,
     soundBeepEnabled,
     setSoundBeepEnabled,
   } = useUserSettingsStore();
+
+  const sysDefaultRes = systemConfig?.do_phan_giai === '1920x1080' ? '1080p' : '720p';
+  const effectiveRes = isResolutionOverridden ? videoResolution : sysDefaultRes;
 
   const {
     coords,
@@ -358,7 +364,7 @@ export const UserSettingsPage: React.FC = () => {
               </select>
             </div>
 
-            {/* Resolution Toggle (User Override) */}
+            {/* Resolution Toggle (User Override & System Default Sync) */}
             <div className="flex flex-col gap-2">
               <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
                 <div>
@@ -366,21 +372,43 @@ export const UserSettingsPage: React.FC = () => {
                     Độ phân giải video ghi hình
                   </label>
                   <span className="text-[11px] text-muted-foreground/80">
-                    Override cục bộ trên thiết bị này
+                    {isResolutionOverridden
+                      ? 'Đang áp dụng cấu hình tùy chỉnh riêng trên máy này'
+                      : `Tự động đồng bộ theo hệ thống (mặc định: ${sysDefaultRes})`}
                   </span>
                 </div>
-                <Badge variant="outline" className="w-fit font-mono text-[11px] font-semibold border-border">
-                  Đang chọn: <strong className="ml-1 text-foreground">{videoResolution}</strong>
-                </Badge>
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline" className="w-fit font-mono text-[11px] font-semibold border-border">
+                    {isResolutionOverridden ? (
+                      <span className="text-amber-500 font-medium">Tùy chỉnh: {effectiveRes}</span>
+                    ) : (
+                      <span className="text-primary font-medium">Hệ thống: {effectiveRes}</span>
+                    )}
+                  </Badge>
+                  {isResolutionOverridden && (
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                      onClick={() => {
+                        resetResolutionToSystem();
+                        showToast.info('Đã hoàn tác', `Độ phân giải quay lại mặc định hệ thống (${sysDefaultRes})`);
+                      }}
+                    >
+                      Đặt lại mặc định
+                    </Button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                 <Button
                   type="button"
-                  variant={videoResolution === '1080p' ? 'default' : 'outline'}
+                  variant={effectiveRes === '1080p' ? 'default' : 'outline'}
                   className={cn(
                     'h-auto min-h-[52px] flex-col items-start justify-center p-3 rounded-2xl text-left transition-all',
-                    videoResolution === '1080p' && 'shadow-xs border-primary'
+                    effectiveRes === '1080p' && 'shadow-xs border-primary'
                   )}
                   onClick={() => {
                     setVideoResolution('1080p');
@@ -389,12 +417,12 @@ export const UserSettingsPage: React.FC = () => {
                 >
                   <div className="flex items-center justify-between w-full">
                     <span className="text-xs font-bold">1080p (Full HD)</span>
-                    {videoResolution === '1080p' && <Check className="size-3.5 shrink-0" />}
+                    {effectiveRes === '1080p' && <Check className="size-3.5 shrink-0" />}
                   </div>
                   <span
                     className={cn(
                       'text-[11px] font-normal mt-0.5',
-                      videoResolution === '1080p'
+                      effectiveRes === '1080p'
                         ? 'text-primary-foreground/80'
                         : 'text-muted-foreground'
                     )}
@@ -405,10 +433,10 @@ export const UserSettingsPage: React.FC = () => {
 
                 <Button
                   type="button"
-                  variant={videoResolution === '720p' ? 'default' : 'outline'}
+                  variant={effectiveRes === '720p' ? 'default' : 'outline'}
                   className={cn(
                     'h-auto min-h-[52px] flex-col items-start justify-center p-3 rounded-2xl text-left transition-all',
-                    videoResolution === '720p' && 'shadow-xs border-primary'
+                    effectiveRes === '720p' && 'shadow-xs border-primary'
                   )}
                   onClick={() => {
                     setVideoResolution('720p');
@@ -417,12 +445,12 @@ export const UserSettingsPage: React.FC = () => {
                 >
                   <div className="flex items-center justify-between w-full">
                     <span className="text-xs font-bold">720p (HD)</span>
-                    {videoResolution === '720p' && <Check className="size-3.5 shrink-0" />}
+                    {effectiveRes === '720p' && <Check className="size-3.5 shrink-0" />}
                   </div>
                   <span
                     className={cn(
                       'text-[11px] font-normal mt-0.5',
-                      videoResolution === '720p'
+                      effectiveRes === '720p'
                         ? 'text-primary-foreground/80'
                         : 'text-muted-foreground'
                     )}
@@ -465,7 +493,7 @@ export const UserSettingsPage: React.FC = () => {
             <ToggleRow
               id="settings-auto-record"
               title="Tự động kích hoạt quay video sau khi quét"
-              description="Sau khi nhận mã vận đơn hợp lệ từ súng quét, hệ thống đếm ngược 1s và tự động bắt đầu ghi hình"
+              description="Sau khi nhận mã vận đơn hợp lệ từ súng quét barcode, hệ thống tự động bắt đầu ghi hình (chỉ áp dụng cho súng quét, không áp dụng camera)"
               checked={autoRecordAfterScan}
               onChange={(val) => {
                 setAutoRecordAfterScan(val);

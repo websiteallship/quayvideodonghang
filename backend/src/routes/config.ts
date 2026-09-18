@@ -7,10 +7,52 @@ export const configRouter = new Hono<{
 }>();
 
 configRouter.get('/public', async (c) => {
+  let configs: Record<string, string> = {};
+  try {
+    const rows = await c.env.DB.prepare('SELECT khoa, gia_tri FROM cau_hinh').all<{ khoa: string; gia_tri: string }>();
+    configs = Object.fromEntries((rows.results || []).map((r) => [r.khoa, r.gia_tri]));
+  } catch {
+    // Fallback if cau_hinh table not yet initialized or query fails
+  }
+
+  // Built-in carrier IDs — luôn có trong response, không bao giờ mất
+  const BUILT_IN_IDS = ['GHN', 'ViettelPost', 'BestExpress', 'NhatTin', 'LazadaExpress', 'ShopeeXpress', 'J&T', 'VNPost', 'GHTK', 'Khac'];
+
+  // Danh sách từ DB (có thể chứa cả built-in IDs lẫn admin-added entries dạng "id:label")
+  const dbList = configs.don_vi_vc_danh_sach
+    ? configs.don_vi_vc_danh_sach.split(',').map((s) => s.trim()).filter(Boolean)
+    : [];
+
+  // Merge: built-in IDs + admin-added entries (dedup)
+  const seenIds = new Set<string>();
+  const donViVcList: string[] = [];
+
+  // 1. Built-in IDs trước
+  for (const id of BUILT_IN_IDS) {
+    donViVcList.push(id);
+    seenIds.add(id);
+  }
+
+  // 2. Admin-added entries (skip nếu id trùng built-in)
+  for (const entry of dbList) {
+    const colonIdx = entry.indexOf(':');
+    const entryId = colonIdx > 0 ? entry.slice(0, colonIdx).trim() : entry;
+    if (!seenIds.has(entryId)) {
+      donViVcList.push(entry); // Giữ nguyên format "id:label"
+      seenIds.add(entryId);
+    }
+  }
+
   return successResponse(c, {
     app_name: 'Quay Video Kho Vận',
     version: '1.0.0',
-    don_vi_vc: ['GHN', 'ViettelPost', 'BestExpress', 'NhatTin', 'LazadaExpress', 'ShopeeXpress', 'J&T', 'VNPost', 'GHTK', 'Khac'],
+    do_phan_giai: configs.do_phan_giai || '1280x720',
+    bitrate_mbps: parseFloat(configs.bitrate_mbps || '2.5'),
+    watermark: configs.watermark !== 'false',
+    auto_scan: configs.auto_scan === 'true',
+    quay_lien_tuc: configs.quay_lien_tuc === 'true',
+    retention_thang: parseInt(configs.retention_thang || '6', 10),
+    don_vi_vc: donViVcList,
     max_duration_seconds: 600,
     chunk_size: parseInt(c.env.UPLOAD_CHUNK_SIZE || '5242880', 10)
   });

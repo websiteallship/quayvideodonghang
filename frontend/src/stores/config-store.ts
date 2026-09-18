@@ -6,6 +6,34 @@ import { API_ENDPOINTS } from '../config/api';
 
 export type AppTheme = 'light' | 'dark';
 
+export interface SystemConfig {
+  app_name?: string;
+  version?: string;
+  do_phan_giai: string; // '1280x720' | '1920x1080' | '854x480'
+  bitrate_mbps: number;
+  watermark: boolean;
+  auto_scan: boolean;
+  quay_lien_tuc: boolean;
+  retention_thang: number;
+  don_vi_vc: string[];
+  max_duration_seconds?: number;
+  chunk_size?: number;
+}
+
+export const DEFAULT_SYSTEM_CONFIG: SystemConfig = {
+  app_name: 'Quay Video Kho Vận',
+  version: '1.0.0',
+  do_phan_giai: '1280x720',
+  bitrate_mbps: 2.5,
+  watermark: true,
+  auto_scan: false,
+  quay_lien_tuc: false,
+  retention_thang: 6,
+  don_vi_vc: ['GHN', 'GHTK', 'J&T', 'ViettelPost', 'ShopeeXpress', 'Khac'],
+  max_duration_seconds: 600,
+  chunk_size: 5242880,
+};
+
 interface ConfigState {
   isOnline: boolean;
   deviceType: ThietBiType;
@@ -14,6 +42,8 @@ interface ConfigState {
   warehouseId: string;
   warehouses: KhoHang[];
   warehousesLoading: boolean;
+  systemConfig: SystemConfig;
+  systemConfigLoading: boolean;
   /** Global flag: true when video recording is actively in progress */
   isRecordingActive: boolean;
   /** Desktop sidebar collapse state */
@@ -25,6 +55,7 @@ interface ConfigState {
   setWarehouseName: (name: string, id?: string) => void;
   setWarehouse: (warehouse: KhoHang) => void;
   fetchWarehouses: () => Promise<void>;
+  fetchSystemConfig: () => Promise<void>;
   setIsRecordingActive: (active: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
@@ -59,6 +90,18 @@ const getInitialSidebarCollapsed = (): boolean => {
   return false;
 };
 
+const getInitialSystemConfig = (): SystemConfig => {
+  if (typeof window !== 'undefined') {
+    const saved = localStorage.getItem('system_config');
+    if (saved) {
+      try {
+        return { ...DEFAULT_SYSTEM_CONFIG, ...JSON.parse(saved) };
+      } catch {}
+    }
+  }
+  return DEFAULT_SYSTEM_CONFIG;
+};
+
 export const useConfigStore = create<ConfigState>((set, get) => ({
   isOnline: typeof navigator !== 'undefined' ? navigator.onLine : true,
   deviceType: 'pc_webcam',
@@ -67,6 +110,8 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   warehouseId: getInitialWarehouseId(),
   warehouses: [],
   warehousesLoading: false,
+  systemConfig: getInitialSystemConfig(),
+  systemConfigLoading: false,
   isRecordingActive: false,
   sidebarCollapsed: getInitialSidebarCollapsed(),
 
@@ -149,6 +194,26 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
       // Offline fallback: giữ nguyên giá trị đã lưu
     } finally {
       set({ warehousesLoading: false });
+    }
+  },
+
+  fetchSystemConfig: async () => {
+    set({ systemConfigLoading: true });
+    try {
+      const res = await apiClient
+        .get(API_ENDPOINTS.CONFIG.PUBLIC)
+        .json<{ success: boolean; data: SystemConfig }>();
+
+      if (res.success && res.data) {
+        set({ systemConfig: res.data });
+        if (typeof window !== 'undefined') {
+          localStorage.setItem('system_config', JSON.stringify(res.data));
+        }
+      }
+    } catch {
+      // Offline fallback: giữ nguyên giá trị đã lưu trong localStorage
+    } finally {
+      set({ systemConfigLoading: false });
     }
   },
 

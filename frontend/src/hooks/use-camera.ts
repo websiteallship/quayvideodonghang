@@ -36,7 +36,7 @@ interface UseCameraReturn {
   toggleFacing: () => Promise<void>;
 }
 
-import { useUserSettingsStore } from '../stores/user-settings-store';
+import { getEffectiveResolution } from '../stores/user-settings-store';
 
 // ---------------------------------------------------------------------------
 // Resolution Fallback Chain: 1080p / 720p → 480p → any
@@ -231,8 +231,8 @@ export function useCamera(): UseCameraReturn {
         };
       };
 
-      // Thử resolution chain
-      const currentResPref = useUserSettingsStore.getState().videoResolution;
+      // Thử resolution chain (ưu tiên user override, fallback cấu hình hệ thống)
+      const currentResPref = getEffectiveResolution();
       const resolutionChain = getResolutionChain(currentResPref);
 
       for (let i = 0; i < resolutionChain.length; i++) {
@@ -381,7 +381,7 @@ export function useCamera(): UseCameraReturn {
     setIsLoading(true);
     setError(null);
 
-    const toggleResPref = useUserSettingsStore.getState().videoResolution;
+    const toggleResPref = getEffectiveResolution();
     const toggleChain = getResolutionChain(toggleResPref);
 
     for (const resolution of toggleChain) {

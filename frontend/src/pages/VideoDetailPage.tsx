@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { CustomVideoPlayer } from '@/components/video/CustomVideoPlayer';
@@ -10,7 +9,7 @@ import { showToast } from '@/stores/toast-store';
 import { formatDuration, formatBytes, formatDateTimeVN } from '@/utils/format';
 import { getCarrierLabel } from '@/utils/detect-carrier';
 import { fetchBienBanDetail, fetchBienBanViewUrl } from '@/services/bien-ban-service';
-import { getStoredToken, API_BASE } from '@/services/api-client';
+import { getStoredToken } from '@/services/api-client';
 import type { BienBan } from '@/types';
 import {
   PlayCircle,

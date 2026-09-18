@@ -29,11 +29,29 @@ adminRouter.use('*', authMiddleware, requireAdminMiddleware);
 // Test kết nối Google Drive
 adminRouter.post('/cau-hinh/test-drive', async (c) => {
   try {
-    const driveService = new DriveService(c.env.GOOGLE_SERVICE_ACCOUNT_JSON);
+    // Dùng oauth2Creds nếu không có Service Account JSON (giống upload.ts)
+    const oauth2Creds =
+      c.env.GOOGLE_CLIENT_ID && c.env.GOOGLE_CLIENT_SECRET && c.env.GOOGLE_REFRESH_TOKEN
+        ? {
+            client_id: c.env.GOOGLE_CLIENT_ID,
+            client_secret: c.env.GOOGLE_CLIENT_SECRET,
+            refresh_token: c.env.GOOGLE_REFRESH_TOKEN,
+          }
+        : undefined;
+
+    const driveService = new DriveService(c.env.GOOGLE_SERVICE_ACCOUNT_JSON, oauth2Creds);
     
-    // Lấy drive_folder_id từ DB để test quyền ghi
-    const configRow = await c.env.DB.prepare("SELECT gia_tri FROM cau_hinh WHERE khoa = 'drive_folder_id'").first<{ gia_tri: string }>();
-    const folderId = configRow?.gia_tri;
+    // ưu tiên folder_id từ body (form chưa lưu), fallback về DB
+    let folderId: string | undefined;
+    try {
+      const body = await c.req.json<{ folder_id?: string }>();
+      folderId = body?.folder_id?.trim() || undefined;
+    } catch { /* body empty, ok */ }
+
+    if (!folderId) {
+      const configRow = await c.env.DB.prepare("SELECT gia_tri FROM cau_hinh WHERE khoa = 'drive_folder_id'").first<{ gia_tri: string }>();
+      folderId = configRow?.gia_tri;
+    }
 
     const result = await driveService.testConnectionDetailed(folderId);
 

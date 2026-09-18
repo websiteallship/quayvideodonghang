@@ -11,6 +11,7 @@ import {
   Shield,
   Settings2,
   Users,
+  Truck,
 } from 'lucide-react';
 import { useConfigStore } from '@/stores/config-store';
 import { useUploadStore } from '@/stores/upload-store';
@@ -42,6 +43,7 @@ export const Sidebar: React.FC = () => {
 
   const adminItems = [
     { to: '/admin/settings', label: 'Cấu hình hệ thống', icon: Settings2 },
+    { to: '/admin/carriers', label: 'Đơn vị vận chuyển', icon: Truck },
     { to: '/admin/employees', label: 'Quản lý nhân viên', icon: Users },
   ];
 

@@ -12,6 +12,8 @@ export type BarcodeSource = 'camera' | 'gun' | 'manual';
 /** Which scanner engine is active */
 export type ScannerBackend = 'native' | 'zxing-wasm';
 
+import type { DonViVanChuyen } from './bien-ban';
+
 /** Result from a successful barcode scan */
 export interface BarcodeResult {
   /** The decoded barcode string (e.g. "GHN0123456789") */
@@ -20,6 +22,8 @@ export interface BarcodeResult {
   format: BarcodeFormat;
   /** Input source: camera scanner or USB barcode gun */
   source: BarcodeSource;
+  /** Pre-selected carrier if entered manually */
+  carrier?: DonViVanChuyen;
 }
 
 /**

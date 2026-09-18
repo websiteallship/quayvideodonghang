@@ -1,11 +1,14 @@
 import { create } from 'zustand';
 import { persist, subscribeWithSelector } from 'zustand/middleware';
+import { useConfigStore } from './config-store';
 
 export type VideoResolution = '1080p' | '720p';
 
 export interface UserSettingsState {
-  /** Local video resolution override ('1080p' or '720p') */
+  /** Local video resolution ('1080p' or '720p') */
   videoResolution: VideoResolution;
+  /** Whether user explicitly chose a local resolution on this device */
+  isResolutionOverridden: boolean;
   /** Automatically trigger recording 1s after a valid scan */
   autoRecordAfterScan: boolean;
   /** Play sound beep on barcode scan or warning */
@@ -13,7 +16,8 @@ export interface UserSettingsState {
 }
 
 export interface UserSettingsActions {
-  setVideoResolution: (res: VideoResolution) => void;
+  setVideoResolution: (res: VideoResolution, isOverride?: boolean) => void;
+  resetResolutionToSystem: () => void;
   setAutoRecordAfterScan: (enabled: boolean) => void;
   setSoundBeepEnabled: (enabled: boolean) => void;
   resetSettings: () => void;
@@ -23,16 +27,30 @@ export type UserSettingsStore = UserSettingsState & UserSettingsActions;
 
 export const DEFAULT_USER_SETTINGS: UserSettingsState = {
   videoResolution: '720p',
+  isResolutionOverridden: false,
   autoRecordAfterScan: true,
   soundBeepEnabled: true,
 };
+
+/** Get effective resolution: user override priority, fallback to system config default */
+export function getEffectiveResolution(): VideoResolution {
+  const userSettings = useUserSettingsStore.getState();
+  if (userSettings.isResolutionOverridden) {
+    return userSettings.videoResolution;
+  }
+  const sysConfig = useConfigStore.getState().systemConfig;
+  return sysConfig?.do_phan_giai === '1920x1080' ? '1080p' : '720p';
+}
 
 export const useUserSettingsStore = create<UserSettingsStore>()(
   subscribeWithSelector(
     persist(
       (set) => ({
         ...DEFAULT_USER_SETTINGS,
-        setVideoResolution: (videoResolution) => set({ videoResolution }),
+        setVideoResolution: (videoResolution, isOverride = true) =>
+          set({ videoResolution, isResolutionOverridden: isOverride }),
+        resetResolutionToSystem: () =>
+          set({ isResolutionOverridden: false }),
         setAutoRecordAfterScan: (autoRecordAfterScan) => set({ autoRecordAfterScan }),
         setSoundBeepEnabled: (soundBeepEnabled) => set({ soundBeepEnabled }),
         resetSettings: () => set(DEFAULT_USER_SETTINGS),

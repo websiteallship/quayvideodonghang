@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   HardDrive,
   Video,
@@ -21,6 +21,7 @@ import {
   MapPin,
   Check,
   Search,
+  ExternalLink,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -155,6 +156,7 @@ function ToggleRow({
 // ---------------------------------------------------------------------------
 export const AdminSettingsPage: React.FC = () => {
   const [searchParams, setSearchParams] = useSearchParams();
+  const navigate = useNavigate();
   const activeTab = searchParams.get('tab') || 'drive';
 
   const [config, setConfig] = useState<CauHinhData>(DEFAULT_CONFIG);
@@ -163,7 +165,6 @@ export const AdminSettingsPage: React.FC = () => {
   const [saving, setSaving] = useState(false);
   const [driveTest, setDriveTest] = useState<DriveTestResult | null>(null);
   const [testingDrive, setTestingDrive] = useState(false);
-  const [newCarrier, setNewCarrier] = useState('');
 
   // ─── Warehouse Management State ───
   const [warehouses, setWarehouses] = useState<KhoHang[]>([]);
@@ -348,9 +349,25 @@ export const AdminSettingsPage: React.FC = () => {
 
   const isDirty = JSON.stringify(config) !== JSON.stringify(originalConfig);
 
-  const updateField = useCallback((key: CauHinhKey, value: string) => {
-    setConfig((prev) => ({ ...prev, [key]: value }));
+  // Extract Google ID từ URL nếu user paste full URL
+  const extractGoogleId = useCallback((key: CauHinhKey, value: string): string => {
+    if (key === 'drive_folder_id') {
+      // https://drive.google.com/drive/folders/{ID} hoặc https://drive.google.com/drive/u/0/folders/{ID}
+      const m = value.match(/\/folders\/([a-zA-Z0-9_-]+)/);
+      if (m) return m[1];
+    }
+    if (key === 'sheet_id') {
+      // https://docs.google.com/spreadsheets/d/{ID}/...
+      const m = value.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+      if (m) return m[1];
+    }
+    return value;
   }, []);
+
+  const updateField = useCallback((key: CauHinhKey, value: string) => {
+    const cleanValue = extractGoogleId(key, value.trim());
+    setConfig((prev) => ({ ...prev, [key]: cleanValue }));
+  }, [extractGoogleId]);
 
   // Save all
   const handleSaveAll = useCallback(async () => {
@@ -374,6 +391,7 @@ export const AdminSettingsPage: React.FC = () => {
 
       if (res.success) {
         setOriginalConfig({ ...config });
+        void useConfigStore.getState().fetchSystemConfig();
         showToast.success('Đã lưu cấu hình', 'Đã lưu cấu hình hệ thống thành công');
       }
     } catch {
@@ -383,13 +401,16 @@ export const AdminSettingsPage: React.FC = () => {
     }
   }, [config, originalConfig]);
 
-  // Test Drive
+  // Test Drive — truyền folder_id hiện tại trên form (không chờ lưu DB)
   const handleTestDrive = useCallback(async () => {
     setTestingDrive(true);
     setDriveTest(null);
     try {
+      const folderId = config.drive_folder_id?.trim();
       const res = await apiClient
-        .post(API_ENDPOINTS.ADMIN.CAU_HINH.TEST_DRIVE)
+        .post(API_ENDPOINTS.ADMIN.CAU_HINH.TEST_DRIVE, {
+          json: folderId ? { folder_id: folderId } : {},
+        })
         .json<{ success: boolean; data: DriveTestResult }>();
       if (res.success && res.data) {
         setDriveTest(res.data);
@@ -400,33 +421,7 @@ export const AdminSettingsPage: React.FC = () => {
     } finally {
       setTestingDrive(false);
     }
-  }, []);
-
-  // Carrier list management
-  const carrierList = (config.don_vi_vc_danh_sach ?? '').split(',').filter(Boolean);
-
-  const addCarrier = useCallback(() => {
-    const trimmed = newCarrier.trim();
-    if (!trimmed) return;
-    if (carrierList.includes(trimmed)) {
-      showToast.warning('Cảnh báo', 'ĐVVC đã tồn tại trong danh mục');
-      return;
-    }
-    updateField('don_vi_vc_danh_sach', [...carrierList, trimmed].join(','));
-    setNewCarrier('');
-    showToast.success('Đã lưu cấu hình', `Đã thêm ĐVVC "${trimmed}"`);
-  }, [newCarrier, carrierList, updateField]);
-
-  const removeCarrier = useCallback(
-    (carrier: string) => {
-      updateField(
-        'don_vi_vc_danh_sach',
-        carrierList.filter((c) => c !== carrier).join(',')
-      );
-      showToast.success('Đã lưu cấu hình', `Đã xóa ĐVVC "${carrier}"`);
-    },
-    [carrierList, updateField]
-  );
+  }, [config.drive_folder_id]);
 
   if (loading) {
     return (
@@ -653,14 +648,14 @@ export const AdminSettingsPage: React.FC = () => {
               <ToggleRow
                 id="admin-auto-scan"
                 title="Tự động quay sau quét (Auto Scan)"
-                description="Tự động bắt đầu ghi hình sau khi quét mã vận đơn thành công"
+                description="Tự động kích hoạt ghi hình sau khi nhận mã từ súng quét barcode (chỉ áp dụng cho súng quét, không áp dụng camera)"
                 checked={config.auto_scan === 'true'}
                 onChange={(v) => updateField('auto_scan', v ? 'true' : 'false')}
               />
               <ToggleRow
                 id="admin-quay-lien-tuc"
                 title="Quay liên tục (Continuous Mode)"
-                description="Không dừng quay giữa các đơn hàng — tiết kiệm thời gian xử lý"
+                description="Bắn súng quét để tự động cắt và chuyển đơn khi đang quay (chỉ áp dụng cho súng quét, không áp dụng camera tránh quét nhầm)"
                 checked={config.quay_lien_tuc === 'true'}
                 onChange={(v) => updateField('quay_lien_tuc', v ? 'true' : 'false')}
               />
@@ -674,52 +669,34 @@ export const AdminSettingsPage: React.FC = () => {
             </div>
           </SettingsSection>
 
-          {/* Carrier List */}
+          {/* Carrier List Redirection Banner */}
           <SettingsSection
             icon={Truck}
             iconColor="text-amber-500"
             title="Danh sách Đơn vị Vận chuyển"
-            description="Quản lý ĐVVC hiển thị trong dropdown lựa chọn"
+            description="Quản lý ĐVVC đã được chuyển sang menu page riêng biệt kèm phân trang và tìm kiếm"
           >
-            <div className="flex flex-col gap-3">
-              <div className="flex flex-wrap gap-2">
-                {carrierList.map((carrier) => (
-                  <Badge
-                    key={carrier}
-                    variant="secondary"
-                    className="gap-1.5 pl-3 pr-1.5 py-1.5 text-xs font-medium rounded-xl"
-                  >
-                    {carrier}
-                    <button
-                      type="button"
-                      onClick={() => removeCarrier(carrier)}
-                      className="p-0.5 rounded-md hover:bg-destructive/20 hover:text-destructive transition-colors cursor-pointer"
-                      aria-label={`Xóa ${carrier}`}
-                    >
-                      <X className="size-3" aria-hidden="true" />
-                    </button>
-                  </Badge>
-                ))}
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-4 rounded-2xl bg-amber-500/10 border border-amber-500/25">
+              <div className="flex items-center gap-3">
+                <div className="size-10 rounded-xl bg-amber-500/20 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+                  <Truck className="size-5" />
+                </div>
+                <div>
+                  <h4 className="text-xs font-bold text-foreground">Quản lý Đơn vị Vận chuyển</h4>
+                  <p className="text-[11px] text-muted-foreground mt-0.5">
+                    Xem toàn bộ ĐVVC mặc định hệ thống, thêm/sửa/xóa ĐVVC mới, tìm kiếm và phân trang hoàn chỉnh.
+                  </p>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Input
-                  value={newCarrier}
-                  onChange={(e) => setNewCarrier(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && addCarrier()}
-                  placeholder="Thêm ĐVVC mới..."
-                  className="h-10 rounded-xl text-xs flex-1"
-                />
-                <Button
-                  variant="outline"
-                  size="sm"
-                  className="h-10 gap-1.5 rounded-xl px-4 shrink-0"
-                  onClick={addCarrier}
-                  disabled={!newCarrier.trim()}
-                >
-                  <Plus className="size-3.5" aria-hidden="true" />
-                  Thêm
-                </Button>
-              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => navigate('/admin/carriers')}
+                className="rounded-xl text-xs font-bold gap-1.5 h-9 shrink-0 border-amber-500/30 hover:bg-amber-500/10 cursor-pointer"
+              >
+                <span>Mở trang ĐVVC</span>
+                <ExternalLink className="size-3.5" />
+              </Button>
             </div>
           </SettingsSection>
 

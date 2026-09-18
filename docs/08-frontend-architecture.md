@@ -111,13 +111,15 @@ frontend/
 │   │       └── QueueSummary.tsx  # Bộ đếm tổng "12 video — 10 đã lưu, 2 chờ"
 │   │
 │   ├── pages/                    # Route-level page components
-│   │   ├── LoginPage.tsx         # Mã NV + PIN
-│   │   ├── HomePage.tsx          # Nút "Quét mã đơn" lớn + dashboard nhanh
-│   │   ├── ScanPage.tsx          # Camera full-screen + quét mã
-│   │   ├── RecordPage.tsx        # Quay video + xác nhận
-│   │   ├── QueuePage.tsx         # Hàng đợi upload
-│   │   ├── HistoryPage.tsx       # Lịch sử / tra cứu
-│   │   └── SettingsPage.tsx      # Cài đặt (admin only)
+│   │   ├── LoginPage.tsx         # Đăng nhập (Mã NV + PIN)
+│   │   ├── HomePage.tsx          # Giao diện chính Quét & Quay Video
+│   │   ├── QueuePage.tsx         # Hàng đợi upload đồng bộ
+│   │   ├── HistoryPage.tsx       # Lịch sử biên bản & video
+│   │   ├── VideoDetailPage.tsx   # Chi tiết biên bản video
+│   │   ├── UserSettingsPage.tsx  # Cài đặt người dùng cá nhân (/settings)
+│   │   ├── AdminSettingsPage.tsx # Cấu hình hệ thống toàn cục (/admin/settings)
+│   │   ├── AdminCarriersPage.tsx # Quản lý ĐVVC ListView phân trang (/admin/carriers)
+│   │   └── AdminEmployeesPage.tsx# Quản lý nhân viên (/admin/employees)
 │   │
 │   └── utils/                    # Utility functions
 │       ├── format.ts             # Format datetime, filesize, duration

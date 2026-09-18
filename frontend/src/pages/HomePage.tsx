@@ -1,4 +1,4 @@
-import React, { useState, useRef, useCallback, useEffect } from 'react';
+import React, { useState, useRef, useCallback, useEffect, useMemo } from 'react';
 import {
   Camera,
   ScanLine,
@@ -11,7 +11,11 @@ import {
   Package,
   PackageOpen,
   Info,
+  Truck,
+  ChevronDown,
+  Sparkles,
 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Alert, AlertDescription } from '@/components/ui/alert';
@@ -41,7 +45,7 @@ import { useGeolocation } from '@/hooks/use-geolocation';
 import { idbService } from '@/services/idb-service';
 import { feedbackSuccess } from '@/utils/barcode-feedback';
 import { formatDuration } from '@/utils/format';
-import { detectCarrier } from '@/utils/detect-carrier';
+import { detectCarrier, getMergedCarrierList, getCarrierLabel } from '@/utils/detect-carrier';
 import type { BarcodeResult, DonViVanChuyen, LoaiBienBan } from '@/types';
 
 export const HomePage: React.FC = () => {
@@ -53,6 +57,10 @@ export const HomePage: React.FC = () => {
   const [currentView, setCurrentView] = useState<'idle' | 'scanner' | 'recording' | 'preview'>('idle');
   const [activeBarcode, setActiveBarcode] = useState<BarcodeResult | null>(null);
   const [manualCodeInput, setManualCodeInput] = useState('');
+  const serverCarrierList = useConfigStore((s) => s.systemConfig.don_vi_vc);
+  const mergedCarriers = useMemo(() => getMergedCarrierList(serverCarrierList), [serverCarrierList]);
+  const [manualCarrier, setManualCarrier] = useState<DonViVanChuyen>('GHN');
+  const [isCarrierCustomized, setIsCarrierCustomized] = useState(false);
   const [recordingMessage, setRecordingMessage] = useState<string | null>(null);
 
   // Sprint 1.2 — Work Mode selection state (Mode-First)
@@ -91,6 +99,10 @@ export const HomePage: React.FC = () => {
     stopCamera,
   } = useCamera();
 
+  // Đồng bộ cấu hình bitrate từ máy chủ hệ thống (mặc định 2.5 Mbps -> 2_500_000 bps)
+  const systemConfig = useConfigStore((s) => s.systemConfig);
+  const targetBitrate = Math.round((systemConfig?.bitrate_mbps ?? 2.5) * 1_000_000);
+
   // Sprint 2.1 — Video Recording Hook
   const {
     isRecording,
@@ -103,6 +115,7 @@ export const HomePage: React.FC = () => {
     attachSourceVideo,
   } = useMediaRecorder({
     stream,
+    bitrate: targetBitrate,
     overlayInfo: activeOverlayInfo ?? {
       maVanDon: '',
       donViVc: 'GHN',
@@ -364,14 +377,26 @@ export const HomePage: React.FC = () => {
         // Hợp lệ và không trùng -> Đếm ngược 500ms
         setAutoScanCountdown(500);
         
-        const detectedCarrier = detectCarrier(activeBarcode.rawValue);
+        const detectedCarrier = activeBarcode.carrier || detectCarrier(activeBarcode.rawValue);
+
+        // Không nhận diện được ĐVVC → chặn auto-scan, buộc user chọn thủ công qua popup
+        if (detectedCarrier === 'Khac') {
+          setAutoScanCountdown(null);
+          // Không return cleanup — để activeBarcode giữ nguyên và Dialog ScanResult mở lên
+          return;
+        }
+
         const timer = setTimeout(() => {
           if (currentView === 'recording') {
-            void handleContinuousScanNext({
-              maVanDon: activeBarcode.rawValue,
-              donViVc: detectedCarrier,
-              loaiBienBan: workMode ?? 'dong_goi',
-            });
+            if (systemConfig?.quay_lien_tuc) {
+              void handleContinuousScanNext({
+                maVanDon: activeBarcode.rawValue,
+                donViVc: detectedCarrier,
+                loaiBienBan: workMode ?? 'dong_goi',
+              });
+            } else {
+              toast.warning('Chế độ quay liên tục đang tắt. Vui lòng bấm Dừng quay để kết thúc đơn hiện tại.');
+            }
           } else {
             void handleStartRecording({
               maVanDon: activeBarcode.rawValue,
@@ -402,6 +427,7 @@ export const HomePage: React.FC = () => {
     checkError,
     workMode,
     currentView,
+    systemConfig?.quay_lien_tuc,
     handleStartRecording,
     handleContinuousScanNext,
   ]);
@@ -412,6 +438,13 @@ export const HomePage: React.FC = () => {
       // Fix Bug 3: Hiển thị mã vận đơn vừa quét trong ô nhập cho feedback trực quan
       setManualCodeInput(code);
 
+      // Fix Bug: Sync carrier dropdown khi súng quét bắn mã
+      // Nếu user chưa chọn ĐVVC thủ công, tự detect từ mã vận đơn
+      if (!isCarrierCustomized) {
+        const detected = detectCarrier(code.trim());
+        setManualCarrier(detected !== 'Khac' ? detected : manualCarrier);
+      }
+
       if (!workMode) {
         setPendingGunScan(code);
         setModeError('Vui lòng chọn chế độ làm việc trước khi quét.');
@@ -419,13 +452,20 @@ export const HomePage: React.FC = () => {
         return;
       }
 
+      // Nếu đang quay và tính năng Quay liên tục bị tắt: chặn quét đè và cảnh báo
+      if (currentView === 'recording' && !systemConfig?.quay_lien_tuc) {
+        toast.warning('Đang quay video. Chế độ quay liên tục đang tắt, vui lòng bấm Dừng quay trước khi quét đơn mới.');
+        return;
+      }
+
       void handleBarcodeDetected({
         rawValue: code,
         format: 'code_128',
         source: 'gun',
+        carrier: isCarrierCustomized ? manualCarrier : undefined,
       });
     },
-    [workMode, handleBarcodeDetected]
+    [workMode, currentView, systemConfig?.quay_lien_tuc, handleBarcodeDetected, isCarrierCustomized, manualCarrier]
   );
 
   // Sprint 1.2 — USB Barcode Gun listener
@@ -559,7 +599,21 @@ export const HomePage: React.FC = () => {
     }
   };
 
-  // Handle manual code submit (for quick testing on PC)
+  const handleManualCodeChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const val = e.target.value;
+    setManualCodeInput(val);
+    if (val.trim().length >= 3 && !isCarrierCustomized) {
+      const detected = detectCarrier(val.trim());
+      if (detected !== 'Khac') {
+        setManualCarrier(detected);
+      }
+    }
+    if (!val.trim()) {
+      setIsCarrierCustomized(false);
+    }
+  };
+
+  // Handle manual code submit (for quick testing on PC or manual warehouse input)
   const handleManualSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     const trimmed = manualCodeInput.trim();
@@ -575,8 +629,10 @@ export const HomePage: React.FC = () => {
       rawValue: trimmed,
       format: 'code_128',
       source: 'manual',
+      carrier: manualCarrier,
     });
     setManualCodeInput('');
+    setIsCarrierCustomized(false);
   };
 
   return (
@@ -831,30 +887,112 @@ export const HomePage: React.FC = () => {
 
         {/* Right Col (1/3): Barcode Gun Listener & Session Info */}
         <div className="flex flex-col gap-4">
-          {/* Súng quét Barcode Card */}
-          <div className="p-5 rounded-3xl border border-border bg-card shadow-xs flex flex-col gap-3">
+          {/* Súng quét Barcode / Nhập thủ công Card */}
+          <div className={cn(
+            "p-5 rounded-3xl border bg-card shadow-xs flex flex-col gap-3.5 transition-all",
+            workMode === 'khui_hang' ? "border-amber-500/30 bg-amber-500/[0.02]" : "border-border"
+          )}>
             <div className="flex items-center justify-between">
-              <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground">Súng quét Barcode</span>
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-emerald-500/10 text-emerald-600 text-[11px] font-bold">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse"></span>
-                Sẵn sàng
+              <div className="flex items-center gap-2 min-w-0">
+                {workMode === 'khui_hang' ? (
+                  <PackageOpen className="size-4 text-amber-500 shrink-0" />
+                ) : (
+                  <BarcodeIcon className="size-4 text-primary shrink-0" />
+                )}
+                <span className="text-xs font-bold uppercase tracking-wider text-foreground truncate">
+                  {workMode === 'khui_hang' ? 'Nhập mã Khui hàng / Trả hàng' : 'Súng quét & Nhập mã'}
+                </span>
+              </div>
+              <span className={cn(
+                "inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[11px] font-bold shrink-0",
+                workMode === 'khui_hang' 
+                  ? "bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20" 
+                  : "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
+              )}>
+                <span className={cn("w-1.5 h-1.5 rounded-full animate-pulse", workMode === 'khui_hang' ? "bg-amber-500" : "bg-emerald-500")} />
+                {workMode === 'khui_hang' ? 'Trả hàng' : 'Sẵn sàng'}
               </span>
             </div>
 
-            <form onSubmit={handleManualSubmit} className="relative">
-              <input
-                type="text"
-                value={manualCodeInput}
-                onChange={(e) => setManualCodeInput(e.target.value)}
-                placeholder="Bắn súng quét hoặc nhập mã..."
-                className="w-full h-12 pl-10 pr-4 rounded-xl border border-border bg-muted/40 font-mono font-bold text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
-              />
-              <BarcodeIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+            <form onSubmit={handleManualSubmit} className="flex flex-col gap-3">
+              {/* Mã vận đơn input */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-muted-foreground uppercase tracking-wider">
+                    {workMode === 'khui_hang' ? 'Mã vận đơn hoàn trả' : 'Mã vận đơn'}
+                  </span>
+                  {manualCodeInput.trim() && detectCarrier(manualCodeInput.trim()) !== 'Khac' && !isCarrierCustomized && (
+                    <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-semibold flex items-center gap-1">
+                      <Sparkles className="size-3" />
+                      Auto: {getCarrierLabel(detectCarrier(manualCodeInput.trim()), serverCarrierList)}
+                    </span>
+                  )}
+                </div>
+                <div className="relative">
+                  <input
+                    type="text"
+                    value={manualCodeInput}
+                    onChange={handleManualCodeChange}
+                    placeholder={workMode === 'khui_hang' ? 'Bắn súng hoặc nhập mã đơn hoàn...' : 'Bắn súng quét hoặc nhập mã...'}
+                    className="w-full h-11 pl-10 pr-4 rounded-xl border border-border bg-muted/40 font-mono font-bold text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                  />
+                  <BarcodeIcon className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                </div>
+              </div>
+
+              {/* Đơn vị vận chuyển (ĐVVC) dropdown selector */}
+              <div className="flex flex-col gap-1.5">
+                <div className="flex items-center justify-between text-[11px]">
+                  <span className="font-bold text-muted-foreground uppercase tracking-wider">
+                    Đơn vị vận chuyển
+                  </span>
+                  <span className="text-[10px] text-muted-foreground">
+                    {isCarrierCustomized ? 'Đã chọn thủ công' : 'Theo gợi ý mã'}
+                  </span>
+                </div>
+                <div className="relative">
+                  <select
+                    value={manualCarrier}
+                    onChange={(e) => {
+                      setManualCarrier(e.target.value as DonViVanChuyen);
+                      setIsCarrierCustomized(true);
+                    }}
+                    className="w-full h-11 pl-10 pr-9 rounded-xl border border-border bg-muted/40 text-xs font-semibold text-foreground focus:outline-none focus:ring-2 focus:ring-primary appearance-none cursor-pointer"
+                  >
+                    {mergedCarriers.map((carrier) => (
+                      <option key={carrier.id} value={carrier.id}>
+                        {carrier.label}
+                      </option>
+                    ))}
+                  </select>
+                  <Truck className="w-4 h-4 absolute left-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                  <ChevronDown className="w-4 h-4 absolute right-3.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+                </div>
+              </div>
+
+              {/* Nút bấm bắt đầu ghi hình */}
+              <Button
+                type="submit"
+                disabled={manualCodeInput.trim().length < 4}
+                className={cn(
+                  "w-full h-11 rounded-xl text-xs font-bold gap-2 cursor-pointer shadow-xs transition-all",
+                  workMode === 'khui_hang'
+                    ? "bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20"
+                    : "bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20"
+                )}
+              >
+                <Camera className="w-4 h-4" />
+                {workMode === 'khui_hang' ? 'Bắt đầu quay video khui hàng' : 'Bắt đầu quay đóng gói'}
+              </Button>
             </form>
 
-            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5">
-              <Info className="w-3.5 h-3.5 text-primary shrink-0" aria-hidden="true" />
-              <span>Có thể cắm súng quét barcode USB trực tiếp. Hệ thống tự động bắt mã.</span>
+            <p className="text-[11px] text-muted-foreground flex items-center gap-1.5 pt-0.5">
+              <Info className={cn("w-3.5 h-3.5 shrink-0", workMode === 'khui_hang' ? "text-amber-500" : "text-primary")} aria-hidden="true" />
+              <span>
+                {workMode === 'khui_hang'
+                  ? 'Chọn ĐVVC và nhập mã tay hoặc cắm súng quét barcode USB bắt tự động.'
+                  : 'Có thể cắm súng quét barcode USB trực tiếp. Hệ thống tự động bắt mã.'}
+              </span>
             </p>
           </div>
 
@@ -928,7 +1066,7 @@ export const HomePage: React.FC = () => {
       <Dialog 
         open={
           !!activeBarcode && 
-          (!autoRecordAfterScan || activeBarcode.source !== 'gun' || (!isChecking && (isDuplicate || !!checkError)))
+          (!autoRecordAfterScan || activeBarcode.source !== 'gun' || (!isChecking && (isDuplicate || !!checkError)) || (activeBarcode.carrier || detectCarrier(activeBarcode.rawValue)) === 'Khac')
         } 
         onOpenChange={(open) => !open && handleRescan()}
       >

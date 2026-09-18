@@ -7,25 +7,30 @@ import { useConfigStore } from '@/stores/config-store';
 import { useUploadStore } from '@/stores/upload-store';
 
 export const AppShell: React.FC = () => {
-  const { setIsOnline } = useConfigStore();
+  const { setIsOnline, fetchSystemConfig, fetchWarehouses } = useConfigStore();
   const { loadQueue } = useUploadStore();
 
   useEffect(() => {
     // Lắng nghe sự kiện Online / Offline
-    const handleOnline = () => setIsOnline(true);
+    const handleOnline = () => {
+      setIsOnline(true);
+      void fetchSystemConfig();
+    };
     const handleOffline = () => setIsOnline(false);
 
     window.addEventListener('online', handleOnline);
     window.addEventListener('offline', handleOffline);
 
-    // Tải hàng đợi ban đầu từ IndexedDB
+    // Tải hàng đợi ban đầu từ IndexedDB và đồng bộ cấu hình hệ thống
     loadQueue();
+    void fetchSystemConfig();
+    void fetchWarehouses();
 
     return () => {
       window.removeEventListener('online', handleOnline);
       window.removeEventListener('offline', handleOffline);
     };
-  }, [setIsOnline, loadQueue]);
+  }, [setIsOnline, loadQueue, fetchSystemConfig, fetchWarehouses]);
 
   return (
     <div className="flex min-h-screen bg-background text-foreground">

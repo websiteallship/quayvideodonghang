@@ -7,6 +7,7 @@ import { HistoryPage } from './pages/HistoryPage';
 import { VideoDetailPage } from './pages/VideoDetailPage';
 import { UserSettingsPage } from './pages/UserSettingsPage';
 import { AdminSettingsPage } from './pages/AdminSettingsPage';
+import { AdminCarriersPage } from './pages/AdminCarriersPage';
 import { AdminEmployeesPage } from './pages/AdminEmployeesPage';
 import { LoginPage } from './pages/LoginPage';
 import { useAuthStore } from './stores/auth-store';
@@ -78,6 +79,14 @@ const router = createBrowserRouter([
         element: (
           <AdminGuard>
             <AdminSettingsPage />
+          </AdminGuard>
+        ),
+      },
+      {
+        path: '/admin/carriers',
+        element: (
+          <AdminGuard>
+            <AdminCarriersPage />
           </AdminGuard>
         ),
       },
