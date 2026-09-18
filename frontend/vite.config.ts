@@ -46,13 +46,42 @@ export default defineConfig({
         globPatterns: ['**/*.{js,css,html,ico,png,svg,woff2}'],
         runtimeCaching: [
           {
-            urlPattern: /^https:\/\/api\..*/i,
+            // API data endpoints: NetworkFirst with 5s timeout for offline fallback
+            urlPattern: /\/api\/(dashboard|bien-ban|config)/,
             handler: 'NetworkFirst',
             options: {
-              cacheName: 'api-cache',
+              cacheName: 'api-data-cache',
               expiration: {
                 maxEntries: 50,
-                maxAgeSeconds: 300
+                maxAgeSeconds: 300 // 5 minutes
+              },
+              networkTimeoutSeconds: 5
+            }
+          },
+          {
+            // Google Fonts stylesheets: StaleWhileRevalidate
+            urlPattern: /^https:\/\/fonts\.googleapis\.com/,
+            handler: 'StaleWhileRevalidate',
+            options: {
+              cacheName: 'google-fonts-stylesheets',
+              expiration: {
+                maxEntries: 5,
+                maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
+              }
+            }
+          },
+          {
+            // Google Fonts font files: CacheFirst (immutable)
+            urlPattern: /^https:\/\/fonts\.gstatic\.com/,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'google-fonts-webfonts',
+              expiration: {
+                maxEntries: 20,
+                maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
+              },
+              cacheableResponse: {
+                statuses: [0, 200]
               }
             }
           }
@@ -63,6 +92,23 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(import.meta.dirname, './src')
+    }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks(id: string) {
+          if (id.includes('node_modules/react-dom') || id.includes('node_modules/react-router-dom') || id.includes('node_modules/react/')) {
+            return 'vendor-react';
+          }
+          if (id.includes('node_modules/zustand')) {
+            return 'vendor-zustand';
+          }
+          if (id.includes('node_modules/@radix-ui')) {
+            return 'vendor-ui';
+          }
+        }
+      }
     }
   },
   server: {

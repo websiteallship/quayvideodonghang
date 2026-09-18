@@ -20,15 +20,15 @@ uploadRouter.post('/init', authMiddleware, zValidator('json', UploadInitSchema),
   const userAgent = c.req.header('User-Agent') || '';
 
   try {
-    // INSERT OR IGNORE: idempotent on retry — nếu client retry init cùng UUID, không crash
-    await c.env.DB.prepare(
-      `INSERT OR IGNORE INTO bien_ban (
-        id, ma_van_don, don_vi_vc, loai_bien_ban, ma_nhan_vien,
-        thiet_bi, user_agent, thoi_luong_video, kich_thuoc_bytes,
-        mime_type, trang_thai, thoi_gian_tao
-      ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'cho_upload', datetime('now'))`
-    )
-      .bind(
+    // Batch: INSERT bien_ban + upload_log in single D1 roundtrip (perf optimization)
+    await c.env.DB.batch([
+      c.env.DB.prepare(
+        `INSERT OR IGNORE INTO bien_ban (
+          id, ma_van_don, don_vi_vc, loai_bien_ban, ma_nhan_vien,
+          thiet_bi, user_agent, thoi_luong_video, kich_thuoc_bytes,
+          mime_type, trang_thai, thoi_gian_tao
+        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'cho_upload', datetime('now'))`
+      ).bind(
         data.id,
         data.ma_van_don,
         data.don_vi_vc,
@@ -39,15 +39,11 @@ uploadRouter.post('/init', authMiddleware, zValidator('json', UploadInitSchema),
         data.thoi_luong_video,
         data.kich_thuoc_bytes,
         data.mime_type
-      )
-      .run();
-
-    // Ghi log khởi tạo
-    await c.env.DB.prepare(
-      'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
-    )
-      .bind(data.id, 'init', `Size: ${data.kich_thuoc_bytes} bytes`)
-      .run();
+      ),
+      c.env.DB.prepare(
+        'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
+      ).bind(data.id, 'init', `Size: ${data.kich_thuoc_bytes} bytes`)
+    ]);
 
     const loaiPrefix = data.loai_bien_ban === 'dong_goi' ? 'DongGoi' : 'KhuiHang';
     const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);

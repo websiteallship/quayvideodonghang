@@ -309,12 +309,12 @@ async function syncLoop() {
         await idbService.deleteItem(item.id);
         postMainMessage({ type: 'ITEM_DONE', payload: { id: item.id } });
 
-      } catch (err: any) {
+      } catch (err: unknown) {
         if (currentItemController.signal.aborted) {
           // Cancelled by user, ignore
         } else {
           // Error
-          const errorMessage = err.message || 'Upload failed';
+          const errorMessage = err instanceof Error ? err.message : String(err || 'Upload failed');
           
           // Report error to backend
           try {

@@ -242,6 +242,24 @@ interface ConfigState {
 }
 ```
 
+### user-settings-store.ts
+
+```ts
+interface UserSettingsState {
+  videoResolution: '720p' | '1080p';
+  isResolutionOverridden: boolean;
+  autoRecordAfterScan: boolean;
+  soundBeepEnabled: boolean;
+  shiftTarget: number; // Chỉ tiêu đơn hàng / ca làm việc
+
+  setVideoResolution: (res: '720p' | '1080p') => void;
+  resetResolutionToSystem: () => void;
+  setAutoRecordAfterScan: (enabled: boolean) => void;
+  setSoundBeepEnabled: (enabled: boolean) => void;
+  setShiftTarget: (target: number) => void;
+}
+```
+
 ---
 
 ## 4. Key Custom Hooks

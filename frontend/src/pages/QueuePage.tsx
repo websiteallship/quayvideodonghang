@@ -871,9 +871,9 @@ export const QueuePage: React.FC = () => {
   }, [uploadTargets, uploadSingle, processAll, uploadSelected, queue, checkTokenValid]);
 
   return (
-    <div className="flex flex-col gap-2.5 pb-2 data-[has-selection=true]:pb-20 w-full" data-has-selection={selectedIds.size > 0}>
+    <div className="flex flex-col gap-2.5 w-full h-full flex-1 min-h-0 relative data-[has-selection=true]:pb-16" data-has-selection={selectedIds.size > 0}>
       {/* 1. Top Queue Header */}
-      <div className="flex justify-between items-center gap-2 mb-0.5">
+      <div className="flex justify-between items-center gap-2 mb-0.5 shrink-0">
         <div className="flex-1 min-w-0">
           <h2 className="text-lg lg:text-3xl font-bold tracking-tight text-foreground truncate">
             Hàng đợi tải lên
@@ -889,7 +889,7 @@ export const QueuePage: React.FC = () => {
               onClick={handleRequestUploadAll}
               disabled={isSyncing}
               size="sm"
-              className="h-8 px-2.5 rounded-lg font-semibold shadow-xs text-[11px] sm:text-xs"
+              className="h-8 px-2.5 rounded-lg font-semibold shadow-xs text-[11px] sm:text-xs cursor-pointer"
             >
               <UploadCloud size={14} className="sm:mr-1.5" />
               <span className="hidden sm:inline">{isSyncing ? 'Đang tải...' : `Tải lên tất cả (${pendingCount + errorCount})`}</span>
@@ -900,7 +900,7 @@ export const QueuePage: React.FC = () => {
               variant="secondary"
               size="sm"
               onClick={() => removeCompleted()}
-              className="h-8 px-2.5 rounded-lg font-semibold shadow-xs text-[11px] sm:text-xs"
+              className="h-8 px-2.5 rounded-lg font-semibold shadow-xs text-[11px] sm:text-xs cursor-pointer"
             >
               <Trash2 size={14} className="sm:mr-1.5 text-destructive" />
               <span className="hidden sm:inline text-destructive">Dọn dẹp</span>
@@ -910,7 +910,7 @@ export const QueuePage: React.FC = () => {
             variant="secondary"
             size="sm"
             onClick={() => loadQueue()}
-            className="h-8 w-8 p-0 rounded-lg font-semibold shadow-xs flex items-center justify-center shrink-0"
+            className="h-8 w-8 p-0 rounded-lg font-semibold shadow-xs flex items-center justify-center shrink-0 cursor-pointer"
             title="Làm mới hàng đợi"
           >
             <RefreshCw size={14} />
@@ -919,7 +919,7 @@ export const QueuePage: React.FC = () => {
       </div>
 
       {/* 2. Metric Cards Grid (Compact on mobile) */}
-      <div className="grid grid-cols-4 gap-2 lg:gap-4 mb-1">
+      <div className="grid grid-cols-4 gap-2 lg:gap-4 mb-0.5 shrink-0">
         <div className="p-2 lg:p-4 rounded-xl border border-border bg-card shadow-xs flex flex-col lg:flex-row items-center gap-1 lg:gap-3 text-center lg:text-left">
           <div className="lg:w-10 lg:h-10 rounded-lg lg:bg-blue-500/10 text-blue-600 flex items-center justify-center shrink-0">
             <UploadCloud className="w-5 h-5" />
@@ -1003,7 +1003,7 @@ export const QueuePage: React.FC = () => {
       )}
 
       {/* 4. Filter & Search Row (HistoryPage Layout Style) */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:p-1.5 lg:rounded-2xl lg:border lg:border-slate-200/90 dark:lg:border-slate-800 lg:bg-card lg:shadow-xs gap-2 lg:gap-3 mt-1 lg:mt-2">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:p-1.5 lg:rounded-2xl lg:border lg:border-slate-200/90 dark:lg:border-slate-800 lg:bg-card lg:shadow-xs gap-2 lg:gap-3 mt-1 lg:mt-2 shrink-0">
         {/* Type Filter (Segmented Pills) */}
         <div className="inline-flex bg-muted/60 p-1 rounded-xl border border-border/60 shrink-0 w-full lg:w-auto overflow-x-auto no-scrollbar">
           {[
@@ -1053,7 +1053,7 @@ export const QueuePage: React.FC = () => {
       </div>
 
       {/* 5. Status Filter Horizontal Pills */}
-      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar mt-0.5">
+      <div className="flex items-center gap-1.5 overflow-x-auto pb-1 no-scrollbar mt-0.5 shrink-0">
         {[
           { id: 'all' as const, label: 'Tất cả', count: queue.length },
           {
@@ -1118,7 +1118,7 @@ export const QueuePage: React.FC = () => {
 
       {/* 7. Selection Control Row */}
       {paginatedItems.length > 0 && (
-        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground">
+        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground shrink-0">
           <div
             className="flex items-center gap-1.5 cursor-pointer select-none text-foreground hover:text-primary transition-colors"
             onClick={handleSelectAllVisible}
@@ -1137,61 +1137,71 @@ export const QueuePage: React.FC = () => {
         </div>
       )}
 
-      {/* 8. Queue Items List */}
+      {/* 8. Queue Items List & Fixed Pagination */}
       {filteredQueue.length === 0 ? (
-        queue.length === 0 ? (
-          <EmptyState
-            icon={UploadCloud}
-            title="Hàng đợi trống"
-            description="Tất cả video đã được tải lên Google Drive an toàn"
-          />
-        ) : (
-          <EmptyState
-            icon={Filter}
-            title="Không tìm thấy kết quả"
-            description={
-              searchQuery
-                ? `Không có video nào khớp "${searchQuery}"`
-                : 'Không có video nào thỏa mãn bộ lọc hiện tại'
-            }
-          />
-        )
-      ) : (
-        <div className="flex flex-col gap-2">
-          {paginatedItems.map((item) => (
-            <QueueCard
-              key={item.id}
-              item={item}
-              isSelected={selectedIds.has(item.id)}
-              onToggleSelect={handleToggleSelect}
-              onPlayVideo={handlePlayVideo}
-              onUploadSingle={handleRequestUploadSingle}
-              onRetry={handleRetry}
-              onRemove={handleRequestRemoveItem}
-              onCancelUpload={handleCancelUpload}
-              isUploadingThis={currentUpload === item.id}
-              uploadProgress={currentUpload === item.id ? currentProgress : 0}
+        <div className="flex-1 min-h-0 flex items-center justify-center">
+          {queue.length === 0 ? (
+            <EmptyState
+              icon={UploadCloud}
+              title="Hàng đợi trống"
+              description="Tất cả video đã được tải lên Google Drive an toàn"
             />
-          ))}
+          ) : (
+            <EmptyState
+              icon={Filter}
+              title="Không tìm thấy kết quả"
+              description={
+                searchQuery
+                  ? `Không có video nào khớp "${searchQuery}"`
+                  : 'Không có video nào thỏa mãn bộ lọc hiện tại'
+              }
+            />
+          )}
         </div>
-      )}
+      ) : (
+        <div className="flex-1 min-h-0 flex flex-col gap-2">
+          {/* Middle Scrollable list of cards */}
+          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pr-1 saas-scrollbar">
+            {paginatedItems.map((item) => (
+              <QueueCard
+                key={item.id}
+                item={item}
+                isSelected={selectedIds.has(item.id)}
+                onToggleSelect={handleToggleSelect}
+                onPlayVideo={handlePlayVideo}
+                onUploadSingle={handleRequestUploadSingle}
+                onRetry={handleRetry}
+                onRemove={handleRequestRemoveItem}
+                onCancelUpload={handleCancelUpload}
+                isUploadingThis={currentUpload === item.id}
+                uploadProgress={currentUpload === item.id ? currentProgress : 0}
+              />
+            ))}
+          </div>
 
-      {/* 9. Pagination Controls */}
-      {totalPages > 1 && (
-        <div className="flex items-center justify-center pt-1.5 pb-20">
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={setCurrentPage}
-            siblingCount={1}
-          />
+          {/* Fixed Bottom Pagination Footer */}
+          <div className="shrink-0 p-3 rounded-xl border border-border bg-card shadow-xs flex items-center justify-between flex-wrap gap-2 text-xs text-muted-foreground select-none">
+            <div className="text-xs text-muted-foreground font-medium">
+              Hiển thị <strong className="text-foreground">{paginatedItems.length}</strong> / <strong>{filteredQueue.length}</strong> video
+            </div>
+            {totalPages > 1 ? (
+              <Pagination
+                currentPage={currentPage}
+                totalPages={totalPages}
+                onPageChange={setCurrentPage}
+                siblingCount={1}
+              />
+            ) : (
+              <span className="text-[11px] text-muted-foreground font-mono">Trang 1 / 1</span>
+            )}
+          </div>
         </div>
       )}
 
       {/* 10. STICKY FLOATING BULK ACTION BAR */}
       {selectedIds.size > 0 && (
         <Card
-          className="fixed bottom-[72px] left-4 right-4 max-w-[1200px] mx-auto z-45 p-3 flex items-center justify-between gap-3 bg-slate-900 border-white/20 text-white shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-5"
+          className="fixed bottom-[72px] lg:bottom-6 left-4 right-4 max-w-[1200px] mx-auto z-45 p-3 flex items-center justify-between gap-3 bg-slate-900 border-white/20 text-white shadow-2xl backdrop-blur-md animate-in slide-in-from-bottom-5"
         >
           {/* Selected Info */}
           <div className="flex items-center gap-2">

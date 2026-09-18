@@ -357,11 +357,11 @@ export const HistoryPage: React.FC = () => {
   // =========================================================================
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-5 pb-6 w-full">
+    <div className="flex flex-col gap-3 lg:gap-3.5 w-full h-full flex-1 min-h-0">
       {/* ------------------------------------------------------------------ */}
       {/* Page Header */}
       {/* ------------------------------------------------------------------ */}
-      <div className="hidden lg:flex justify-between items-start">
+      <div className="hidden lg:flex justify-between items-start shrink-0">
         <div>
           <h2 className="text-2xl lg:text-3xl font-bold tracking-tight text-foreground">
             Lịch sử biên bản
@@ -726,124 +726,131 @@ export const HistoryPage: React.FC = () => {
       {/* ------------------------------------------------------------------ */}
       {/* Desktop Table View */}
       {/* ------------------------------------------------------------------ */}
+      {/* ------------------------------------------------------------------ */}
+      {/* Desktop Table View & Mobile Card View */}
+      {/* ------------------------------------------------------------------ */}
       {!isLoading && !loadError && items.length > 0 && (
         <>
-          <div className="hidden lg:block rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-card shadow-xs">
-            <table className="w-full text-left border-collapse">
-              <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm shadow-sm rounded-t-2xl">
-                <tr className="border-b border-border/80 text-[11px] font-bold uppercase tracking-wider text-muted-foreground">
-                  <th className="py-3.5 px-4">Mã vận đơn</th>
-                  <th className="py-3.5 px-3">Loại</th>
-                  <th className="py-3.5 px-3">Người tạo</th>
-                  <th className="py-3.5 px-3">Thời gian</th>
-                  <th className="py-3.5 px-3">File</th>
-                  <th className="py-3.5 px-3">Trạng thái</th>
-                  <th className="py-3.5 px-4 text-right">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-border/60 text-xs">
-                {items.map((item) => {
-                  const isDongGoi = item.loai_bien_ban === 'dong_goi';
-                  return (
-                    <tr key={item.id} className="hover:bg-muted/40 transition-colors group">
-                      {/* Mã vận đơn + Carrier */}
-                      <td className="py-3.5 px-4">
-                        <div className="flex items-center gap-2">
-                          <span className={cn('w-1 h-8 rounded-full shrink-0', getCarrierBarColor(item.don_vi_vc))} />
-                          <div>
-                            <div className="flex items-center gap-1.5">
-                              <span className="font-mono font-bold text-xs text-foreground tracking-wide">
-                                {item.ma_van_don}
-                              </span>
-                              <button
-                                type="button"
-                                onClick={(e) => handleCopyText(e, item.ma_van_don, item.id)}
-                                className="text-muted-foreground hover:text-foreground p-0.5 rounded cursor-pointer"
-                                title="Sao chép mã đơn"
-                              >
-                                {copiedId === item.id ? (
-                                  <Check size={12} className="text-emerald-500" />
-                                ) : (
-                                  <Copy size={12} className="text-muted-foreground" />
-                                )}
-                              </button>
-                            </div>
-                            <div className="mt-1">
-                              <span className={cn('inline-block text-[10px] font-semibold px-2 py-0.5 rounded border', getCarrierColor(item.don_vi_vc))}>
-                                {getCarrierLabel(item.don_vi_vc)}
-                              </span>
+          {/* Desktop Table: Fixed thead, scrollable middle tbody, fixed pagination */}
+          <div className="hidden lg:flex flex-1 min-h-0 flex-col rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-card shadow-xs overflow-hidden">
+            {/* Middle Scrollable Table Container */}
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative saas-scrollbar">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm shadow-xs border-b border-border/80">
+                  <tr className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground select-none">
+                    <th className="py-3 px-4 bg-card">Mã vận đơn</th>
+                    <th className="py-3 px-3 bg-card">Loại</th>
+                    <th className="py-3 px-3 bg-card">Người tạo</th>
+                    <th className="py-3 px-3 bg-card">Thời gian</th>
+                    <th className="py-3 px-3 bg-card">File</th>
+                    <th className="py-3 px-3 bg-card">Trạng thái</th>
+                    <th className="py-3 px-4 bg-card text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60 text-xs">
+                  {items.map((item) => {
+                    const isDongGoi = item.loai_bien_ban === 'dong_goi';
+                    return (
+                      <tr key={item.id} className="hover:bg-muted/40 transition-colors group">
+                        {/* Mã vận đơn + Carrier */}
+                        <td className="py-3 px-4">
+                          <div className="flex items-center gap-2">
+                            <span className={cn('w-1 h-8 rounded-full shrink-0', getCarrierBarColor(item.don_vi_vc))} />
+                            <div>
+                              <div className="flex items-center gap-1.5">
+                                <span className="font-mono font-bold text-xs text-foreground tracking-wide">
+                                  {item.ma_van_don}
+                                </span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => handleCopyText(e, item.ma_van_don, item.id)}
+                                  className="text-muted-foreground hover:text-foreground p-0.5 rounded cursor-pointer"
+                                  title="Sao chép mã đơn"
+                                >
+                                  {copiedId === item.id ? (
+                                    <Check size={12} className="text-emerald-500" />
+                                  ) : (
+                                    <Copy size={12} className="text-muted-foreground" />
+                                  )}
+                                </button>
+                              </div>
+                              <div className="mt-1">
+                                <span className={cn('inline-block text-[10px] font-semibold px-2 py-0.5 rounded border', getCarrierColor(item.don_vi_vc))}>
+                                  {getCarrierLabel(item.don_vi_vc)}
+                                </span>
+                              </div>
                             </div>
                           </div>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Loại biên bản */}
-                      <td className="py-3.5 px-3">
-                        <span
-                          className={cn(
-                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold border',
-                            isDongGoi
-                              ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400'
-                              : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400'
-                          )}
-                        >
-                          {isDongGoi ? <Package size={12} /> : <PackageOpen size={12} />}
-                          <span>{isDongGoi ? 'Đóng gói' : 'Khui hàng'}</span>
-                        </span>
-                      </td>
-
-                      {/* Người tạo */}
-                      <td className="py-3.5 px-3">
-                        <div className="flex items-center gap-2 text-foreground font-medium">
-                          <div className="size-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">
-                            {(item.ten_nhan_vien || item.ma_nhan_vien || '').slice(0, 2).toUpperCase() || 'NV'}
-                          </div>
-                          <span className="truncate max-w-[120px]">
-                            {item.ten_nhan_vien || item.ma_nhan_vien}
+                        {/* Loại biên bản */}
+                        <td className="py-3 px-3">
+                          <span
+                            className={cn(
+                              'inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold border',
+                              isDongGoi
+                                ? 'bg-blue-500/10 text-blue-600 border-blue-500/20 dark:text-blue-400'
+                                : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20 dark:text-emerald-400'
+                            )}
+                          >
+                            {isDongGoi ? <Package size={12} /> : <PackageOpen size={12} />}
+                            <span>{isDongGoi ? 'Đóng gói' : 'Khui hàng'}</span>
                           </span>
-                        </div>
-                      </td>
+                        </td>
 
-                      {/* Thời gian */}
-                      <td className="py-3.5 px-3 text-muted-foreground font-mono text-[11px]">
-                        {formatDateTimeVN(item.thoi_gian_tao)}
-                      </td>
+                        {/* Người tạo */}
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-2 text-foreground font-medium">
+                            <div className="size-6 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-[10px] font-bold text-slate-700 dark:text-slate-200 shrink-0">
+                              {(item.ten_nhan_vien || item.ma_nhan_vien || '').slice(0, 2).toUpperCase() || 'NV'}
+                            </div>
+                            <span className="truncate max-w-[120px]">
+                              {item.ten_nhan_vien || item.ma_nhan_vien}
+                            </span>
+                          </div>
+                        </td>
 
-                      {/* File Video Info */}
-                      <td className="py-3.5 px-3">
-                        <div className="flex items-center gap-1.5 text-muted-foreground font-medium text-[11px]">
-                          <Clock size={12} />
-                          <span>{formatDuration(item.thoi_luong_video)}</span>
-                          <span className="text-muted-foreground/40">·</span>
-                          <HardDrive size={12} />
-                          <span>{formatBytes(item.kich_thuoc_bytes)}</span>
-                        </div>
-                      </td>
+                        {/* Thời gian */}
+                        <td className="py-3 px-3 text-muted-foreground font-mono text-[11px]">
+                          {formatDateTimeVN(item.thoi_gian_tao)}
+                        </td>
 
-                      {/* Trạng thái */}
-                      <td className="py-3.5 px-3">
-                        {getStatusBadge(item.trang_thai)}
-                      </td>
+                        {/* File Video Info */}
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-1.5 text-muted-foreground font-medium text-[11px]">
+                            <Clock size={12} />
+                            <span>{formatDuration(item.thoi_luong_video)}</span>
+                            <span className="text-muted-foreground/40">·</span>
+                            <HardDrive size={12} />
+                            <span>{formatBytes(item.kich_thuoc_bytes)}</span>
+                          </div>
+                        </td>
 
-                      {/* Thao tác */}
-                      <td className="py-3.5 px-4 text-right">
-                        <button
-                          type="button"
-                          onClick={() => void handleOpenVideo(item)}
-                          className="h-8 px-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm shadow-orange-500/20 hover:scale-[1.02] transition-transform cursor-pointer"
-                        >
-                          <Play size={12} className="fill-current" />
-                          <span>Xem</span>
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                        {/* Trạng thái */}
+                        <td className="py-3 px-3">
+                          {getStatusBadge(item.trang_thai)}
+                        </td>
+
+                        {/* Thao tác */}
+                        <td className="py-3 px-4 text-right">
+                          <button
+                            type="button"
+                            onClick={() => void handleOpenVideo(item)}
+                            className="h-8 px-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm shadow-orange-500/20 hover:scale-[1.02] transition-transform cursor-pointer"
+                          >
+                            <Play size={12} className="fill-current" />
+                            <span>Xem</span>
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
 
             {/* Desktop Pagination Footer */}
-            <div className="sticky bottom-0 z-10 px-5 py-3.5 border-t border-border/80 bg-card flex items-center justify-between flex-wrap gap-4 text-xs text-muted-foreground rounded-b-2xl shadow-[0_-4px_15px_rgba(0,0,0,0.03)]">
+            <div className="shrink-0 px-5 py-3 border-t border-border/80 bg-card flex items-center justify-between flex-wrap gap-4 text-xs text-muted-foreground select-none shadow-[0_-4px_15px_rgba(0,0,0,0.03)]">
               <div className="flex items-center gap-4 flex-wrap">
                 <PaginationInfo startIndex={startIndex} endIndex={endIndex} totalItems={totalItems} />
                 <PaginationLimitSelect 
@@ -861,133 +868,134 @@ export const HistoryPage: React.FC = () => {
             </div>
           </div>
 
-          {/* ---------------------------------------------------------------- */}
-          {/* Mobile Card View */}
-          {/* ---------------------------------------------------------------- */}
-          <div className="flex flex-col gap-3 lg:hidden">
-            {items.map((item) => {
-              const isDongGoi = item.loai_bien_ban === 'dong_goi';
-              return (
-                <div
-                  key={item.id}
-                  className="rounded-2xl border border-border bg-card p-4 shadow-xs flex flex-col gap-3 relative overflow-hidden"
-                >
-                  {/* Top Row: Tracking Code + Copy + Status Badge */}
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-1.5">
-                      <span className="font-mono font-bold text-sm text-foreground">
-                        {item.ma_van_don}
-                      </span>
-                      <button
-                        type="button"
-                        onClick={(e) => handleCopyText(e, item.ma_van_don, item.id)}
-                        className="text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
-                      >
-                        {copiedId === item.id ? (
-                          <Check size={14} className="text-emerald-500" />
-                        ) : (
-                          <Copy size={14} className="text-muted-foreground" />
-                        )}
-                      </button>
-                    </div>
-                    {getStatusBadge(item.trang_thai)}
-                  </div>
-
-                  {/* Carrier & Work Mode Badges */}
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded border', getCarrierColor(item.don_vi_vc))}>
-                      {getCarrierLabel(item.don_vi_vc)}
-                    </span>
-                    <span
-                      className={cn(
-                        'inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded border',
-                        isDongGoi
-                          ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
-                          : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
-                      )}
-                    >
-                      {isDongGoi ? <Package size={12} /> : <PackageOpen size={12} />}
-                      <span>{isDongGoi ? 'Đóng gói' : 'Khui hàng'}</span>
-                    </span>
-                  </div>
-
-                  {/* Metadata Grid */}
-                  <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground border-y border-border/60 py-2.5">
-                    <div className="flex items-center gap-1.5 truncate">
-                      <User size={14} className="text-muted-foreground shrink-0" />
-                      <span className="truncate">{item.ten_nhan_vien || item.ma_nhan_vien}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Clock size={14} className="text-muted-foreground shrink-0" />
-                      <span>{formatDateTimeVN(item.thoi_gian_tao).split(' ')[0]}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <Play size={14} className="text-muted-foreground shrink-0" />
-                      <span>{formatDuration(item.thoi_luong_video)}</span>
-                    </div>
-                    <div className="flex items-center gap-1.5">
-                      <HardDrive size={14} className="text-muted-foreground shrink-0" />
-                      <span>{formatBytes(item.kich_thuoc_bytes)}</span>
-                    </div>
-                  </div>
-
-                  {/* CTA Button */}
-                  <button
-                    type="button"
-                    onClick={() => void handleOpenVideo(item)}
-                    className="w-full h-10 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-orange-500/20 active:scale-[0.98] transition-transform cursor-pointer"
+          {/* Mobile Card View: Scrollable middle, fixed pagination */}
+          <div className="flex lg:hidden flex-1 min-h-0 flex-col gap-2.5">
+            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pr-0.5 saas-scrollbar">
+              {items.map((item) => {
+                const isDongGoi = item.loai_bien_ban === 'dong_goi';
+                return (
+                  <div
+                    key={item.id}
+                    className="rounded-2xl border border-border bg-card p-4 shadow-xs flex flex-col gap-3 relative overflow-hidden"
                   >
-                    <Play size={14} className="fill-current" />
-                    <span>Xem video biên bản</span>
-                  </button>
-                </div>
-              );
-            })}
-          </div>
+                    {/* Top Row: Tracking Code + Copy + Status Badge */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono font-bold text-sm text-foreground">
+                          {item.ma_van_don}
+                        </span>
+                        <button
+                          type="button"
+                          onClick={(e) => handleCopyText(e, item.ma_van_don, item.id)}
+                          className="text-muted-foreground hover:text-foreground p-0.5 cursor-pointer"
+                        >
+                          {copiedId === item.id ? (
+                            <Check size={14} className="text-emerald-500" />
+                          ) : (
+                            <Copy size={14} className="text-muted-foreground" />
+                          )}
+                        </button>
+                      </div>
+                      {getStatusBadge(item.trang_thai)}
+                    </div>
 
-          <div className="lg:hidden mt-2 p-3.5 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-3 select-none">
-            <div className="flex items-center justify-between text-xs text-muted-foreground">
-              <PaginationInfo 
-                startIndex={startIndex} 
-                endIndex={endIndex} 
-                totalItems={totalItems} 
-                label="" 
-              />
-              <PaginationLimitSelect 
-                limit={limit} 
-                onLimitChange={(val) => { setLimit(val); setPage(1); }} 
-                options={[10, 20, 50]} 
-              />
+                    {/* Carrier & Work Mode Badges */}
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className={cn('text-[10px] font-semibold px-2 py-0.5 rounded border', getCarrierColor(item.don_vi_vc))}>
+                        {getCarrierLabel(item.don_vi_vc)}
+                      </span>
+                      <span
+                        className={cn(
+                          'inline-flex items-center gap-1 text-[10px] font-semibold px-2 py-0.5 rounded border',
+                          isDongGoi
+                            ? 'bg-blue-500/10 text-blue-600 border-blue-500/20'
+                            : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                        )}
+                      >
+                        {isDongGoi ? <Package size={12} /> : <PackageOpen size={12} />}
+                        <span>{isDongGoi ? 'Đóng gói' : 'Khui hàng'}</span>
+                      </span>
+                    </div>
+
+                    {/* Metadata Grid */}
+                    <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground border-y border-border/60 py-2.5">
+                      <div className="flex items-center gap-1.5 truncate">
+                        <User size={14} className="text-muted-foreground shrink-0" />
+                        <span className="truncate">{item.ten_nhan_vien || item.ma_nhan_vien}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Clock size={14} className="text-muted-foreground shrink-0" />
+                        <span>{formatDateTimeVN(item.thoi_gian_tao).split(' ')[0]}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <Play size={14} className="text-muted-foreground shrink-0" />
+                        <span>{formatDuration(item.thoi_luong_video)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <HardDrive size={14} className="text-muted-foreground shrink-0" />
+                        <span>{formatBytes(item.kich_thuoc_bytes)}</span>
+                      </div>
+                    </div>
+
+                    {/* CTA Button */}
+                    <button
+                      type="button"
+                      onClick={() => void handleOpenVideo(item)}
+                      className="w-full h-10 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-orange-500/20 active:scale-[0.98] transition-transform cursor-pointer"
+                    >
+                      <Play size={14} className="fill-current" />
+                      <span>Xem video biên bản</span>
+                    </button>
+                  </div>
+                );
+              })}
             </div>
 
-            <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/70">
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                disabled={page === 1}
-                className="h-9 px-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted font-semibold text-xs flex items-center gap-1.5 text-foreground disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
-              >
-                <ChevronLeft size={14} />
-                <span>Trước</span>
-              </button>
-
-              <div className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground">
-                <span className="font-bold text-foreground px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                  Trang {page}
-                </span>
-                <span>/</span>
-                <span>{totalPages}</span>
+            {/* Mobile Pagination Footer */}
+            <div className="shrink-0 p-3 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-2.5 select-none">
+              <div className="flex items-center justify-between text-xs text-muted-foreground">
+                <PaginationInfo 
+                  startIndex={startIndex} 
+                  endIndex={endIndex} 
+                  totalItems={totalItems} 
+                  label="" 
+                />
+                <PaginationLimitSelect 
+                  limit={limit} 
+                  onLimitChange={(val) => { setLimit(val); setPage(1); }} 
+                  options={[10, 20, 50]} 
+                />
               </div>
 
-              <button
-                type="button"
-                onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                disabled={page === totalPages}
-                className="h-9 px-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted font-semibold text-xs flex items-center gap-1.5 text-foreground disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
-              >
-                <span>Sau</span>
-                <ChevronRight size={14} />
-              </button>
+              <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/70">
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
+                  disabled={page === 1}
+                  className="h-9 px-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted font-semibold text-xs flex items-center gap-1.5 text-foreground disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
+                >
+                  <ChevronLeft size={14} />
+                  <span>Trước</span>
+                </button>
+
+                <div className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground">
+                  <span className="font-bold text-foreground px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
+                    Trang {page}
+                  </span>
+                  <span>/</span>
+                  <span>{totalPages}</span>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
+                  disabled={page === totalPages}
+                  className="h-9 px-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted font-semibold text-xs flex items-center gap-1.5 text-foreground disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
+                >
+                  <span>Sau</span>
+                  <ChevronRight size={14} />
+                </button>
+              </div>
             </div>
           </div>
         </>

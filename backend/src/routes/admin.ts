@@ -459,7 +459,7 @@ adminRouter.get('/kho-hang', async (c) => {
       "SELECT id, ten, dia_chi, la_mac_dinh, trang_thai, ngay_tao, ngay_cap_nhat FROM kho_hang WHERE trang_thai != 'da_xoa' ORDER BY la_mac_dinh DESC, ngay_tao DESC"
     ).all();
 
-    const items = (result.results || []).map((row: any) => ({
+    const items = (result.results || []).map((row: Record<string, unknown>) => ({
       ...row,
       la_mac_dinh: Boolean(row.la_mac_dinh)
     }));

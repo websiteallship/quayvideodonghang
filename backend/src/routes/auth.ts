@@ -95,5 +95,16 @@ authRouter.get('/verify', authMiddleware, async (c) => {
 });
 
 authRouter.post('/logout', authMiddleware, async (c) => {
+  const user = c.get('user');
+
+  // Invalidate all active sessions for this user
+  try {
+    await c.env.DB.prepare(
+      `UPDATE phien_dang_nhap SET con_hieu_luc = 0 WHERE ma_nhan_vien = ? AND con_hieu_luc = 1`
+    ).bind(user.sub).run();
+  } catch {
+    // Non-critical — session table may not exist in test env
+  }
+
   return successResponse(c, { message: 'Đăng xuất thành công' });
 });

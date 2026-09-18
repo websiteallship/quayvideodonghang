@@ -696,9 +696,9 @@ gantt
    - Quick queue summary: "2 video đang chờ upload"
 
 **Verification:**
-- [ ] Dashboard stats match actual data in D1
-- [ ] Offline → indicator changes, stats show cached/local data
-- [ ] "Quét mã đơn" → navigates to ScanPage with camera
+- [x] Dashboard stats match actual data in D1
+- [x] Offline → indicator changes, stats show cached/local data
+- [x] "Quét mã đơn" → navigates to ScanPage with camera
 
 ---
 

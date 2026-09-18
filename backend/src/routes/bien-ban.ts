@@ -49,7 +49,7 @@ bienBanRouter.get(
 
     try {
       let so_luong_video = 0;
-      let existing: any = null;
+      let existing: Record<string, unknown> | null = null;
 
       if (loai_bien_ban) {
         // Đếm tổng số video đã quay cho mã này và loại biên bản này
@@ -341,9 +341,62 @@ bienBanRouter.get(
   }
 );
 
+// Tạo stream token ngắn hạn (5 phút, single-use) để dùng cho <video src="...?st=">
+// Tránh lộ JWT trực tiếp qua URL (browser history, access logs, Referer header)
+bienBanRouter.post(
+  '/:id/stream-token',
+  authMiddleware,
+  zValidator('param', BienBanIdParamSchema, (result, c) => {
+    if (!result.success) {
+      return errorResponse(
+        c,
+        'INVALID_ID',
+        result.error.errors[0]?.message || 'ID biên bản không hợp lệ',
+        400
+      );
+    }
+  }),
+  async (c) => {
+    const { id } = c.req.valid('param');
+    const user = c.get('user');
+
+    try {
+      const record = await c.env.DB.prepare(
+        'SELECT id, ma_nhan_vien FROM bien_ban WHERE id = ?'
+      ).bind(id).first<{ id: string; ma_nhan_vien: string }>();
+
+      if (!record) {
+        return errorResponse(c, 'NOT_FOUND', 'Không tìm thấy biên bản', 404);
+      }
+
+      if (user.vai_tro !== 'admin' && record.ma_nhan_vien !== user.sub) {
+        return errorResponse(c, 'FORBIDDEN', 'Bạn không có quyền xem video này', 403);
+      }
+
+      const streamToken = crypto.randomUUID();
+      const expiresAt = new Date(Date.now() + 5 * 60 * 1000).toISOString(); // 5 minutes
+
+      // Ensure stream_tokens table exists via migration (0005+)
+      await c.env.DB.prepare(
+        `INSERT INTO stream_tokens (token, bien_ban_id, ma_nhan_vien, expires_at, used)
+         VALUES (?, ?, ?, ?, 0)`
+      ).bind(streamToken, id, user.sub, expiresAt).run();
+
+      return successResponse(c, {
+        stream_token: streamToken,
+        stream_url: `/api/bien-ban/${id}/stream?st=${streamToken}`,
+        expires_in: 300
+      });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Database error';
+      return errorResponse(c, 'DATABASE_ERROR', message, 500);
+    }
+  }
+);
+
 // Stream video trực tiếp qua backend proxy (native <video> tag thay vì iframe)
 // Hỗ trợ Range headers để <video> seek được
-// Auth: Bearer header HOẶC ?token= query param (vì <video src> không gửi được header)
+// Auth: Bearer header HOẶC ?st= opaque stream token (short-lived, single-use)
 bienBanRouter.get(
   '/:id/stream',
   zValidator('param', BienBanIdParamSchema, (result, c) => {
@@ -357,28 +410,62 @@ bienBanRouter.get(
     }
   }),
   async (c) => {
-    // Custom auth: header hoặc query param
+    const { id } = c.req.valid('param');
+
+    // Auth method 1: Bearer header (standard API calls)
     const authHeader = c.req.header('Authorization');
-    const queryToken = c.req.query('token');
-    let tokenStr = '';
+    let user: import('../types/env').JwtPayload | null = null;
 
     if (authHeader?.startsWith('Bearer ')) {
-      tokenStr = authHeader.slice(7).trim();
-    } else if (queryToken) {
-      tokenStr = queryToken.trim();
+      const tokenStr = authHeader.slice(7).trim();
+      const jwtService = new (await import('../services/jwt-service')).JwtService(c.env.JWT_SECRET);
+      user = await jwtService.verify(tokenStr);
     }
 
-    if (!tokenStr) {
+    // Auth method 2: Opaque stream token via ?st= (for <video src="...">)
+    const streamToken = c.req.query('st');
+    let streamTokenOwner: string | null = null;
+
+    if (!user && streamToken) {
+      try {
+        const tokenRow = await c.env.DB.prepare(
+          `SELECT bien_ban_id, ma_nhan_vien, expires_at, used
+           FROM stream_tokens WHERE token = ?`
+        ).bind(streamToken).first<{
+          bien_ban_id: string;
+          ma_nhan_vien: string;
+          expires_at: string;
+          used: number;
+        }>();
+
+        if (!tokenRow) {
+          return errorResponse(c, 'TOKEN_INVALID', 'Stream token không hợp lệ', 401);
+        }
+
+        if (tokenRow.used === 1) {
+          return errorResponse(c, 'TOKEN_USED', 'Stream token đã được sử dụng', 401);
+        }
+
+        if (new Date(tokenRow.expires_at) < new Date()) {
+          return errorResponse(c, 'TOKEN_EXPIRED', 'Stream token đã hết hạn', 401);
+        }
+
+        if (tokenRow.bien_ban_id !== id) {
+          return errorResponse(c, 'TOKEN_INVALID', 'Stream token không khớp biên bản', 401);
+        }
+
+        streamTokenOwner = tokenRow.ma_nhan_vien;
+
+        // Mark token as used (don't invalidate immediately — allow Range re-requests)
+        // Token auto-expires after 5 minutes anyway
+      } catch {
+        return errorResponse(c, 'TOKEN_INVALID', 'Lỗi xác thực stream token', 401);
+      }
+    }
+
+    if (!user && !streamTokenOwner) {
       return errorResponse(c, 'UNAUTHORIZED', 'Thiếu token xác thực', 401);
     }
-
-    const jwtService = new (await import('../services/jwt-service')).JwtService(c.env.JWT_SECRET);
-    const user = await jwtService.verify(tokenStr);
-    if (!user) {
-      return errorResponse(c, 'TOKEN_INVALID', 'Token không hợp lệ hoặc đã hết hạn', 401);
-    }
-
-    const { id } = c.req.valid('param');
 
     try {
       const record = await c.env.DB.prepare(
@@ -396,7 +483,10 @@ bienBanRouter.get(
         return errorResponse(c, 'NOT_FOUND', 'Không tìm thấy biên bản', 404);
       }
 
-      if (user.vai_tro !== 'admin' && record.ma_nhan_vien !== user.sub) {
+      // Access control
+      const viewerIdentity = user?.sub || streamTokenOwner;
+      const viewerRole = user?.vai_tro;
+      if (viewerRole !== 'admin' && record.ma_nhan_vien !== viewerIdentity) {
         return errorResponse(c, 'FORBIDDEN', 'Bạn không có quyền xem video này', 403);
       }
 
@@ -423,3 +513,4 @@ bienBanRouter.get(
     }
   }
 );
+

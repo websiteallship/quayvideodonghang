@@ -132,8 +132,12 @@ export class DriveService {
       'X-Upload-Content-Length': String(fileSize)
     };
 
-    // Google Drive requires Origin header at session creation to enable CORS
-    // for browser-direct PUT uploads to the resumable URL.
+    // LÀM RÕ CƠ CHẾ CORS TẠI ĐÂY (Task 2.2):
+    // API Google Drive (v3/files) mặc định không trả về header `Access-Control-Allow-Origin` cho browser
+    // nếu request khởi tạo resumable session không truyền kèm header `Origin`.
+    // Điều này sẽ khiến browser chặn request PUT tiếp theo (để đẩy data lên URL resumable) vì vi phạm chính sách CORS.
+    // Việc Backend chèn `Origin` giả lập clientOrigin sẽ ép Google Drive trả về header CORS hợp lệ trong Session URI,
+    // nhờ đó trình duyệt của Frontend có thể upload video trực tiếp (direct upload) mà không bị lỗi CORS.
     if (clientOrigin) {
       headers['Origin'] = clientOrigin;
     }

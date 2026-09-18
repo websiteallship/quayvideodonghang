@@ -8,7 +8,7 @@ export type WorkerMessageType =
 
 export interface WorkerMessage {
   type: WorkerMessageType;
-  payload?: any;
+  payload?: unknown;
 }
 
 export interface WorkerMessageStartPayload {
@@ -38,10 +38,15 @@ export type MainMessageType =
   | 'SYNC_STARTED'
   | 'SYNC_STOPPED';
 
-export interface MainMessage {
-  type: MainMessageType;
-  payload?: any;
-}
+export type MainMessage =
+  | { type: 'WORKER_READY'; payload?: undefined }
+  | { type: 'SYNC_STARTED'; payload?: undefined }
+  | { type: 'SYNC_STOPPED'; payload?: undefined }
+  | { type: 'QUEUE_EMPTY'; payload?: undefined }
+  | { type: 'ITEM_STARTED'; payload: MainMessageItemPayload }
+  | { type: 'ITEM_DONE'; payload: MainMessageItemPayload }
+  | { type: 'PROGRESS'; payload: MainMessageProgressPayload }
+  | { type: 'ITEM_ERROR'; payload: MainMessageErrorPayload };
 
 export interface MainMessageProgressPayload {
   id: string;

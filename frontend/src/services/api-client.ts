@@ -24,10 +24,8 @@ export const setStoredToken = (token: string): void => {
   if (typeof sessionStorage !== 'undefined') {
     sessionStorage.setItem(TOKEN_KEY, token);
   }
-  // Also persist in localStorage for upload recovery across page reloads
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(TOKEN_KEY, token);
-  }
+  // 02-security.md §2: Do NOT persist token in localStorage — XSS risk.
+  // Upload worker receives token via postMessage (upload-worker-types.ts).
 };
 
 export const removeStoredToken = (): void => {
@@ -58,14 +56,12 @@ export const getStoredUser = () => {
   }
 };
 
-export const setStoredUser = (user: any): void => {
+export const setStoredUser = (user: unknown): void => {
   const userStr = JSON.stringify(user);
   if (typeof sessionStorage !== 'undefined') {
     sessionStorage.setItem(USER_KEY, userStr);
   }
-  if (typeof localStorage !== 'undefined') {
-    localStorage.setItem(USER_KEY, userStr);
-  }
+  // 02-security.md §2: Do NOT persist user data in localStorage.
 };
 
 export const removeStoredUser = (): void => {

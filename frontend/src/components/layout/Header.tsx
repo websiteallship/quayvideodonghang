@@ -1,6 +1,6 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { Video, Wifi, WifiOff, LogOut, User, Sun, Moon, Settings, UploadCloud } from 'lucide-react';
+import { Video, Wifi, WifiOff, LogOut, User, Sun, Moon, Settings, UploadCloud, AlertTriangle } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useConfigStore } from '@/stores/config-store';
 import { Button } from '../ui/button';
@@ -11,11 +11,22 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 export const Header: React.FC = () => {
   const location = useLocation();
   const { user, logout, isAuthenticated } = useAuthStore();
   const { isOnline, theme, toggleTheme, warehouseName } = useConfigStore();
+  const [isLogoutOpen, setIsLogoutOpen] = useState(false);
 
   const getPageTitle = (pathname: string) => {
     switch (pathname) {
@@ -156,7 +167,7 @@ export const Header: React.FC = () => {
 
               {/* Logout action */}
               <DropdownMenuItem
-                onClick={logout}
+                onClick={() => setIsLogoutOpen(true)}
                 className="flex items-center gap-2 px-2.5 py-2 rounded-lg text-destructive hover:bg-destructive/10 hover:text-destructive focus:bg-destructive/10 focus:text-destructive cursor-pointer font-semibold text-xs"
               >
                 <LogOut size={14} className="text-destructive" />
@@ -166,6 +177,32 @@ export const Header: React.FC = () => {
           </DropdownMenu>
         )}
       </div>
+
+      <AlertDialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <AlertTriangle className="text-destructive h-5 w-5" />
+              Xác nhận đăng xuất
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              Bạn có chắc chắn muốn đăng xuất khỏi hệ thống? Các video đang chờ tải lên vẫn được lưu lại an toàn trên thiết bị và sẽ được tiếp tục đồng bộ khi bạn hoặc ai đó đăng nhập lại.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Huỷ</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => {
+                setIsLogoutOpen(false);
+                logout();
+              }}
+              className="bg-red-600 text-white hover:bg-red-700 border-transparent shadow-sm"
+            >
+              Đăng xuất
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </header>
   );
 };

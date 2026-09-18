@@ -543,9 +543,9 @@ export const AdminEmployeesPage: React.FC = () => {
   };
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-6 w-full">
+    <div className="flex flex-col gap-3 lg:gap-3.5 w-full h-full flex-1 min-h-0">
       {/* Page Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl">
             Quản lý Nhân viên
@@ -555,7 +555,7 @@ export const AdminEmployeesPage: React.FC = () => {
           </p>
         </div>
         <Button
-          className="h-11 gap-2 rounded-2xl text-xs font-bold shrink-0 px-5"
+          className="h-11 gap-2 rounded-2xl text-xs font-bold shrink-0 px-5 cursor-pointer"
           onClick={() => setCreateOpen(true)}
         >
           <Plus className="size-4" aria-hidden="true" />
@@ -564,8 +564,8 @@ export const AdminEmployeesPage: React.FC = () => {
       </div>
 
       {/* Search & Filter */}
-      <Card className="rounded-3xl shadow-xs">
-        <CardContent className="p-4 flex flex-col sm:flex-row gap-3">
+      <Card className="rounded-2xl shadow-xs shrink-0">
+        <CardContent className="p-3 sm:p-4 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" aria-hidden="true" />
             <Input
@@ -575,7 +575,7 @@ export const AdminEmployeesPage: React.FC = () => {
                 setPage(1);
               }}
               placeholder="Tìm theo mã hoặc tên nhân viên..."
-              className="h-11 rounded-xl text-xs pl-10"
+              className="h-10 rounded-xl text-xs pl-10"
             />
           </div>
           <select
@@ -584,7 +584,7 @@ export const AdminEmployeesPage: React.FC = () => {
               setFilterStatus(e.target.value);
               setPage(1);
             }}
-            className="h-11 rounded-xl border border-border bg-muted/40 px-3 text-xs font-medium text-foreground focus:outline-none shrink-0 w-full sm:w-48 cursor-pointer"
+            className="h-10 rounded-xl border border-border bg-muted/40 px-3 text-xs font-medium text-foreground focus:outline-none shrink-0 w-full sm:w-48 cursor-pointer"
           >
             <option value="">Tất cả (trừ đã xóa)</option>
             <option value="hoat_dong">Hoạt động</option>
@@ -596,12 +596,12 @@ export const AdminEmployeesPage: React.FC = () => {
 
       {/* Employee List */}
       {loading ? (
-        <div className="flex items-center justify-center min-h-[300px]">
+        <div className="flex-1 min-h-0 flex items-center justify-center min-h-[250px]">
           <Loader2 className="size-8 animate-spin text-muted-foreground" />
         </div>
       ) : employees.length === 0 ? (
-        <Card className="rounded-3xl shadow-xs">
-          <CardContent className="flex flex-col items-center justify-center gap-3 p-12">
+        <Card className="rounded-2xl shadow-xs flex-1 min-h-0 flex items-center justify-center">
+          <CardContent className="flex flex-col items-center justify-center gap-3 p-12 text-center">
             <Users className="size-12 text-muted-foreground/40" aria-hidden="true" />
             <p className="text-sm font-semibold text-muted-foreground">
               Không tìm thấy nhân viên nào
@@ -609,19 +609,19 @@ export const AdminEmployeesPage: React.FC = () => {
           </CardContent>
         </Card>
       ) : (
-        <div className="flex flex-col gap-3">
-          {/* Desktop Table List View */}
-          <div className="hidden md:block rounded-2xl border border-border bg-card shadow-2xs">
-            <div className="overflow-x-auto">
+        <div className="flex-1 min-h-0 flex flex-col gap-3">
+          {/* Desktop Table List View: fixed thead, scrollable tbody, fixed pagination */}
+          <div className="hidden md:flex flex-1 min-h-0 flex-col rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative saas-scrollbar">
               <table className="w-full text-left border-collapse text-xs">
-                <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm shadow-sm rounded-t-2xl">
-                  <tr className="border-b border-border/80 text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
-                    <th className="py-3.5 px-4">Nhân viên</th>
-                    <th className="py-3.5 px-3 text-center">Vai trò</th>
-                    <th className="py-3.5 px-3 text-center">Trạng thái</th>
-                    <th className="py-3.5 px-4 text-center">Video hôm nay</th>
-                    <th className="py-3.5 px-4 text-center">Đăng nhập cuối</th>
-                    <th className="py-3.5 px-4 text-right">Thao tác</th>
+                <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm shadow-xs border-b border-border/80">
+                  <tr className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
+                    <th className="py-3 px-4 bg-card">Nhân viên</th>
+                    <th className="py-3 px-3 bg-card text-center">Vai trò</th>
+                    <th className="py-3 px-3 bg-card text-center">Trạng thái</th>
+                    <th className="py-3 px-4 bg-card text-center">Video hôm nay</th>
+                    <th className="py-3 px-4 bg-card text-center">Đăng nhập cuối</th>
+                    <th className="py-3 px-4 bg-card text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
@@ -652,11 +652,11 @@ export const AdminEmployeesPage: React.FC = () => {
                               .toUpperCase()
                               .slice(0, 2)}
                           </div>
-                          <div className="min-w-0 flex flex-col">
-                            <span className="text-xs font-bold text-foreground font-mono">
+                          <div className="flex flex-col min-w-0">
+                            <span className="font-mono text-xs font-bold text-foreground">
                               {emp.ma}
                             </span>
-                            <span className="text-xs text-muted-foreground truncate max-w-[200px]">
+                            <span className="text-xs text-muted-foreground truncate max-w-[160px]">
                               {emp.ten}
                             </span>
                           </div>
@@ -674,12 +674,12 @@ export const AdminEmployeesPage: React.FC = () => {
                       </td>
 
                       {/* Video hôm nay */}
-                      <td className="py-3 px-4 text-center font-mono font-bold text-xs text-foreground">
+                      <td className="py-3 px-4 text-center font-mono text-xs font-semibold text-foreground">
                         {emp.so_video_hom_nay ?? 0}
                       </td>
 
                       {/* Đăng nhập cuối */}
-                      <td className="py-3 px-4 text-center font-mono text-[11px] text-muted-foreground">
+                      <td className="py-3 px-4 text-center text-muted-foreground font-mono text-[11px]">
                         {emp.dang_nhap_cuoi
                           ? new Date(emp.dang_nhap_cuoi).toLocaleString('vi-VN', {
                               day: '2-digit',
@@ -703,7 +703,7 @@ export const AdminEmployeesPage: React.FC = () => {
                               setEditOpen(true);
                             }}
                           >
-                            <Pencil className="size-3.5" aria-hidden="true" />
+                            <Pencil className="size-3.5 text-muted-foreground" aria-hidden="true" />
                           </Button>
                           <Button
                             variant="ghost"
@@ -757,7 +757,7 @@ export const AdminEmployeesPage: React.FC = () => {
             </div>
 
             {/* Desktop Pagination Footer */}
-            <div className="sticky bottom-0 z-10 px-4 py-3 border-t border-border/70 bg-card flex items-center justify-between flex-wrap gap-3 text-xs text-muted-foreground select-none rounded-b-2xl shadow-[0_-4px_15px_rgba(0,0,0,0.03)]">
+            <div className="shrink-0 px-4 py-3 border-t border-border/70 bg-card flex items-center justify-between flex-wrap gap-3 text-xs text-muted-foreground select-none shadow-[0_-4px_15px_rgba(0,0,0,0.03)]">
               <div className="flex items-center gap-3 flex-wrap">
                 <PaginationInfo
                   startIndex={startIndex}
@@ -784,9 +784,10 @@ export const AdminEmployeesPage: React.FC = () => {
             </div>
           </div>
 
-          {/* Mobile Card List View */}
-          <div className="flex flex-col gap-2.5 md:hidden">
-            {paginatedEmployees.map((emp) => (
+          {/* Mobile Card List View: scrollable middle, fixed pagination */}
+          <div className="flex md:hidden flex-1 min-h-0 flex-col gap-2.5">
+            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pr-0.5 saas-scrollbar">
+              {paginatedEmployees.map((emp) => (
               <div
                 key={emp.ma}
                 className={cn(
@@ -918,9 +919,10 @@ export const AdminEmployeesPage: React.FC = () => {
                 </div>
               </div>
             ))}
+            </div>
 
             {/* Mobile Pagination Footer */}
-            <div className="p-3.5 rounded-2xl border border-border bg-card shadow-2xs flex flex-col gap-3 select-none">
+            <div className="shrink-0 p-3 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-2.5 select-none">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <PaginationInfo
                   startIndex={startIndex}

@@ -68,7 +68,7 @@ configRouter.get('/kho-hang', async (c) => {
       "SELECT id, ten, dia_chi, la_mac_dinh, trang_thai FROM kho_hang WHERE trang_thai = 'hoat_dong' ORDER BY la_mac_dinh DESC, ten ASC"
     ).all();
 
-    const items = (result.results || []).map((row: any) => ({
+    const items = (result.results || []).map((row: Record<string, unknown>) => ({
       ...row,
       la_mac_dinh: Boolean(row.la_mac_dinh)
     }));

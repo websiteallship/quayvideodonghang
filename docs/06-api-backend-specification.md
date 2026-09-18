@@ -348,9 +348,14 @@ Kiểm tra mã vận đơn đã có video chưa (gọi sau khi quét mã).
 
 ### 3.4 Dashboard / Thống kê
 
-#### `GET /api/dashboard/today`
+#### `GET /api/dashboard/stats`
 
-Thống kê nhanh trong ngày (hiện trên Home screen).
+Thống kê số liệu (hiện trên Home screen và Dashboard riêng). Có thể lọc theo khoảng ngày.
+
+**Query Parameters:**
+- `startDate` (optional, định dạng `YYYY-MM-DD`): Từ ngày
+- `endDate` (optional, định dạng `YYYY-MM-DD`): Đến ngày
+*(Nếu không có, mặc định là ngày hôm nay)*
 
 **Headers:** `Authorization: Bearer {token}`
 

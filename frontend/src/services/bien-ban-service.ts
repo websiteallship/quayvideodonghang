@@ -70,6 +70,16 @@ export async function checkBarcodeDuplicate(
       throwHttpErrors: false,
     });
 
+    if (!response.ok) {
+      return {
+        success: false,
+        error: {
+          code: 'API_ERROR',
+          message: `Lỗi kiểm tra mã vận đơn (HTTP ${response.status})`,
+        },
+      };
+    }
+
     const body = (await response.json()) as ApiResponse<CheckMaVanDonResult>;
     return body;
   } catch (err: unknown) {
@@ -153,6 +163,19 @@ export async function fetchBienBanList(
       throwHttpErrors: false
     });
 
+    if (!res.ok) {
+      const errorText = await res.text().catch(() => '');
+      let parsed: ApiResponse<BienBanListResponse> | null = null;
+      try { parsed = JSON.parse(errorText); } catch { /* empty */ }
+      return parsed ?? {
+        success: false,
+        error: {
+          code: 'API_ERROR',
+          message: `Lỗi tải danh sách biên bản (HTTP ${res.status})`
+        }
+      };
+    }
+
     return (await res.json()) as ApiResponse<BienBanListResponse>;
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') throw err;
@@ -178,6 +201,17 @@ export async function fetchBienBanDetail(
       signal,
       throwHttpErrors: false
     });
+
+    if (!res.ok) {
+      return {
+        success: false,
+        error: {
+          code: 'API_ERROR',
+          message: `Lỗi tải chi tiết biên bản (HTTP ${res.status})`
+        }
+      };
+    }
+
     return (await res.json()) as ApiResponse<import('../types').BienBan & { ten_nhan_vien?: string }>;
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') throw err;
@@ -203,6 +237,17 @@ export async function fetchBienBanViewUrl(
       signal,
       throwHttpErrors: false
     });
+
+    if (!res.ok) {
+      return {
+        success: false,
+        error: {
+          code: 'API_ERROR',
+          message: `Lỗi tảo link xem video (HTTP ${res.status})`
+        }
+      };
+    }
+
     return (await res.json()) as ApiResponse<BienBanViewUrlResponse>;
   } catch (err: unknown) {
     if (err instanceof Error && err.name === 'AbortError') throw err;

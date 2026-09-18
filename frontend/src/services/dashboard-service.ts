@@ -5,7 +5,6 @@
 
 import { apiClient, requestJson } from './api-client';
 import { API_ENDPOINTS } from '../config/api';
-import type { ApiResponse } from '../types';
 
 // ---------------------------------------------------------------------------
 // Types

@@ -195,9 +195,9 @@ export const AdminWarehousesPage: React.FC = () => {
   }, [fetchWarehouses]);
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-6 w-full">
+    <div className="flex flex-col gap-3 lg:gap-3.5 w-full h-full flex-1 min-h-0">
       {/* Page Header */}
-      <div>
+      <div className="shrink-0">
         <h2 className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl">
           Quản lý Kho vận
         </h2>
@@ -206,9 +206,9 @@ export const AdminWarehousesPage: React.FC = () => {
         </p>
       </div>
 
-      <div className="flex flex-col gap-4">
+      <div className="flex flex-col gap-3 flex-1 min-h-0">
         {/* Top Controls & Search Bar */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border/40">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-2 border-b border-border/40 shrink-0">
           <div className="flex items-center gap-2.5 flex-1 max-w-sm">
             <div className="relative w-full">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-4 text-muted-foreground pointer-events-none" />
@@ -265,33 +265,33 @@ export const AdminWarehousesPage: React.FC = () => {
 
         {/* Warehouse List */}
         {loadingWarehouses ? (
-          <div className="flex items-center justify-center py-12">
+          <div className="flex-1 min-h-0 flex items-center justify-center py-12">
             <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
         ) : warehouses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center py-12 text-center text-muted-foreground">
             <Building2 className="size-10 mb-2 stroke-[1.5] text-muted-foreground/60" />
             <p className="text-sm font-semibold">Chưa có kho vận nào trong hệ thống</p>
             <p className="text-xs mt-1">Bấm "Thêm kho mới" để tạo kho đầu tiên</p>
           </div>
         ) : filteredWarehouses.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
+          <div className="flex-1 min-h-0 flex flex-col items-center justify-center py-10 text-center text-muted-foreground">
             <Search className="size-8 mb-2 stroke-[1.5] text-muted-foreground/60" />
             <p className="text-sm font-semibold">Không tìm thấy kho vận phù hợp</p>
             <p className="text-xs mt-1">Thử tìm kiếm với từ khóa khác</p>
           </div>
         ) : (
-          <div className="flex flex-col gap-3">
-            {/* Desktop Table List View */}
-            <div className="hidden md:block rounded-2xl border border-border bg-card shadow-2xs">
-              <div className="overflow-x-auto">
+          <div className="flex-1 min-h-0 flex flex-col gap-3">
+            {/* Desktop Table List View: fixed thead, scrollable tbody, fixed pagination */}
+            <div className="hidden md:flex flex-1 min-h-0 flex-col rounded-2xl border border-border bg-card shadow-xs overflow-hidden">
+              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative saas-scrollbar">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm shadow-sm rounded-t-2xl">
-                    <tr className="border-b border-border/80 text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
-                      <th className="py-3 px-4">Tên kho vận</th>
-                      <th className="py-3 px-4">Địa chỉ chi tiết</th>
-                      <th className="py-3 px-3 text-center">Trạng thái</th>
-                      <th className="py-3 px-4 text-right">Thao tác</th>
+                  <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm shadow-xs border-b border-border/80">
+                    <tr className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
+                      <th className="py-3 px-4 bg-card">Tên kho vận</th>
+                      <th className="py-3 px-4 bg-card">Địa chỉ chi tiết</th>
+                      <th className="py-3 px-3 bg-card text-center">Trạng thái</th>
+                      <th className="py-3 px-4 bg-card text-right">Thao tác</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/50">
@@ -422,7 +422,7 @@ export const AdminWarehousesPage: React.FC = () => {
               </div>
 
               {/* Desktop Pagination Footer */}
-              <div className="sticky bottom-0 z-10 px-4 py-3 border-t border-border/70 bg-card flex items-center justify-between flex-wrap gap-3 text-xs text-muted-foreground select-none rounded-b-2xl shadow-[0_-4px_15px_rgba(0,0,0,0.03)]">
+              <div className="shrink-0 px-4 py-3 border-t border-border/70 bg-card flex items-center justify-between flex-wrap gap-3 text-xs text-muted-foreground select-none shadow-[0_-4px_15px_rgba(0,0,0,0.03)]">
                 <div className="flex items-center gap-3 flex-wrap">
                   <PaginationInfo
                     startIndex={warehouseStartIndex}
@@ -449,9 +449,10 @@ export const AdminWarehousesPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Mobile Card List View */}
-            <div className="flex flex-col gap-2.5 md:hidden">
-              {paginatedWarehouses.map((k) => (
+            {/* Mobile Card List View: scrollable middle, fixed pagination */}
+            <div className="flex md:hidden flex-1 min-h-0 flex-col gap-2.5">
+              <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pr-0.5 saas-scrollbar">
+                {paginatedWarehouses.map((k) => (
                 <div
                   key={k.id}
                   className={cn(
@@ -563,9 +564,10 @@ export const AdminWarehousesPage: React.FC = () => {
                   </div>
                 </div>
               ))}
+              </div>
 
               {/* Mobile Pagination Footer */}
-              <div className="p-3.5 rounded-2xl border border-border bg-card shadow-2xs flex flex-col gap-3 select-none">
+              <div className="shrink-0 p-3 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-2.5 select-none">
                 <div className="flex items-center justify-between text-xs text-muted-foreground">
                   <PaginationInfo
                     startIndex={warehouseStartIndex}

@@ -5,10 +5,9 @@ import {
   Plus,
   Pencil,
   Trash2,
-  Lock,
   Loader2,
-  CheckCircle2,
   Sparkles,
+  CheckCircle2,
   Layers,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
@@ -543,9 +542,9 @@ export const AdminCarriersPage: React.FC = () => {
   const customCount = useMemo(() => allCarriers.filter((c) => !c.isBuiltIn).length, [allCarriers]);
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-6 w-full">
+    <div className="flex flex-col gap-3 lg:gap-3.5 w-full h-full flex-1 min-h-0">
       {/* ─── Page Header ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
         <div>
           <h2 className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl flex items-center gap-2.5">
             <span>Đơn vị Vận chuyển</span>
@@ -567,11 +566,11 @@ export const AdminCarriersPage: React.FC = () => {
       </div>
 
       {/* ─── Metric Summary Cards ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
         {/* Total */}
         <Card className="rounded-2xl border-border bg-card/60 shadow-2xs">
-          <CardContent className="p-4 flex items-center gap-3.5">
-            <div className="size-11 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+          <CardContent className="p-3 sm:p-4 flex items-center gap-3.5">
+            <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
               <Truck className="size-5" />
             </div>
             <div className="min-w-0">
@@ -587,8 +586,8 @@ export const AdminCarriersPage: React.FC = () => {
 
         {/* Built-in */}
         <Card className="rounded-2xl border-border bg-card/60 shadow-2xs">
-          <CardContent className="p-4 flex items-center gap-3.5">
-            <div className="size-11 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+          <CardContent className="p-3 sm:p-4 flex items-center gap-3.5">
+            <div className="size-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
               <Sparkles className="size-5" />
             </div>
             <div className="min-w-0">
@@ -604,8 +603,8 @@ export const AdminCarriersPage: React.FC = () => {
 
         {/* Custom */}
         <Card className="rounded-2xl border-border bg-card/60 shadow-2xs">
-          <CardContent className="p-4 flex items-center gap-3.5">
-            <div className="size-11 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+          <CardContent className="p-3 sm:p-4 flex items-center gap-3.5">
+            <div className="size-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
               <Layers className="size-5" />
             </div>
             <div className="min-w-0">
@@ -621,7 +620,7 @@ export const AdminCarriersPage: React.FC = () => {
       </div>
 
       {/* ─── Search & Filter Toolbar ─── */}
-      <Card className="rounded-2xl shadow-2xs border-border">
+      <Card className="rounded-2xl shadow-2xs border-border shrink-0">
         <CardContent className="p-3.5 flex flex-col sm:flex-row gap-3">
           <div className="relative flex-1">
             <Search
@@ -650,49 +649,51 @@ export const AdminCarriersPage: React.FC = () => {
 
       {/* ─── Carriers List View ─── */}
       {loading ? (
-        <div className="flex items-center justify-center min-h-[300px]">
+        <div className="flex-1 min-h-0 flex items-center justify-center">
           <Loader2 className="size-8 animate-spin text-muted-foreground" />
         </div>
       ) : paginatedCarriers.length === 0 ? (
-        <Card className="rounded-3xl shadow-xs">
-          <CardContent className="flex flex-col items-center justify-center gap-3 p-12 text-center">
-            <Truck className="size-12 text-muted-foreground/40" aria-hidden="true" />
-            <div className="flex flex-col gap-1">
-              <p className="text-sm font-semibold text-foreground">
-                Không tìm thấy đơn vị vận chuyển nào
-              </p>
-              <p className="text-xs text-muted-foreground">
-                {search ? 'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc' : 'Bấm "Thêm ĐVVC mới" để tạo đơn vị vận chuyển đầu tiên'}
-              </p>
-            </div>
-            {search && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => {
-                  setSearch('');
-                  setFilterType('all');
-                }}
-                className="mt-2 text-xs rounded-xl cursor-pointer"
-              >
-                Xóa bộ lọc
-              </Button>
-            )}
-          </CardContent>
-        </Card>
+        <div className="flex-1 min-h-0 flex items-center justify-center">
+          <Card className="rounded-3xl shadow-xs max-w-md w-full">
+            <CardContent className="flex flex-col items-center justify-center gap-3 p-12 text-center">
+              <Truck className="size-12 text-muted-foreground/40" aria-hidden="true" />
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-semibold text-foreground">
+                  Không tìm thấy đơn vị vận chuyển nào
+                </p>
+                <p className="text-xs text-muted-foreground">
+                  {search ? 'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc' : 'Bấm "Thêm ĐVVC mới" để tạo đơn vị vận chuyển đầu tiên'}
+                </p>
+              </div>
+              {search && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    setSearch('');
+                    setFilterType('all');
+                  }}
+                  className="mt-2 text-xs rounded-xl cursor-pointer"
+                >
+                  Xóa bộ lọc
+                </Button>
+              )}
+            </CardContent>
+          </Card>
+        </div>
       ) : (
-        <div className="flex flex-col gap-3">
+        <div className="flex-1 min-h-0 flex flex-col gap-3">
           {/* ══ Desktop Table ListView ══ */}
-          <div className="hidden md:block rounded-2xl border border-border bg-card overflow-hidden shadow-2xs">
-            <div className="overflow-x-auto">
+          <div className="hidden md:flex flex-1 min-h-0 flex-col rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative saas-scrollbar">
               <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-border/80 bg-muted/40 text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
-                    <th className="py-3 px-4">Đơn vị vận chuyển</th>
-                    <th className="py-3 px-4">Mã định danh (Key)</th>
-                    <th className="py-3 px-3 text-center">Phân loại</th>
-                    <th className="py-3 px-3 text-center">Cơ chế nhận diện</th>
-                    <th className="py-3 px-4 text-right">Thao tác</th>
+                <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm shadow-xs border-b border-border/80 select-none">
+                  <tr className="text-[11px] font-bold text-muted-foreground uppercase tracking-wider select-none">
+                    <th className="py-3 px-4 bg-card">Đơn vị vận chuyển</th>
+                    <th className="py-3 px-4 bg-card">Mã định danh (Key)</th>
+                    <th className="py-3 px-3 bg-card text-center">Phân loại</th>
+                    <th className="py-3 px-3 bg-card text-center">Cơ chế nhận diện</th>
+                    <th className="py-3 px-4 bg-card text-right">Thao tác</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-border/50">
@@ -718,21 +719,21 @@ export const AdminCarriersPage: React.FC = () => {
                             {item.label.slice(0, 2).toUpperCase()}
                           </div>
                           <div className="flex flex-col min-w-0">
-                            <span className="font-bold text-xs text-foreground truncate max-w-[240px]">
+                            <span className="font-bold text-xs text-foreground truncate">
                               {item.label}
                             </span>
-                            <span className="text-[11px] text-muted-foreground font-mono">
+                            <span className="text-[10px] text-muted-foreground font-mono truncate">
                               ID: {item.id}
                             </span>
                           </div>
                         </div>
                       </td>
 
-                      {/* Mã ID Key */}
-                      <td className="py-3 px-4 font-mono text-xs text-foreground">
-                        <span className="px-2 py-0.5 rounded-lg bg-muted border border-border/60 font-semibold">
+                      {/* Mã định danh */}
+                      <td className="py-3 px-4">
+                        <code className="text-[11px] font-mono font-semibold px-2 py-0.5 rounded-lg bg-muted text-foreground border border-border/60">
                           {item.id}
-                        </span>
+                        </code>
                       </td>
 
                       {/* Phân loại */}
@@ -740,18 +741,16 @@ export const AdminCarriersPage: React.FC = () => {
                         {item.isBuiltIn ? (
                           <Badge
                             variant="secondary"
-                            className="gap-1 text-[10px] font-bold px-2 py-0.5 border border-border/60"
+                            className="text-[10px] font-bold px-2 py-0.5 border"
                           >
-                            <Lock className="size-2.5 text-muted-foreground" />
-                            Mặc định hệ thống
+                            Mặc định
                           </Badge>
                         ) : (
                           <Badge
                             variant="outline"
-                            className="gap-1 text-[10px] font-bold px-2 py-0.5 border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                            className="text-[10px] font-bold px-2 py-0.5 border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
                           >
-                            <Layers className="size-2.5" />
-                            Do Admin thêm
+                            Admin tạo
                           </Badge>
                         )}
                       </td>
@@ -761,52 +760,52 @@ export const AdminCarriersPage: React.FC = () => {
                         {item.hasRegex ? (
                           <Badge
                             variant="outline"
-                            className="gap-1 text-[10px] font-bold px-2 py-0.5 border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400"
+                            className="text-[10px] font-semibold border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 gap-1 px-2 py-0.5"
                           >
                             <Sparkles className="size-2.5" />
                             Tự động (Regex)
                           </Badge>
                         ) : (
-                          <Badge
-                            variant="secondary"
-                            className="text-[10px] font-medium px-2 py-0.5 opacity-70"
-                          >
+                          <span className="text-[11px] text-muted-foreground italic">
                             Chọn thủ công
-                          </Badge>
+                          </span>
                         )}
                       </td>
 
                       {/* Thao tác */}
                       <td className="py-3 px-4 text-right">
-                        {item.isBuiltIn ? (
-                          <div className="flex items-center justify-end gap-1 text-[11px] text-muted-foreground/60 select-none">
-                            <Lock className="size-3" />
-                            <span>Cố định</span>
-                          </div>
-                        ) : (
-                          <div className="flex items-center justify-end gap-1">
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setEditTarget(item)}
-                              className="h-8 text-xs font-semibold gap-1 px-2.5 hover:bg-muted cursor-pointer"
-                              title="Chỉnh sửa tên hiển thị"
+                        <div className="flex items-center justify-end gap-1">
+                          {item.isBuiltIn ? (
+                            <span
+                              className="text-[10px] text-muted-foreground/60 italic px-2"
+                              title="ĐVVC mặc định của hệ thống không thể chỉnh sửa trực tiếp"
                             >
-                              <Pencil className="size-3.5" />
-                              <span>Sửa</span>
-                            </Button>
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => setDeleteTarget(item)}
-                              className="h-8 text-xs font-semibold gap-1 px-2 text-destructive hover:bg-destructive/10 cursor-pointer"
-                              title="Xóa ĐVVC này"
-                            >
-                              <Trash2 className="size-3.5" />
-                              <span>Xóa</span>
-                            </Button>
-                          </div>
-                        )}
+                              Hệ thống khóa
+                            </span>
+                          ) : (
+                            <>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setEditTarget(item)}
+                                className="h-8 text-xs font-semibold gap-1 px-2.5 hover:bg-muted text-foreground cursor-pointer"
+                                title="Chỉnh sửa cấu hình"
+                              >
+                                <Pencil className="size-3.5 text-muted-foreground group-hover:text-foreground" />
+                                <span>Sửa</span>
+                              </Button>
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                onClick={() => setDeleteTarget(item)}
+                                className="h-8 text-xs font-semibold gap-1 px-2 text-destructive hover:bg-destructive/10 cursor-pointer"
+                                title="Xóa ĐVVC"
+                              >
+                                <Trash2 className="size-3.5" />
+                              </Button>
+                            </>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   ))}
@@ -815,7 +814,7 @@ export const AdminCarriersPage: React.FC = () => {
             </div>
 
             {/* Desktop Pagination Footer */}
-            <div className="px-4 py-3 border-t border-border/70 bg-muted/10 flex items-center justify-between flex-wrap gap-3 text-xs text-muted-foreground select-none">
+            <div className="shrink-0 px-4 py-3 border-t border-border/70 bg-card flex items-center justify-between flex-wrap gap-3 text-xs text-muted-foreground select-none shadow-[0_-4px_15px_rgba(0,0,0,0.03)]">
               <div className="flex items-center gap-3 flex-wrap">
                 <PaginationInfo
                   startIndex={startIndex}
@@ -843,95 +842,97 @@ export const AdminCarriersPage: React.FC = () => {
           </div>
 
           {/* ══ Mobile Cards ListView ══ */}
-          <div className="flex flex-col gap-2.5 md:hidden">
-            {paginatedCarriers.map((item) => (
-              <div
-                key={item.id}
-                className={cn(
-                  'rounded-2xl border p-3.5 bg-card flex flex-col gap-2.5 shadow-2xs transition-all',
-                  !item.isBuiltIn && 'border-amber-500/30 bg-amber-500/[0.02]'
-                )}
-              >
-                <div className="flex items-start justify-between gap-2">
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <div
-                      className={cn(
-                        'size-9 rounded-xl flex items-center justify-center shrink-0 border text-xs font-black shadow-2xs',
-                        item.isBuiltIn
-                          ? 'bg-muted/50 border-border text-foreground'
-                          : 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
-                      )}
-                    >
-                      {item.label.slice(0, 2).toUpperCase()}
+          <div className="flex md:hidden flex-1 min-h-0 flex-col gap-2.5">
+            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pr-0.5 saas-scrollbar">
+              {paginatedCarriers.map((item) => (
+                <div
+                  key={item.id}
+                  className={cn(
+                    'rounded-2xl border p-3.5 bg-card flex flex-col gap-2.5 shadow-2xs transition-all',
+                    !item.isBuiltIn && 'border-amber-500/30 bg-amber-500/[0.02]'
+                  )}
+                >
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="flex items-center gap-2.5 min-w-0">
+                      <div
+                        className={cn(
+                          'size-9 rounded-xl flex items-center justify-center shrink-0 border text-xs font-black shadow-2xs',
+                          item.isBuiltIn
+                            ? 'bg-muted/50 border-border text-foreground'
+                            : 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
+                        )}
+                      >
+                        {item.label.slice(0, 2).toUpperCase()}
+                      </div>
+                      <div className="flex flex-col min-w-0">
+                        <span className="font-bold text-xs text-foreground truncate">
+                          {item.label}
+                        </span>
+                        <span className="text-[10px] text-muted-foreground font-mono">
+                          Key: {item.id}
+                        </span>
+                      </div>
                     </div>
-                    <div className="flex flex-col min-w-0">
-                      <span className="font-bold text-xs text-foreground truncate">
-                        {item.label}
-                      </span>
-                      <span className="text-[10px] text-muted-foreground font-mono">
-                        Key: {item.id}
-                      </span>
+
+                    <div className="flex items-center gap-1 shrink-0">
+                      {item.isBuiltIn ? (
+                        <Badge
+                          variant="secondary"
+                          className="text-[9px] font-bold px-1.5 py-0 border"
+                        >
+                          Mặc định
+                        </Badge>
+                      ) : (
+                        <Badge
+                          variant="outline"
+                          className="text-[9px] font-bold px-1.5 py-0 border-amber-500/30 bg-amber-500/10 text-amber-600"
+                        >
+                          Admin
+                        </Badge>
+                      )}
                     </div>
                   </div>
 
-                  <div className="flex items-center gap-1 shrink-0">
-                    {item.isBuiltIn ? (
-                      <Badge
-                        variant="secondary"
-                        className="text-[9px] font-bold px-1.5 py-0 border"
-                      >
-                        Mặc định
-                      </Badge>
+                  <div className="flex items-center justify-between text-[11px] px-3 py-1.5 rounded-xl bg-muted/40 text-muted-foreground">
+                    <span>Nhận diện:</span>
+                    {item.hasRegex ? (
+                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+                        <Sparkles className="size-3" /> Tự động (Regex)
+                      </span>
                     ) : (
-                      <Badge
-                        variant="outline"
-                        className="text-[9px] font-bold px-1.5 py-0 border-amber-500/30 bg-amber-500/10 text-amber-600"
-                      >
-                        Admin
-                      </Badge>
+                      <span className="text-muted-foreground">Chọn thủ công</span>
                     )}
                   </div>
-                </div>
 
-                <div className="flex items-center justify-between text-[11px] px-3 py-1.5 rounded-xl bg-muted/40 text-muted-foreground">
-                  <span>Nhận diện:</span>
-                  {item.hasRegex ? (
-                    <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                      <Sparkles className="size-3" /> Tự động (Regex)
-                    </span>
-                  ) : (
-                    <span className="text-muted-foreground">Chọn thủ công</span>
+                  {/* Mobile Actions */}
+                  {!item.isBuiltIn && (
+                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-border/40">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => setEditTarget(item)}
+                        className="h-8 text-xs font-semibold gap-1 px-3 cursor-pointer"
+                      >
+                        <Pencil className="size-3.5" />
+                        <span>Sửa</span>
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => setDeleteTarget(item)}
+                        className="h-8 text-xs font-semibold gap-1 px-2.5 text-destructive hover:bg-destructive/10 cursor-pointer"
+                      >
+                        <Trash2 className="size-3.5" />
+                        <span>Xóa</span>
+                      </Button>
+                    </div>
                   )}
                 </div>
-
-                {/* Mobile Actions */}
-                {!item.isBuiltIn && (
-                  <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-border/40">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => setEditTarget(item)}
-                      className="h-8 text-xs font-semibold gap-1 px-3 cursor-pointer"
-                    >
-                      <Pencil className="size-3.5" />
-                      <span>Sửa</span>
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setDeleteTarget(item)}
-                      className="h-8 text-xs font-semibold gap-1 px-2.5 text-destructive hover:bg-destructive/10 cursor-pointer"
-                    >
-                      <Trash2 className="size-3.5" />
-                      <span>Xóa</span>
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ))}
+              ))}
+            </div>
 
             {/* Mobile Pagination Footer */}
-            <div className="p-3.5 rounded-2xl border border-border bg-card shadow-2xs flex flex-col gap-3 select-none">
+            <div className="shrink-0 p-3 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-2.5 select-none">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <PaginationInfo
                   startIndex={startIndex}

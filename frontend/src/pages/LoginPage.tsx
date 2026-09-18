@@ -81,9 +81,9 @@ export const LoginPage: React.FC = () => {
         })
       });
 
-      let body: any;
+      let body: import('@/types').ApiResponse<import('@/types').LoginResponse> | null = null;
       try {
-        body = await res.json();
+        body = await res.json() as import('@/types').ApiResponse<import('@/types').LoginResponse>;
       } catch {
         throw new Error(`Không thể kết nối đến máy chủ backend (Port 8787). Vui lòng kiểm tra backend.`);
       }
@@ -92,7 +92,8 @@ export const LoginPage: React.FC = () => {
         throw new Error(body?.error?.message || 'Đăng nhập thất bại. Vui lòng kiểm tra lại thông tin.');
       }
 
-      setAuth(body.data.token, body.data.nhan_vien);
+      const data = body.data!;
+      setAuth(data.token, data.nhan_vien);
       navigate('/');
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : 'Đăng nhập thất bại. Vui lòng thử lại.');

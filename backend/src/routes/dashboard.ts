@@ -35,8 +35,8 @@ dashboardRouter.get('/stats', authMiddleware, async (c) => {
     const endDate = c.req.query('endDate');
 
     let dateFilter = '';
-    const statsParams: any[] = [];
-    const nvParams: any[] = [];
+    const statsParams: (string | number)[] = [];
+    const nvParams: (string | number)[] = [];
 
     if (startDate && endDate) {
       dateFilter = "date(thoi_gian_tao, '+7 hours') >= date(?) AND date(thoi_gian_tao, '+7 hours') <= date(?)";
