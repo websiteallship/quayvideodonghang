@@ -13,6 +13,8 @@ export interface UserSettingsState {
   autoRecordAfterScan: boolean;
   /** Play sound beep on barcode scan or warning */
   soundBeepEnabled: boolean;
+  /** Daily personal shift target (chỉ tiêu ca), default 300 */
+  shiftTarget: number;
 }
 
 export interface UserSettingsActions {
@@ -20,6 +22,7 @@ export interface UserSettingsActions {
   resetResolutionToSystem: () => void;
   setAutoRecordAfterScan: (enabled: boolean) => void;
   setSoundBeepEnabled: (enabled: boolean) => void;
+  setShiftTarget: (target: number) => void;
   resetSettings: () => void;
 }
 
@@ -30,6 +33,7 @@ export const DEFAULT_USER_SETTINGS: UserSettingsState = {
   isResolutionOverridden: false,
   autoRecordAfterScan: true,
   soundBeepEnabled: true,
+  shiftTarget: 300,
 };
 
 /** Get effective resolution: user override priority, fallback to system config default */
@@ -53,6 +57,7 @@ export const useUserSettingsStore = create<UserSettingsStore>()(
           set({ isResolutionOverridden: false }),
         setAutoRecordAfterScan: (autoRecordAfterScan) => set({ autoRecordAfterScan }),
         setSoundBeepEnabled: (soundBeepEnabled) => set({ soundBeepEnabled }),
+        setShiftTarget: (shiftTarget) => set({ shiftTarget }),
         resetSettings: () => set(DEFAULT_USER_SETTINGS),
       }),
       {

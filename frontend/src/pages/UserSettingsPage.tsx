@@ -11,6 +11,7 @@ import {
   Building2,
   ExternalLink,
   Star,
+  Target,
 } from 'lucide-react';
 import { useCameraStore } from '@/stores/camera-store';
 import { useConfigStore } from '@/stores/config-store';
@@ -22,6 +23,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
+import { Input } from '@/components/ui/input';
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs';
 import {
   Select,
@@ -181,6 +183,8 @@ export const UserSettingsPage: React.FC = () => {
     setAutoRecordAfterScan,
     soundBeepEnabled,
     setSoundBeepEnabled,
+    shiftTarget,
+    setShiftTarget,
   } = useUserSettingsStore();
 
   const sysDefaultRes = systemConfig?.do_phan_giai === '1920x1080' ? '1080p' : '720p';
@@ -625,6 +629,54 @@ export const UserSettingsPage: React.FC = () => {
                     </Button>
                   </div>
                 )}
+              </div>
+
+              {/* Personal Shift Target */}
+              <div className="flex flex-col gap-2 mt-4 pt-4 border-t border-border/50">
+                <div className="flex items-center justify-between">
+                  <label
+                    htmlFor="settings-shift-target"
+                    className="block text-xs font-semibold text-muted-foreground"
+                  >
+                    Chỉ tiêu cá nhân (Số đơn / ca)
+                  </label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Target className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground" aria-hidden="true" />
+                    <Input
+                      id="settings-shift-target"
+                      type="number"
+                      min="1"
+                      className="h-11 rounded-xl text-xs pl-10 bg-background"
+                      value={shiftTarget || ''}
+                      onChange={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (!isNaN(val) && val > 0) {
+                          setShiftTarget(val);
+                        }
+                      }}
+                      onBlur={(e) => {
+                        const val = parseInt(e.target.value, 10);
+                        if (isNaN(val) || val <= 0) {
+                          setShiftTarget(300); // Reset to default if empty or invalid
+                        }
+                      }}
+                    />
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-11 px-4 text-xs font-semibold shrink-0"
+                    onClick={() => {
+                      showToast.success('Đã lưu chỉ tiêu', `Mục tiêu mới: ${shiftTarget} đơn/ca`);
+                    }}
+                  >
+                    Lưu
+                  </Button>
+                </div>
+                <p className="text-[11px] text-muted-foreground mt-0.5">
+                  Mục tiêu số kiện hàng bạn muốn hoàn thành trong ca làm việc.
+                </p>
               </div>
 
               <Separator />

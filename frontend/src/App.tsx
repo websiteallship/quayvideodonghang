@@ -18,6 +18,7 @@ const AdminSettingsPage = React.lazy(() => import('./pages/AdminSettingsPage').t
 const AdminCarriersPage = React.lazy(() => import('./pages/AdminCarriersPage').then((m) => ({ default: m.AdminCarriersPage })));
 const AdminEmployeesPage = React.lazy(() => import('./pages/AdminEmployeesPage').then((m) => ({ default: m.AdminEmployeesPage })));
 const AdminWarehousesPage = React.lazy(() => import('./pages/AdminWarehousesPage').then((m) => ({ default: m.AdminWarehousesPage })));
+const DashboardPage = React.lazy(() => import('./pages/DashboardPage').then((m) => ({ default: m.DashboardPage })));
 
 const ProtectedRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const { isAuthenticated, user, verifyToken } = useAuthStore();
@@ -57,6 +58,10 @@ const router = createBrowserRouter([
       </ProtectedRoute>
     ),
     children: [
+      {
+        path: '/dashboard',
+        element: <DashboardPage />,
+      },
       {
         path: '/',
         element: <HomePage />,

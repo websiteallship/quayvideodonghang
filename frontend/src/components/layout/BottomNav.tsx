@@ -10,6 +10,7 @@ import {
   Users,
   Truck,
   Building2,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useUploadStore } from '@/stores/upload-store';
 import { useConfigStore } from '@/stores/config-store';
@@ -40,6 +41,7 @@ export const BottomNav: React.FC = () => {
   }
 
   const baseNavItems = [
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/', label: 'Quét & Quay', icon: ScanLine },
     {
       to: '/queue',

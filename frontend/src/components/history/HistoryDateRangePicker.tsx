@@ -1,5 +1,5 @@
 import * as React from "react"
-import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths } from "date-fns"
+import { format, subDays, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, subMonths, isSameDay } from "date-fns"
 import { vi } from "date-fns/locale"
 import { Calendar as CalendarIcon } from "lucide-react"
 import { DateRange } from "react-day-picker"
@@ -54,9 +54,15 @@ export function HistoryDateRangePicker({
             <CalendarIcon className="mr-2 h-4 w-4 text-blue-600 dark:text-blue-400" />
             {date?.from ? (
               date.to ? (
-                <>
-                  {format(date.from, "dd/MM/yyyy")} - {format(date.to, "dd/MM/yyyy")}
-                </>
+                isSameDay(date.from, date.to) && isSameDay(date.from, new Date()) ? (
+                  "Hôm nay"
+                ) : isSameDay(date.from, date.to) ? (
+                  format(date.from, "dd/MM/yyyy")
+                ) : (
+                  <>
+                    {format(date.from, "dd/MM/yyyy")} - {format(date.to, "dd/MM/yyyy")}
+                  </>
+                )
               ) : (
                 format(date.from, "dd/MM/yyyy")
               )
@@ -114,6 +120,8 @@ export function HistoryDateRangePicker({
                 onSelect={setDate}
                 numberOfMonths={1}
                 locale={vi}
+                disabled={{ after: new Date() }}
+                endMonth={new Date()}
                 className="bg-transparent p-0"
               />
             </div>

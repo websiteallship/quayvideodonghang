@@ -12,6 +12,7 @@ import {
   Users,
   Truck,
   Building2,
+  LayoutDashboard,
 } from 'lucide-react';
 import { useConfigStore } from '@/stores/config-store';
 import { useUploadStore } from '@/stores/upload-store';
@@ -30,6 +31,7 @@ export const Sidebar: React.FC = () => {
   ).length;
 
   const navItems = [
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/', label: 'Quét & Quay', icon: ScanLine },
     {
       to: '/queue',
