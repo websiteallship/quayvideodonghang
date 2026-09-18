@@ -34,7 +34,7 @@ export function isValidMaVanDon(code: string): boolean {
  */
 export async function checkBarcodeDuplicate(
   maVanDon: string,
-  loaiBienBan: string,
+  loaiBienBan: string = 'dong_goi',
   options?: CheckBarcodeOptions
 ): Promise<ApiResponse<CheckMaVanDonResult>> {
   const trimmedCode = maVanDon.trim();

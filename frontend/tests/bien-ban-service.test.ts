@@ -9,6 +9,7 @@ describe('bien-ban-service', () => {
 
   afterEach(() => {
     vi.restoreAllMocks();
+    vi.unstubAllGlobals();
   });
 
   describe('isValidMaVanDon', () => {
@@ -57,8 +58,6 @@ describe('bien-ban-service', () => {
       expect(res.data?.da_co_video).toBe(false);
       expect(res.data?.is_offline).toBe(true);
       expect(getSpy).not.toHaveBeenCalled();
-
-      vi.unstubAllGlobals();
     });
 
     it('returns duplicate check data on API success', async () => {
@@ -76,17 +75,33 @@ describe('bien-ban-service', () => {
         },
       };
 
-      vi.spyOn(apiClient, 'get').mockResolvedValue({
+      const getSpy = vi.spyOn(apiClient, 'get').mockResolvedValue({
         ok: true,
         json: () => Promise.resolve(mockData),
       } as unknown as Response);
 
-      const res = await checkBarcodeDuplicate('GHN0123456789');
+      const res = await checkBarcodeDuplicate('GHN0123456789', 'dong_goi');
 
       expect(res.success).toBe(true);
       expect(res.data?.da_co_video).toBe(true);
       expect(res.data?.so_luong_video).toBe(2);
       expect(res.data?.video_gan_nhat?.ma_nhan_vien).toBe('NV001');
+      expect(getSpy).toHaveBeenCalledWith(
+        expect.stringContaining('/bien-ban/check/GHN0123456789?loai_bien_ban=dong_goi'),
+        expect.anything()
+      );
+    });
+
+    it('returns error when API response is not ok', async () => {
+      vi.spyOn(apiClient, 'get').mockResolvedValue({
+        ok: false,
+        status: 500,
+      } as unknown as Response);
+
+      const res = await checkBarcodeDuplicate('GHN0123456789');
+
+      expect(res.success).toBe(false);
+      expect(res.error?.code).toBe('API_ERROR');
     });
 
     it('returns graceful fallback when API fails with network error', async () => {
