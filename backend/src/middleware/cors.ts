@@ -10,7 +10,14 @@ export const corsMiddleware = createMiddleware<{ Bindings: Env }>(async (c, next
 
   // 02-security.md §4: Không dùng wildcard cho endpoint nhạy cảm.
   // Chỉ cho phép explicit domains đã khai báo trong ALLOWED_ORIGINS.
-  const isAllowed = allowed.includes(origin) || !origin;
+  // Hỗ trợ wildcard subdomain (*.example.com) cho Cloudflare Pages preview URLs.
+  const isAllowed = !origin || allowed.some((pattern) => {
+    if (pattern.startsWith('*.')) {
+      const suffix = pattern.slice(1); // ".example.com"
+      return origin.endsWith(suffix) || origin === 'https://' + pattern.slice(2);
+    }
+    return pattern === origin;
+  });
 
   if (origin && !isAllowed) {
     return new Response(null, { status: 403 });

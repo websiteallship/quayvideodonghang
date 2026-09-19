@@ -10,7 +10,7 @@ database_id = "8773e3f3-acf5-4832-b989-db3b00ef0a7c"
 
 # Environment variables (non-secret)
 [vars]
-ALLOWED_ORIGINS = "https://quayvideodonghang-8z9.pages.dev,https://quayvideo.pages.dev,http://localhost:5173,https://localhost:5173"
+ALLOWED_ORIGINS = "https://quayvideodonghang-8z9.pages.dev,*.quayvideodonghang-8z9.pages.dev,https://quayvideo.pages.dev,http://localhost:5173,https://localhost:5173"
 JWT_EXPIRES_IN = "86400"
 # Variables are loaded from .dev.vars or Cloudflare Secrets
 UPLOAD_CHUNK_SIZE = "5242880"
