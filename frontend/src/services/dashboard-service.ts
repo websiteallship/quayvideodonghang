@@ -81,10 +81,11 @@ export async function fetchDashboardStats(
   if (typeof navigator !== 'undefined' && navigator.onLine) {
     let statsUrl = API_ENDPOINTS.DASHBOARD.STATS;
     if (isCustomDateRange) {
-      const url = new URL(statsUrl, window.location.origin);
-      url.searchParams.set('startDate', startDate);
-      url.searchParams.set('endDate', endDate);
-      statsUrl = url.toString();
+      const searchParams = new URLSearchParams();
+      searchParams.set('startDate', startDate!);
+      searchParams.set('endDate', endDate!);
+      const separator = statsUrl.includes('?') ? '&' : '?';
+      statsUrl = `${statsUrl}${separator}${searchParams.toString()}`;
     }
 
     const res = await requestJson<DashboardStats>(
