@@ -79,7 +79,7 @@ export async function fetchDashboardStats(
 
   // Try network first
   if (typeof navigator !== 'undefined' && navigator.onLine) {
-    let statsUrl = API_ENDPOINTS.DASHBOARD.STATS;
+    let statsUrl: string = API_ENDPOINTS.DASHBOARD.STATS;
     if (isCustomDateRange) {
       const searchParams = new URLSearchParams();
       searchParams.set('startDate', startDate!);
