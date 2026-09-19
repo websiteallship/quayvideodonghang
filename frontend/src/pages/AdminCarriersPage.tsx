@@ -131,7 +131,7 @@ function CreateCarrierDialog({
             </label>
             <Input
               value={id}
-              onChange={(e) => setId(e.target.value.replace(/\s/g, ''))}
+              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setId(e.target.value.replace(/\s/g, ''))}
               placeholder="VD: AhaMove, GrabExpress, ShipChung"
               className="h-11 rounded-xl text-xs font-mono"
               autoFocus
