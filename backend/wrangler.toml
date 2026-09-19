@@ -6,7 +6,7 @@ compatibility_date = "2024-09-14"
 [[d1_databases]]
 binding = "DB"
 database_name = "quayvideo-db"
-database_id = "local-quayvideo-db"
+database_id = "8773e3f3-acf5-4832-b989-db3b00ef0a7c"
 
 # Environment variables (non-secret)
 [vars]

@@ -32,6 +32,9 @@ Mọi quyết định thiết kế và lập trình phải tuân thủ nghiêm n
 - [`10-error-handling.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/10-error-handling.md): 30+ mã lỗi hệ thống, chiến lược retry và phục hồi sự cố.
 - [`11-ui-design-system.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/11-ui-design-system.md): Bảng màu tương phản cao, typography, component tokens kho vận.
 - [`12-huong-dan-ket-noi-google-drive-sheet.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/12-huong-dan-ket-noi-google-drive-sheet.md): Hướng dẫn kết nối Google Cloud Service Account, Shared Drive, Sheet và dev local.
+- [`13-huong-dan-lay-refresh-token.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/13-huong-dan-lay-refresh-token.md): Hướng dẫn lấy OAuth2 Refresh Token cho Google Drive cá nhân (15GB miễn phí).
+- [`14-admin-crud-specification.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/14-admin-crud-specification.md): Đặc tả quản trị nhân viên, kho hàng, cấu hình và retention.
+- [`15-huong-dan-trien-khai-deploy.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/15-huong-dan-trien-khai-deploy.md): Quy trình triển khai Production Cloudflare Pages, Workers, D1 và checklist vận hành.
 
 ---
 

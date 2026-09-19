@@ -1,6 +1,4 @@
-// Use relative paths so all API calls go through Vite proxy (dev) or same-origin (prod).
-// Avoids CORS issues and ensures consistent auth token context.
-const BASE_URL = import.meta.env.VITE_API_URL || '';
+const BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
 export const API_ENDPOINTS = {
   AUTH: {

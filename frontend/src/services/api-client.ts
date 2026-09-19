@@ -74,7 +74,7 @@ export const removeStoredUser = (): void => {
 };
 
 
-export const API_BASE = (import.meta.env.VITE_API_BASE_URL || '') + '/api';
+export const API_BASE = ((import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '')).replace(/\/+$/, '') + '/api';
 
 export const apiClient = ky.create({
   timeout: 30000,
