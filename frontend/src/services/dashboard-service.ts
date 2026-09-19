@@ -79,14 +79,16 @@ export async function fetchDashboardStats(
 
   // Try network first
   if (typeof navigator !== 'undefined' && navigator.onLine) {
-    const url = new URL(API_ENDPOINTS.DASHBOARD.STATS, window.location.origin);
+    let statsUrl = API_ENDPOINTS.DASHBOARD.STATS;
     if (isCustomDateRange) {
+      const url = new URL(statsUrl);
       url.searchParams.set('startDate', startDate);
       url.searchParams.set('endDate', endDate);
+      statsUrl = url.toString();
     }
 
     const res = await requestJson<DashboardStats>(
-      apiClient.get(url.pathname + url.search)
+      apiClient.get(statsUrl)
     );
 
     if (res.success && res.data) {
