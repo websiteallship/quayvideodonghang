@@ -542,42 +542,44 @@ export const AdminCarriersPage: React.FC = () => {
   const customCount = useMemo(() => allCarriers.filter((c) => !c.isBuiltIn).length, [allCarriers]);
 
   return (
-    <div className="flex flex-col gap-3 lg:gap-3.5 w-full h-full flex-1 min-h-0">
+    <div className="flex flex-col gap-2.5 sm:gap-3 lg:gap-3.5 w-full h-full flex-1 min-h-0">
       {/* ─── Page Header ─── */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 shrink-0">
+      <div className="flex items-center justify-between gap-2 sm:gap-3 shrink-0">
         <div>
-          <h2 className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl flex items-center gap-2.5">
+          <h2 className="text-lg sm:text-2xl font-bold tracking-tight text-foreground lg:text-3xl flex items-center gap-2">
             <span>Đơn vị Vận chuyển</span>
-            <Badge variant="secondary" className="text-xs font-mono font-bold px-2 py-0.5">
+            <Badge variant="secondary" className="text-[11px] sm:text-xs font-mono font-bold px-1.5 sm:px-2 py-0.5">
               {allCarriers.length} ĐVVC
             </Badge>
           </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
+          <p className="hidden sm:block mt-0.5 sm:mt-1 text-xs sm:text-sm text-muted-foreground">
             Quản lý danh mục ĐVVC, cấu hình nhận diện mã vận đơn và phân loại đóng gói / khui hàng
           </p>
         </div>
         <Button
-          className="h-11 gap-2 rounded-2xl text-xs font-bold shrink-0 px-5 shadow-sm cursor-pointer"
+          size="sm"
+          className="h-8 sm:h-11 gap-1.5 sm:gap-2 rounded-xl sm:rounded-2xl text-xs font-bold shrink-0 px-3 sm:px-5 shadow-xs cursor-pointer"
           onClick={() => setCreateOpen(true)}
         >
-          <Plus className="size-4" aria-hidden="true" />
-          Thêm ĐVVC mới
+          <Plus className="size-3.5 sm:size-4" aria-hidden="true" />
+          <span>Thêm ĐVVC</span>
         </Button>
       </div>
 
-      {/* ─── Metric Summary Cards ─── */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 shrink-0">
+      {/* ─── Metric Summary Cards (3 cols on mobile to save vertical space) ─── */}
+      <div className="grid grid-cols-3 gap-2 sm:gap-3 shrink-0">
         {/* Total */}
-        <Card className="rounded-2xl border-border bg-card/60 shadow-2xs">
-          <CardContent className="p-3 sm:p-4 flex items-center gap-3.5">
-            <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
-              <Truck className="size-5" />
+        <Card className="rounded-xl sm:rounded-2xl border-border bg-card/60 shadow-2xs">
+          <CardContent className="p-2 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-3.5">
+            <div className="size-7 sm:size-10 rounded-lg sm:rounded-xl bg-primary/10 text-primary flex items-center justify-center shrink-0">
+              <Truck className="size-3.5 sm:size-5" />
             </div>
-            <div className="min-w-0">
-              <span className="text-xs font-semibold text-muted-foreground block truncate">
-                Tổng đơn vị cấu hình
+            <div className="min-w-0 w-full">
+              <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground block truncate">
+                <span className="sm:hidden">Tổng ĐVVC</span>
+                <span className="hidden sm:inline">Tổng đơn vị cấu hình</span>
               </span>
-              <span className="text-xl font-bold font-mono text-foreground">
+              <span className="text-sm sm:text-xl font-bold font-mono text-foreground block">
                 {allCarriers.length}
               </span>
             </div>
@@ -585,16 +587,17 @@ export const AdminCarriersPage: React.FC = () => {
         </Card>
 
         {/* Built-in */}
-        <Card className="rounded-2xl border-border bg-card/60 shadow-2xs">
-          <CardContent className="p-3 sm:p-4 flex items-center gap-3.5">
-            <div className="size-10 rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-              <Sparkles className="size-5" />
+        <Card className="rounded-xl sm:rounded-2xl border-border bg-card/60 shadow-2xs">
+          <CardContent className="p-2 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-3.5">
+            <div className="size-7 sm:size-10 rounded-lg sm:rounded-xl bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+              <Sparkles className="size-3.5 sm:size-5" />
             </div>
-            <div className="min-w-0">
-              <span className="text-xs font-semibold text-muted-foreground block truncate">
-                Mặc định hệ thống (Regex)
+            <div className="min-w-0 w-full">
+              <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground block truncate">
+                <span className="sm:hidden">Mặc định</span>
+                <span className="hidden sm:inline">Mặc định hệ thống (Regex)</span>
               </span>
-              <span className="text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400">
+              <span className="text-sm sm:text-xl font-bold font-mono text-emerald-600 dark:text-emerald-400 block">
                 {builtInCount}
               </span>
             </div>
@@ -602,16 +605,17 @@ export const AdminCarriersPage: React.FC = () => {
         </Card>
 
         {/* Custom */}
-        <Card className="rounded-2xl border-border bg-card/60 shadow-2xs">
-          <CardContent className="p-3 sm:p-4 flex items-center gap-3.5">
-            <div className="size-10 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
-              <Layers className="size-5" />
+        <Card className="rounded-xl sm:rounded-2xl border-border bg-card/60 shadow-2xs">
+          <CardContent className="p-2 sm:p-4 flex flex-col sm:flex-row items-start sm:items-center gap-1.5 sm:gap-3.5">
+            <div className="size-7 sm:size-10 rounded-lg sm:rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 flex items-center justify-center shrink-0">
+              <Layers className="size-3.5 sm:size-5" />
             </div>
-            <div className="min-w-0">
-              <span className="text-xs font-semibold text-muted-foreground block truncate">
-                Do Admin thêm
+            <div className="min-w-0 w-full">
+              <span className="text-[10px] sm:text-xs font-semibold text-muted-foreground block truncate">
+                <span className="sm:hidden">Admin tạo</span>
+                <span className="hidden sm:inline">Do Admin thêm</span>
               </span>
-              <span className="text-xl font-bold font-mono text-amber-600 dark:text-amber-400">
+              <span className="text-sm sm:text-xl font-bold font-mono text-amber-600 dark:text-amber-400 block">
                 {customCount}
               </span>
             </div>
@@ -619,30 +623,30 @@ export const AdminCarriersPage: React.FC = () => {
         </Card>
       </div>
 
-      {/* ─── Search & Filter Toolbar ─── */}
-      <Card className="rounded-2xl shadow-2xs border-border shrink-0">
-        <CardContent className="p-3.5 flex flex-col sm:flex-row gap-3">
+      {/* ─── Search & Filter Toolbar (Compact single row on mobile) ─── */}
+      <Card className="rounded-xl sm:rounded-2xl shadow-2xs border-border shrink-0">
+        <CardContent className="p-2 sm:p-3.5 flex flex-row gap-2 sm:gap-3">
           <div className="relative flex-1">
             <Search
-              className="absolute left-3.5 top-1/2 -translate-y-1/2 size-4 text-muted-foreground"
+              className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 sm:size-4 text-muted-foreground"
               aria-hidden="true"
             />
             <Input
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              placeholder="Tìm theo mã ID hoặc tên đơn vị vận chuyển..."
-              className="h-10 rounded-xl text-xs pl-10"
+              placeholder="Tìm theo mã ID hoặc tên ĐVVC..."
+              className="h-9 sm:h-10 rounded-lg sm:rounded-xl text-xs pl-8 sm:pl-10"
             />
           </div>
 
           <select
             value={filterType}
             onChange={(e) => setFilterType(e.target.value as 'all' | 'builtin' | 'custom')}
-            className="h-10 rounded-xl border border-border bg-muted/40 px-3 text-xs font-medium text-foreground focus:outline-none shrink-0 w-full sm:w-56 cursor-pointer"
+            className="h-9 sm:h-10 rounded-lg sm:rounded-xl border border-border bg-muted/40 px-2 sm:px-3 text-xs font-medium text-foreground focus:outline-none shrink-0 w-28 sm:w-56 cursor-pointer"
           >
             <option value="all">Tất cả ({allCarriers.length})</option>
-            <option value="builtin">Mặc định hệ thống ({builtInCount})</option>
-            <option value="custom">Do Admin thêm ({customCount})</option>
+            <option value="builtin">Mặc định ({builtInCount})</option>
+            <option value="custom">Admin ({customCount})</option>
           </select>
         </CardContent>
       </Card>
@@ -655,14 +659,14 @@ export const AdminCarriersPage: React.FC = () => {
       ) : paginatedCarriers.length === 0 ? (
         <div className="flex-1 min-h-0 flex items-center justify-center">
           <Card className="rounded-3xl shadow-xs max-w-md w-full">
-            <CardContent className="flex flex-col items-center justify-center gap-3 p-12 text-center">
-              <Truck className="size-12 text-muted-foreground/40" aria-hidden="true" />
+            <CardContent className="flex flex-col items-center justify-center gap-3 p-8 sm:p-12 text-center">
+              <Truck className="size-10 sm:size-12 text-muted-foreground/40" aria-hidden="true" />
               <div className="flex flex-col gap-1">
                 <p className="text-sm font-semibold text-foreground">
                   Không tìm thấy đơn vị vận chuyển nào
                 </p>
                 <p className="text-xs text-muted-foreground">
-                  {search ? 'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc' : 'Bấm "Thêm ĐVVC mới" để tạo đơn vị vận chuyển đầu tiên'}
+                  {search ? 'Thử thay đổi từ khóa tìm kiếm hoặc bộ lọc' : 'Bấm "Thêm ĐVVC" để tạo đơn vị vận chuyển đầu tiên'}
                 </p>
               </div>
               {search && (
@@ -682,7 +686,7 @@ export const AdminCarriersPage: React.FC = () => {
           </Card>
         </div>
       ) : (
-        <div className="flex-1 min-h-0 flex flex-col gap-3">
+        <div className="flex-1 min-h-0 flex flex-col gap-2.5 sm:gap-3">
           {/* ══ Desktop Table ListView ══ */}
           <div className="hidden md:flex flex-1 min-h-0 flex-col rounded-2xl border border-border bg-card overflow-hidden shadow-xs">
             <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative saas-scrollbar">
@@ -748,9 +752,9 @@ export const AdminCarriersPage: React.FC = () => {
                         ) : (
                           <Badge
                             variant="outline"
-                            className="text-[10px] font-bold px-2 py-0.5 border-amber-500/30 bg-amber-500/10 text-amber-600 dark:text-amber-400"
+                            className="text-[10px] font-bold px-2 py-0.5 border-amber-500/30 bg-amber-500/10 text-amber-600"
                           >
-                            Admin tạo
+                            Admin
                           </Badge>
                         )}
                       </td>
@@ -841,22 +845,22 @@ export const AdminCarriersPage: React.FC = () => {
             </div>
           </div>
 
-          {/* ══ Mobile Cards ListView ══ */}
-          <div className="flex md:hidden flex-1 min-h-0 flex-col gap-2.5">
-            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pr-0.5 saas-scrollbar">
+          {/* ══ Mobile Cards ListView (Ultra-compact & space efficient) ══ */}
+          <div className="flex md:hidden flex-1 min-h-0 flex-col gap-2">
+            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pr-0.5 saas-scrollbar">
               {paginatedCarriers.map((item) => (
                 <div
                   key={item.id}
                   className={cn(
-                    'rounded-2xl border p-3.5 bg-card flex flex-col gap-2.5 shadow-2xs transition-all',
+                    'rounded-xl border border-border/80 p-2.5 bg-card flex flex-col gap-1.5 shadow-2xs transition-all',
                     !item.isBuiltIn && 'border-amber-500/30 bg-amber-500/[0.02]'
                   )}
                 >
-                  <div className="flex items-start justify-between gap-2">
-                    <div className="flex items-center gap-2.5 min-w-0">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
                       <div
                         className={cn(
-                          'size-9 rounded-xl flex items-center justify-center shrink-0 border text-xs font-black shadow-2xs',
+                          'size-8 rounded-lg flex items-center justify-center shrink-0 border text-[11px] font-black shadow-2xs',
                           item.isBuiltIn
                             ? 'bg-muted/50 border-border text-foreground'
                             : 'bg-amber-500/10 border-amber-500/30 text-amber-600 dark:text-amber-400'
@@ -868,13 +872,21 @@ export const AdminCarriersPage: React.FC = () => {
                         <span className="font-bold text-xs text-foreground truncate">
                           {item.label}
                         </span>
-                        <span className="text-[10px] text-muted-foreground font-mono">
+                        <span className="text-[10px] text-muted-foreground font-mono truncate">
                           Key: {item.id}
                         </span>
                       </div>
                     </div>
 
                     <div className="flex items-center gap-1 shrink-0">
+                      {item.hasRegex ? (
+                        <span className="inline-flex items-center gap-0.5 text-[9px] font-semibold border border-emerald-500/30 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-1.5 py-0.5 rounded-md">
+                          <Sparkles className="size-2.5" /> Regex
+                        </span>
+                      ) : (
+                        <span className="text-[10px] text-muted-foreground/70">Thủ công</span>
+                      )}
+
                       {item.isBuiltIn ? (
                         <Badge
                           variant="secondary"
@@ -893,36 +905,25 @@ export const AdminCarriersPage: React.FC = () => {
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between text-[11px] px-3 py-1.5 rounded-xl bg-muted/40 text-muted-foreground">
-                    <span>Nhận diện:</span>
-                    {item.hasRegex ? (
-                      <span className="font-semibold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
-                        <Sparkles className="size-3" /> Tự động (Regex)
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground">Chọn thủ công</span>
-                    )}
-                  </div>
-
-                  {/* Mobile Actions */}
+                  {/* Mobile Actions for Custom Carriers */}
                   {!item.isBuiltIn && (
-                    <div className="flex items-center justify-end gap-1.5 pt-2 border-t border-border/40">
+                    <div className="flex items-center justify-end gap-1 pt-1.5 border-t border-border/40">
                       <Button
                         variant="outline"
                         size="sm"
                         onClick={() => setEditTarget(item)}
-                        className="h-8 text-xs font-semibold gap-1 px-3 cursor-pointer"
+                        className="h-7 text-[11px] font-semibold gap-1 px-2.5 cursor-pointer"
                       >
-                        <Pencil className="size-3.5" />
+                        <Pencil className="size-3" />
                         <span>Sửa</span>
                       </Button>
                       <Button
                         variant="ghost"
                         size="sm"
                         onClick={() => setDeleteTarget(item)}
-                        className="h-8 text-xs font-semibold gap-1 px-2.5 text-destructive hover:bg-destructive/10 cursor-pointer"
+                        className="h-7 text-[11px] font-semibold gap-1 px-2 text-destructive hover:bg-destructive/10 cursor-pointer"
                       >
-                        <Trash2 className="size-3.5" />
+                        <Trash2 className="size-3" />
                         <span>Xóa</span>
                       </Button>
                     </div>
@@ -932,7 +933,7 @@ export const AdminCarriersPage: React.FC = () => {
             </div>
 
             {/* Mobile Pagination Footer */}
-            <div className="shrink-0 p-3 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-2.5 select-none">
+            <div className="shrink-0 p-2.5 rounded-xl border border-border bg-card shadow-xs flex flex-col gap-2 select-none">
               <div className="flex items-center justify-between text-xs text-muted-foreground">
                 <PaginationInfo
                   startIndex={startIndex}
@@ -950,13 +951,13 @@ export const AdminCarriersPage: React.FC = () => {
                 />
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/70">
+              <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/70">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((p) => Math.max(p - 1, 1))}
                   disabled={page === 1}
-                  className="h-8 px-3 rounded-lg text-xs cursor-pointer"
+                  className="h-7 px-2.5 rounded-lg text-xs cursor-pointer"
                 >
                   Trước
                 </Button>
@@ -968,7 +969,7 @@ export const AdminCarriersPage: React.FC = () => {
                   size="sm"
                   onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                   disabled={page >= totalPages}
-                  className="h-8 px-3 rounded-lg text-xs cursor-pointer"
+                  className="h-7 px-2.5 rounded-lg text-xs cursor-pointer"
                 >
                   Tiếp
                 </Button>
