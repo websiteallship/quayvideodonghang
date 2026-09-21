@@ -64,7 +64,7 @@ export const BottomNav: React.FC = () => {
   ];
 
   return (
-    <nav className="lg:hidden fixed bottom-0 left-0 right-0 h-16 flex items-center justify-around z-50 border-t border-border bg-background/95 backdrop-blur-md pb-[env(safe-area-inset-bottom)]">
+    <nav className="lg:hidden fixed bottom-0 left-0 right-0 z-50 border-t border-border bg-background/95 backdrop-blur-md flex items-center justify-around pt-1 pb-[max(0.6rem,env(safe-area-inset-bottom))] min-h-[calc(4rem+env(safe-area-inset-bottom))]">
       {baseNavItems.map((item) => {
         const Icon = item.icon;
         return (

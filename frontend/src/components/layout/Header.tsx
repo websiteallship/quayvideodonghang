@@ -51,18 +51,19 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 h-14 sm:h-[60px] lg:h-16 px-3.5 sm:px-6 lg:px-8 flex items-center justify-between border-b border-border bg-card/60 backdrop-blur-md shrink-0 select-none">
-      {/* Mobile Brand Header */}
-      <div className="flex lg:hidden items-center gap-2 min-w-0 shrink-0">
-        <div className="size-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-2xs shrink-0">
-          <Video size={17} className="stroke-[2.2]" />
+    <header className="sticky top-0 z-40 pt-[env(safe-area-inset-top)] border-b border-border bg-card/85 backdrop-blur-md shrink-0 select-none">
+      <div className="h-14 sm:h-[60px] lg:h-16 px-3.5 sm:px-6 lg:px-8 flex items-center justify-between">
+        {/* Mobile Brand Header */}
+        <div className="flex lg:hidden items-center gap-2 min-w-0 shrink-0">
+          <div className="size-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-2xs shrink-0">
+            <Video size={17} className="stroke-[2.2]" />
+          </div>
+          <div className="min-w-0">
+            <h1 className="text-sm font-bold text-foreground tracking-tight whitespace-nowrap">
+              Quay Video Kho
+            </h1>
+          </div>
         </div>
-        <div className="min-w-0">
-          <h1 className="text-sm font-bold text-foreground tracking-tight whitespace-nowrap">
-            Quay Video Kho
-          </h1>
-        </div>
-      </div>
 
       {/* Desktop Breadcrumb Navigation */}
       <nav aria-label="Breadcrumb" className="hidden lg:flex items-center gap-2 text-xs font-semibold text-muted-foreground">
@@ -196,6 +197,7 @@ export const Header: React.FC = () => {
             </DropdownMenuContent>
           </DropdownMenu>
         )}
+      </div>
       </div>
 
       <AlertDialog open={isLogoutOpen} onOpenChange={setIsLogoutOpen}>

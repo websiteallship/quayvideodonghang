@@ -708,7 +708,7 @@ export const HomePage: React.FC = () => {
         <div className="grid lg:hidden grid-cols-2 gap-1.5 bg-muted/70 p-1 rounded-2xl border">
           <button
             onClick={() => { setWorkMode('dong_goi'); setModeError(null); }}
-            className={`h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${workMode === 'dong_goi'
+            className={`h-12 min-h-[48px] rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${workMode === 'dong_goi'
                 ? 'bg-blue-600 text-white shadow-md'
                 : 'text-muted-foreground hover:text-foreground'
               }`}
@@ -718,7 +718,7 @@ export const HomePage: React.FC = () => {
           </button>
           <button
             onClick={() => { setWorkMode('khui_hang'); setModeError(null); }}
-            className={`h-11 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${workMode === 'khui_hang'
+            className={`h-12 min-h-[48px] rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-all cursor-pointer ${workMode === 'khui_hang'
                 ? 'bg-amber-600 text-white shadow-md'
                 : 'text-muted-foreground hover:text-foreground'
               }`}
@@ -843,47 +843,66 @@ export const HomePage: React.FC = () => {
 
           {/* 4. Idle Main View */}
           {currentView === 'idle' && (
-            <Card className="min-h-[260px]">
-              <CardContent className="flex flex-col items-center justify-center text-center gap-4 p-6">
-                <div className={`w-[72px] h-[72px] rounded-full flex items-center justify-center border-2 transition-all ${workMode === 'khui_hang'
-                    ? 'bg-amber-500/20 border-amber-500 text-amber-500 shadow-[0_0_24px_rgba(245,158,11,0.25)]'
-                    : 'bg-primary/20 border-primary text-primary shadow-[0_0_24px_rgba(37,99,235,0.25)]'
-                  }`}>
-                  <Camera size={36} />
-                </div>
+            <>
+              {/* Desktop Idle View */}
+              <Card className="hidden xl:flex min-h-[260px] flex-col items-center justify-center">
+                <CardContent className="flex flex-col items-center justify-center text-center gap-4 p-6">
+                  <div className={`w-[72px] h-[72px] rounded-full flex items-center justify-center border-2 transition-all ${workMode === 'khui_hang'
+                      ? 'bg-amber-500/20 border-amber-500 text-amber-500 shadow-[0_0_24px_rgba(245,158,11,0.25)]'
+                      : 'bg-primary/20 border-primary text-primary shadow-[0_0_24px_rgba(37,99,235,0.25)]'
+                    }`}>
+                    <Camera size={36} />
+                  </div>
 
-                <div>
-                  <h2 className="text-xl font-bold mb-1">
-                    {workMode === 'dong_goi'
-                      ? 'Sẵn sàng quét đơn Đóng gói'
-                      : workMode === 'khui_hang'
+                  <div>
+                    <h2 className="text-xl font-bold mb-1">
+                      {workMode === 'khui_hang'
                         ? 'Sẵn sàng quét đơn Khui hàng'
-                        : 'Sẵn sàng quét mã đơn'}
-                  </h2>
-                  <p className="text-sm text-muted-foreground max-w-[340px] mx-auto">
-                    {workMode
-                      ? `Đang chọn chế độ: ${workMode === 'dong_goi' ? 'Đóng gói xuất kho' : 'Khui hàng hoàn trả'}. Quét bằng camera hoặc súng barcode.`
-                      : 'Vui lòng chọn chế độ làm việc phía trên trước khi bắt đầu quét.'}
-                  </p>
-                </div>
+                        : 'Sẵn sàng quét đơn Đóng gói'}
+                    </h2>
+                    <p className="text-sm text-muted-foreground max-w-[340px] mx-auto">
+                      {workMode === 'khui_hang'
+                        ? 'Đang chọn chế độ: Khui hàng hoàn trả. Quét bằng camera hoặc súng barcode.'
+                        : 'Đang chọn chế độ: Đóng gói xuất kho. Quét bằng camera hoặc súng barcode.'}
+                    </p>
+                  </div>
 
+                  <Button
+                    size="lg"
+                    className={`w-full max-w-[340px] font-bold text-sm tracking-wide ${workMode === 'khui_hang'
+                        ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20'
+                        : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20'
+                      }`}
+                    onClick={handleOpenScanner}
+                  >
+                    <ScanLine data-icon="inline-start" />
+                    {workMode === 'khui_hang'
+                      ? 'BẮT ĐẦU QUÉT KHUI HÀNG'
+                      : 'BẮT ĐẦU QUÉT ĐÓNG GÓI'}
+                  </Button>
+                </CardContent>
+              </Card>
+
+              {/* Mobile Quick Action: Streamlined Camera Scanner button */}
+              <div className="flex xl:hidden flex-col gap-2">
                 <Button
                   size="lg"
-                  className={`w-full max-w-[340px] font-bold text-sm tracking-wide ${workMode === 'khui_hang'
-                      ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-md shadow-amber-600/20'
-                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-md shadow-blue-600/20'
-                    }`}
+                  className={`w-full h-12 min-h-[48px] rounded-2xl font-bold text-xs sm:text-sm tracking-wide shadow-xs flex items-center justify-center gap-2.5 cursor-pointer ${
+                    workMode === 'khui_hang'
+                      ? 'bg-amber-600 hover:bg-amber-700 text-white shadow-amber-600/20'
+                      : 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'
+                  }`}
                   onClick={handleOpenScanner}
                 >
-                  <ScanLine data-icon="inline-start" />
-                  {workMode === 'dong_goi'
-                    ? 'BẮT ĐẦU QUÉT ĐÓNG GÓI'
-                    : workMode === 'khui_hang'
-                      ? 'BẮT ĐẦU QUÉT KHUI HÀNG'
-                      : 'CHỌN CHẾ ĐỘ & BẮT ĐẦU QUÉT'}
+                  <ScanLine className="size-5" />
+                  <span>
+                    {workMode === 'khui_hang'
+                      ? 'BẬT CAMERA QUÉT KHUI HÀNG'
+                      : 'BẬT CAMERA QUÉT ĐÓNG GÓI'}
+                  </span>
                 </Button>
-              </CardContent>
-            </Card>
+              </div>
+            </>
           )}
         </div>
 

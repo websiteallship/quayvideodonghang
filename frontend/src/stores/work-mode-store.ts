@@ -17,14 +17,14 @@ interface WorkModeState {
   clearWorkMode: () => void;
 }
 
-const getInitialWorkMode = (): LoaiBienBan | null => {
+const getInitialWorkMode = (): LoaiBienBan => {
   if (typeof window !== 'undefined') {
     const saved = localStorage.getItem(WORK_MODE_STORAGE_KEY);
     if (saved === 'dong_goi' || saved === 'khui_hang') {
       return saved;
     }
   }
-  return null;
+  return 'dong_goi';
 };
 
 export const useWorkModeStore = create<WorkModeState>((set) => ({
