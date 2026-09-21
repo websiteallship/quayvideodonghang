@@ -486,7 +486,7 @@ export const VideoDetailPage: React.FC = () => {
         {/* Left Column: Video Player & Controls (7 cols) */}
         <div className="lg:col-span-7 flex flex-col gap-3.5">
           {/* Video Container Box */}
-          <div className="w-full aspect-video bg-black rounded-2xl overflow-hidden relative shadow-md border border-black/20 dark:border-white/10 flex items-center justify-center">
+          <div className="w-full aspect-[4/3] md:aspect-video bg-black rounded-2xl overflow-hidden relative shadow-md border border-black/20 dark:border-white/10 flex items-center justify-center">
             {isVideoLoading && (
               <div className="flex flex-col items-center gap-3 text-center p-4">
                 <RefreshCw size={28} className="text-amber-500 animate-spin" />
@@ -533,6 +533,7 @@ export const VideoDetailPage: React.FC = () => {
                     onError={() => {
                       // Auto-fallback to iframe when native player fails
                       if (viewUrl) {
+                        showToast.error('Trình phát gốc gặp sự cố, tự động chuyển sang Google Drive Viewer');
                         setVideoMode('iframe');
                       } else {
                         setVideoError('Không thể phát video. Vui lòng thử lại sau.');
@@ -540,27 +541,19 @@ export const VideoDetailPage: React.FC = () => {
                     }}
                   />
                 ) : viewUrl ? (
-                  <>
-                    <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-xs text-[11px] font-mono text-white/90 z-10 pointer-events-none select-none">
-                      {item.ma_van_don} | {formatDateTimeVN(item.thoi_gian_tao)}
-                    </div>
-                    <iframe
-                      src={viewUrl}
-                      className="w-full h-full border-0"
-                      allow="autoplay; encrypted-media"
-                      allowFullScreen
-                      title={`Video xem lại ${item.ma_van_don}`}
-                    />
-                  </>
+                  <iframe
+                    src={viewUrl}
+                    className="w-full h-full border-0"
+                    allow="autoplay; encrypted-media"
+                    allowFullScreen
+                    title={`Video xem lại ${item.ma_van_don}`}
+                  />
                 ) : null}
               </>
             )}
 
             {!isVideoLoading && !videoError && !streamUrl && viewUrl && (
               <>
-                <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-xs text-[11px] font-mono text-white/90 z-10 pointer-events-none select-none">
-                  {item.ma_van_don} | {formatDateTimeVN(item.thoi_gian_tao)}
-                </div>
                 <iframe
                   src={viewUrl}
                   className="w-full h-full border-0"
