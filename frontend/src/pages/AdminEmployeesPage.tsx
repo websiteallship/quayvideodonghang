@@ -17,7 +17,7 @@ import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Pagination, PaginationInfo, PaginationLimitSelect } from '@/components/ui/pagination';
+import { Pagination, PaginationInfo, PaginationLimitSelect, MobilePaginationFooter } from '@/components/ui/pagination';
 import {
   Dialog,
   DialogContent,
@@ -922,48 +922,17 @@ export const AdminEmployeesPage: React.FC = () => {
             </div>
 
             {/* Mobile Pagination Footer */}
-            <div className="shrink-0 p-3 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-2.5 select-none">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <PaginationInfo
-                  startIndex={startIndex}
-                  endIndex={endIndex}
-                  totalItems={totalEmployees}
-                  label="nhân viên"
-                />
-                <PaginationLimitSelect
-                  limit={limit}
-                  onLimitChange={(val) => {
-                    setLimit(val);
-                    setPage(1);
-                  }}
-                  options={[10, 20, 50]}
-                />
-              </div>
-
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/70">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                  disabled={page === 1}
-                  className="h-8 px-3 rounded-lg text-xs cursor-pointer"
-                >
-                  Trước
-                </Button>
-                <span className="text-xs font-bold text-foreground">
-                  Trang {page} / {totalPages}
-                </span>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                  disabled={page >= totalPages}
-                  className="h-8 px-3 rounded-lg text-xs cursor-pointer"
-                >
-                  Tiếp
-                </Button>
-              </div>
-            </div>
+            <MobilePaginationFooter
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              totalItems={totalEmployees}
+              limit={limit}
+              onLimitChange={(val) => { setLimit(val); setPage(1); }}
+              limitOptions={[10, 20, 50]}
+            />
           </div>
         </div>
       )}

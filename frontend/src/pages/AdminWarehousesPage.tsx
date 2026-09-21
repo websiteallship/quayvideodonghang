@@ -14,7 +14,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Pagination, PaginationInfo, PaginationLimitSelect } from '@/components/ui/pagination';
+import { Pagination, PaginationInfo, PaginationLimitSelect, MobilePaginationFooter } from '@/components/ui/pagination';
 import {
   Dialog,
   DialogContent,
@@ -567,48 +567,17 @@ export const AdminWarehousesPage: React.FC = () => {
               </div>
 
               {/* Mobile Pagination Footer */}
-              <div className="shrink-0 p-3 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-2.5 select-none">
-                <div className="flex items-center justify-between text-xs text-muted-foreground">
-                  <PaginationInfo
-                    startIndex={warehouseStartIndex}
-                    endIndex={warehouseEndIndex}
-                    totalItems={totalWarehouseItems}
-                    label="kho"
-                  />
-                  <PaginationLimitSelect
-                    limit={warehouseLimit}
-                    onLimitChange={(val) => {
-                      setWarehouseLimit(val);
-                      setWarehousePage(1);
-                    }}
-                    options={[5, 10, 20]}
-                  />
-                </div>
-
-                <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/70">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setWarehousePage((p) => Math.max(p - 1, 1))}
-                    disabled={warehousePage === 1}
-                    className="h-8 px-3 rounded-lg text-xs cursor-pointer"
-                  >
-                    Trước
-                  </Button>
-                  <span className="text-xs font-bold text-foreground">
-                    Trang {warehousePage} / {warehouseTotalPages}
-                  </span>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setWarehousePage((p) => Math.min(p + 1, warehouseTotalPages))}
-                    disabled={warehousePage >= warehouseTotalPages}
-                    className="h-8 px-3 rounded-lg text-xs cursor-pointer"
-                  >
-                    Tiếp
-                  </Button>
-                </div>
-              </div>
+              <MobilePaginationFooter
+                currentPage={warehousePage}
+                totalPages={warehouseTotalPages}
+                onPageChange={setWarehousePage}
+                startIndex={warehouseStartIndex}
+                endIndex={warehouseEndIndex}
+                totalItems={totalWarehouseItems}
+                limit={warehouseLimit}
+                onLimitChange={(val) => { setWarehouseLimit(val); setWarehousePage(1); }}
+                limitOptions={[5, 10, 20]}
+              />
             </div>
           </div>
         )}

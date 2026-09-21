@@ -19,7 +19,7 @@ import {
   FileVideo,
   SlidersHorizontal,
 } from 'lucide-react';
-import { Pagination, PaginationInfo, PaginationLimitSelect } from '@/components/ui/pagination';
+import { Pagination, PaginationInfo, PaginationLimitSelect, MobilePaginationFooter } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Input } from '@/components/ui/input';
@@ -951,58 +951,18 @@ export const HistoryPage: React.FC = () => {
               })}
             </div>
 
-            {/* Mobile Pagination Footer - Compact single row */}
-            <div className="shrink-0 px-3 py-2 rounded-xl border border-border bg-card/95 shadow-2xs flex items-center justify-between gap-2 select-none">
-              {/* Left: Range & Limit select */}
-              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
-                <span className="font-mono font-medium truncate">
-                  {totalItems === 0 ? '0' : `${startIndex}-${endIndex}`}/{totalItems}
-                </span>
-                <select
-                  value={limit}
-                  onChange={(e) => {
-                    setLimit(Number(e.target.value));
-                    setPage(1);
-                  }}
-                  className="h-7 rounded-lg border border-border/80 bg-muted/40 px-1.5 text-[11px] font-medium text-foreground focus:outline-none cursor-pointer"
-                >
-                  {[10, 20, 50].map((opt) => (
-                    <option key={opt} value={opt}>
-                      {opt}/trang
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              {/* Right: Prev, Page info, Next */}
-              <div className="flex items-center gap-1 shrink-0">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.max(p - 1, 1))}
-                  disabled={page === 1}
-                  className="h-7 px-2 rounded-lg text-xs font-semibold gap-1 cursor-pointer disabled:opacity-30 shadow-none"
-                >
-                  <ChevronLeft size={13} />
-                  <span className="text-[11px]">Trước</span>
-                </Button>
-
-                <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/70 text-[11px] font-mono font-semibold text-foreground">
-                  {page}/{totalPages}
-                </div>
-
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                  disabled={page >= totalPages}
-                  className="h-7 px-2 rounded-lg text-xs font-semibold gap-1 cursor-pointer disabled:opacity-30 shadow-none"
-                >
-                  <span className="text-[11px]">Sau</span>
-                  <ChevronRight size={13} />
-                </Button>
-              </div>
-            </div>
+            {/* Mobile Pagination Footer */}
+            <MobilePaginationFooter
+              currentPage={page}
+              totalPages={totalPages}
+              onPageChange={setPage}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              totalItems={totalItems}
+              limit={limit}
+              onLimitChange={(val) => { setLimit(val); setPage(1); }}
+              limitOptions={[10, 20, 50]}
+            />
           </div>
         </>
       )}
