@@ -21,6 +21,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { InstallPWAButton } from '@/components/pwa/InstallPWAButton';
 
 export const Header: React.FC = () => {
   const location = useLocation();
@@ -70,6 +71,9 @@ export const Header: React.FC = () => {
 
       {/* Header Right Action Controls */}
       <div className="flex items-center gap-2.5 sm:gap-3">
+        {/* Install PWA Button */}
+        <InstallPWAButton />
+
         {/* Dark / Light Mode Toggle Button */}
         <Button
           variant="outline"
