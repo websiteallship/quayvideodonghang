@@ -90,10 +90,10 @@ export const Header: React.FC = () => {
           {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
         </Button>
 
-        {/* Network Status Badge */}
+        {/* Network Status Badge (Desktop / Tablet) */}
         <div
           title={isOnline ? 'Đang kết nối mạng' : 'Mất kết nối — Chế độ Offline'}
-          className={`inline-flex items-center gap-1.5 h-8 sm:h-9 px-2 sm:px-3 rounded-full border text-xs font-semibold select-none shrink-0 transition-colors ${
+          className={`hidden sm:inline-flex items-center gap-1.5 h-9 px-3 rounded-full border text-xs font-semibold select-none shrink-0 transition-colors ${
             isOnline
               ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/25'
               : 'text-destructive bg-destructive/10 border-destructive/30 animate-pulse'
@@ -109,9 +109,7 @@ export const Header: React.FC = () => {
           ) : (
             <WifiOff size={13} className="shrink-0" />
           )}
-          <span className={isOnline ? 'hidden sm:inline' : 'inline'}>
-            {isOnline ? 'Online' : 'Offline'}
-          </span>
+          <span>{isOnline ? 'Online' : 'Offline'}</span>
         </div>
 
         {/* User Avatar & Dropdown Menu */}
@@ -121,13 +119,21 @@ export const Header: React.FC = () => {
               <Button
                 variant="outline"
                 size="icon"
-                title={`Tài khoản: ${user.ma_nhan_vien}`}
+                title={`Tài khoản: ${user.ma_nhan_vien} (${isOnline ? 'Online' : 'Offline'})`}
                 aria-label="Menu tài khoản người dùng"
-                className="size-8 sm:size-9 rounded-full border-border bg-card hover:bg-muted text-foreground flex items-center justify-center shadow-2xs cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/30 shrink-0"
+                className="relative size-8 sm:size-9 rounded-full border-border bg-card hover:bg-muted text-foreground flex items-center justify-center shadow-2xs cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/30 shrink-0"
               >
                 <div className="size-6 sm:size-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
                   <User size={14} className="sm:w-[15px] sm:h-[15px]" />
                 </div>
+
+                {/* Mobile Online / Offline Dot Indicator */}
+                <span
+                  className={`sm:hidden absolute -top-0.5 -right-0.5 size-2.5 rounded-full ring-2 ring-card ${
+                    isOnline ? 'bg-emerald-500' : 'bg-amber-500 animate-pulse'
+                  }`}
+                  aria-hidden="true"
+                />
               </Button>
             </DropdownMenuTrigger>
 
