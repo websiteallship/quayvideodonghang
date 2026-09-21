@@ -951,50 +951,56 @@ export const HistoryPage: React.FC = () => {
               })}
             </div>
 
-            {/* Mobile Pagination Footer */}
-            <div className="shrink-0 p-3 rounded-2xl border border-border bg-card shadow-xs flex flex-col gap-2.5 select-none">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <PaginationInfo 
-                  startIndex={startIndex} 
-                  endIndex={endIndex} 
-                  totalItems={totalItems} 
-                  label="" 
-                />
-                <PaginationLimitSelect 
-                  limit={limit} 
-                  onLimitChange={(val) => { setLimit(val); setPage(1); }} 
-                  options={[10, 20, 50]} 
-                />
+            {/* Mobile Pagination Footer - Compact single row */}
+            <div className="shrink-0 px-3 py-2 rounded-xl border border-border bg-card/95 shadow-2xs flex items-center justify-between gap-2 select-none">
+              {/* Left: Range & Limit select */}
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
+                <span className="font-mono font-medium truncate">
+                  {totalItems === 0 ? '0' : `${startIndex}-${endIndex}`}/{totalItems}
+                </span>
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="h-7 rounded-lg border border-border/80 bg-muted/40 px-1.5 text-[11px] font-medium text-foreground focus:outline-none cursor-pointer"
+                >
+                  {[10, 20, 50].map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}/trang
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-2 border-t border-border/70">
-                <button
-                  type="button"
+              {/* Right: Prev, Page info, Next */}
+              <div className="flex items-center gap-1 shrink-0">
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => Math.max(p - 1, 1))}
                   disabled={page === 1}
-                  className="h-9 px-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted font-semibold text-xs flex items-center gap-1.5 text-foreground disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
+                  className="h-7 px-2 rounded-lg text-xs font-semibold gap-1 cursor-pointer disabled:opacity-30 shadow-none"
                 >
-                  <ChevronLeft size={14} />
-                  <span>Trước</span>
-                </button>
+                  <ChevronLeft size={13} />
+                  <span className="text-[11px]">Trước</span>
+                </Button>
 
-                <div className="inline-flex items-center gap-1 font-mono text-xs text-muted-foreground">
-                  <span className="font-bold text-foreground px-2.5 py-1 rounded-lg bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20">
-                    Trang {page}
-                  </span>
-                  <span>/</span>
-                  <span>{totalPages}</span>
+                <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/70 text-[11px] font-mono font-semibold text-foreground">
+                  {page}/{totalPages}
                 </div>
 
-                <button
-                  type="button"
+                <Button
+                  variant="outline"
+                  size="sm"
                   onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
-                  disabled={page === totalPages}
-                  className="h-9 px-3.5 rounded-xl border border-border bg-muted/30 hover:bg-muted font-semibold text-xs flex items-center gap-1.5 text-foreground disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer shadow-2xs"
+                  disabled={page >= totalPages}
+                  className="h-7 px-2 rounded-lg text-xs font-semibold gap-1 cursor-pointer disabled:opacity-30 shadow-none"
                 >
-                  <span>Sau</span>
-                  <ChevronRight size={14} />
-                </button>
+                  <span className="text-[11px]">Sau</span>
+                  <ChevronRight size={13} />
+                </Button>
               </div>
             </div>
           </div>

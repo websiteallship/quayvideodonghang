@@ -932,46 +932,55 @@ export const AdminCarriersPage: React.FC = () => {
               ))}
             </div>
 
-            {/* Mobile Pagination Footer */}
-            <div className="shrink-0 p-2.5 rounded-xl border border-border bg-card shadow-xs flex flex-col gap-2 select-none">
-              <div className="flex items-center justify-between text-xs text-muted-foreground">
-                <PaginationInfo
-                  startIndex={startIndex}
-                  endIndex={endIndex}
-                  totalItems={totalItems}
-                  label="đơn vị"
-                />
-                <PaginationLimitSelect
-                  limit={limit}
-                  onLimitChange={(val) => {
-                    setLimit(val);
+            {/* Mobile Pagination Footer - Compact single row */}
+            <div className="shrink-0 px-3 py-2 rounded-xl border border-border bg-card/95 shadow-2xs flex items-center justify-between gap-2 select-none">
+              {/* Left: Range & Limit select */}
+              <div className="flex items-center gap-1.5 text-[11px] text-muted-foreground min-w-0">
+                <span className="font-mono font-medium truncate">
+                  {totalItems === 0 ? '0' : `${startIndex}-${endIndex}`}/{totalItems}
+                </span>
+                <select
+                  value={limit}
+                  onChange={(e) => {
+                    setLimit(Number(e.target.value));
                     setPage(1);
                   }}
-                  options={[5, 10, 20]}
-                />
+                  className="h-7 rounded-lg border border-border/80 bg-muted/40 px-1.5 text-[11px] font-medium text-foreground focus:outline-none cursor-pointer"
+                >
+                  {[5, 10, 20].map((opt) => (
+                    <option key={opt} value={opt}>
+                      {opt}/trang
+                    </option>
+                  ))}
+                </select>
               </div>
 
-              <div className="flex items-center justify-between gap-2 pt-1.5 border-t border-border/70">
+              {/* Right: Prev, Page info, Next */}
+              <div className="flex items-center gap-1 shrink-0">
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((p) => Math.max(p - 1, 1))}
                   disabled={page === 1}
-                  className="h-7 px-2.5 rounded-lg text-xs cursor-pointer"
+                  className="h-7 px-2 rounded-lg text-xs font-semibold gap-1 cursor-pointer disabled:opacity-30 shadow-none"
                 >
-                  Trước
+                  <ChevronLeft size={13} />
+                  <span className="text-[11px]">Trước</span>
                 </Button>
-                <span className="text-xs font-bold text-foreground">
-                  Trang {page} / {totalPages}
-                </span>
+
+                <div className="inline-flex items-center px-2 py-0.5 rounded-md bg-muted/70 text-[11px] font-mono font-semibold text-foreground">
+                  {page}/{totalPages}
+                </div>
+
                 <Button
                   variant="outline"
                   size="sm"
                   onClick={() => setPage((p) => Math.min(p + 1, totalPages))}
                   disabled={page >= totalPages}
-                  className="h-7 px-2.5 rounded-lg text-xs cursor-pointer"
+                  className="h-7 px-2 rounded-lg text-xs font-semibold gap-1 cursor-pointer disabled:opacity-30 shadow-none"
                 >
-                  Tiếp
+                  <span className="text-[11px]">Sau</span>
+                  <ChevronRight size={13} />
                 </Button>
               </div>
             </div>
