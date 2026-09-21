@@ -153,6 +153,7 @@ export async function fetchStreamToken(
     const res = await apiClient.post(`${API_BASE}/bien-ban/${encodeURIComponent(id)}/stream-token`, {
       signal,
       throwHttpErrors: false,
+      json: {},
     });
 
     if (!res.ok) {

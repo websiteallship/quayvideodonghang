@@ -530,6 +530,14 @@ export const VideoDetailPage: React.FC = () => {
                     src={streamUrl}
                     expectedDuration={item.thoi_luong_video}
                     title={`${item.ma_van_don} | ${formatDateTimeVN(item.thoi_gian_tao)}`}
+                    onError={() => {
+                      // Auto-fallback to iframe when native player fails
+                      if (viewUrl) {
+                        setVideoMode('iframe');
+                      } else {
+                        setVideoError('Không thể phát video. Vui lòng thử lại sau.');
+                      }
+                    }}
                   />
                 ) : viewUrl ? (
                   <>

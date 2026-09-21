@@ -50,7 +50,12 @@ export default defineConfig({
         runtimeCaching: [
           {
             // API data endpoints: NetworkFirst with 5s timeout for offline fallback
-            urlPattern: /\/api\/(dashboard|bien-ban|config)/,
+            // Exclude stream endpoints — Workbox corrupts Range-based video streaming
+            urlPattern: ({ url }) => {
+              const path = url.pathname;
+              if (path.includes('/stream')) return false;
+              return /\/api\/(dashboard|bien-ban|config)/.test(path);
+            },
             handler: 'NetworkFirst',
             options: {
               cacheName: 'api-data-cache',

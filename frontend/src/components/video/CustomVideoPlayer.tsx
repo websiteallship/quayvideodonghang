@@ -215,8 +215,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         ref={videoRef}
         src={src}
         playsInline
-        autoPlay
-        preload="metadata"
+        preload="auto"
         onClick={togglePlay}
         onLoadStart={() => setIsLoading(true)}
         onLoadedData={() => setIsLoading(false)}
