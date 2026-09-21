@@ -868,7 +868,7 @@ export const HistoryPage: React.FC = () => {
 
           {/* Mobile Card View: Scrollable middle, fixed pagination */}
           <div className="flex lg:hidden flex-1 min-h-0 flex-col gap-2.5">
-            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pb-12 pr-0.5 saas-scrollbar">
+            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2.5 pb-16 pr-0.5 saas-scrollbar">
               {items.map((item) => {
                 const isDongGoi = item.loai_bien_ban === 'dong_goi';
                 return (

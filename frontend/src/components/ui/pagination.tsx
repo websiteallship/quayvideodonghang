@@ -1,4 +1,5 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronLeft, ChevronRight, ChevronsLeft, ChevronsRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
@@ -215,54 +216,72 @@ export const MobilePaginationFooter: React.FC<MobilePaginationFooterProps> = ({
   onLimitChange,
   limitOptions = [10, 20, 50],
   className,
-}) => (
-  <div className={cn(
-    'fixed bottom-16 left-0 right-0 z-40 px-3 py-1.5 border-t border-border bg-background/95 backdrop-blur-md flex items-center justify-between gap-1.5 select-none lg:hidden pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))]',
-    className
-  )}>
-    {/* Left: Info text */}
-    <span className="text-[10px] text-muted-foreground whitespace-nowrap">
-      <strong className="text-foreground font-semibold">{startIndex}-{endIndex}</strong>/{totalItems}
-    </span>
+}) => {
+  const [mounted, setMounted] = useState(false);
 
-    {/* Center: Prev / Page X / Next */}
-    <div className="flex items-center gap-1">
-      <button
-        type="button"
-        onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
-        disabled={currentPage === 1}
-        className="size-7 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer"
-      >
-        <ChevronLeft size={14} />
-      </button>
-      <span className="text-[11px] font-bold text-foreground px-1.5 tabular-nums">
-        {currentPage}/{totalPages}
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted || typeof document === 'undefined') {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      className={cn(
+        'fixed bottom-16 left-0 right-0 z-40 px-3 py-1.5 border-t border-border bg-background/95 backdrop-blur-md flex items-center justify-between gap-1.5 select-none lg:hidden shadow-sm',
+        className
+      )}
+    >
+      {/* Left: Info text */}
+      <span className="text-[10px] text-muted-foreground whitespace-nowrap">
+        <strong className="text-foreground font-semibold">{startIndex}-{endIndex}</strong>/{totalItems}
       </span>
-      <button
-        type="button"
-        onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
-        disabled={currentPage >= totalPages}
-        className="size-7 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer"
-      >
-        <ChevronRight size={14} />
-      </button>
-    </div>
 
-    {/* Right: Limit selector (compact) */}
-    <Select value={String(limit)} onValueChange={(val) => onLimitChange(Number(val))}>
-      <SelectTrigger
-        size="sm"
-        className="h-7 w-auto min-w-[70px] px-2 rounded-lg border border-input bg-card text-foreground font-semibold text-[11px] cursor-pointer shadow-2xs"
-      >
-        <SelectValue />
-      </SelectTrigger>
-      <SelectContent align="end" className="rounded-xl min-w-[90px] shadow-md">
-        {limitOptions.map((opt) => (
-          <SelectItem key={opt} value={String(opt)} className="text-xs font-medium cursor-pointer">
-            {opt} / trang
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
-  </div>
-);
+      {/* Center: Prev / Page X / Next */}
+      <div className="flex items-center gap-1">
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
+          disabled={currentPage === 1}
+          aria-label="Trang trước"
+          className="size-7 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer"
+        >
+          <ChevronLeft size={14} />
+        </button>
+        <span className="text-[11px] font-bold text-foreground px-1.5 tabular-nums">
+          {currentPage}/{totalPages}
+        </span>
+        <button
+          type="button"
+          onClick={() => onPageChange(Math.min(currentPage + 1, totalPages))}
+          disabled={currentPage >= totalPages}
+          aria-label="Trang sau"
+          className="size-7 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer"
+        >
+          <ChevronRight size={14} />
+        </button>
+      </div>
+
+      {/* Right: Limit selector (compact) */}
+      <Select value={String(limit)} onValueChange={(val) => onLimitChange(Number(val))}>
+        <SelectTrigger
+          size="sm"
+          aria-label="Số bản ghi mỗi trang"
+          className="h-7 w-auto min-w-[70px] px-2 rounded-lg border border-input bg-card text-foreground font-semibold text-[11px] cursor-pointer shadow-2xs"
+        >
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent align="end" className="rounded-xl min-w-[90px] shadow-md z-[60]">
+          {limitOptions.map((opt) => (
+            <SelectItem key={opt} value={String(opt)} className="text-xs font-medium cursor-pointer">
+              {opt} / trang
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>,
+    document.body
+  );
+};
