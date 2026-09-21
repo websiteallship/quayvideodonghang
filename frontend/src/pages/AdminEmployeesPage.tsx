@@ -12,6 +12,7 @@ import {
   UserPlus,
   Eye,
   EyeOff,
+  Crown,
 } from 'lucide-react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -40,6 +41,7 @@ import { cn } from '@/lib/utils';
 import { apiClient } from '@/services/api-client';
 import { API_ENDPOINTS } from '@/config/api';
 import { toast } from 'sonner';
+import { useAuthStore } from '@/stores/auth-store';
 import type {
   NhanVienAdmin,
   NhanVienCreateDTO,
@@ -73,7 +75,15 @@ function StatusBadge({ status }: { status: string }) {
   );
 }
 
-function RoleBadge({ role }: { role: VaiTro }) {
+function RoleBadge({ role, ma }: { role: VaiTro; ma: string }) {
+  if (ma === 'ADMIN') {
+    return (
+      <Badge variant="outline" className="text-[10px] font-bold border-amber-500/30 bg-amber-500/10 text-amber-600 gap-1">
+        <Crown className="size-3" aria-hidden="true" />
+        Super Admin
+      </Badge>
+    );
+  }
   return role === 'admin' ? (
     <Badge variant="outline" className="text-[10px] font-bold border-violet-500/30 bg-violet-500/10 text-violet-600 gap-1">
       <ShieldCheck className="size-3" aria-hidden="true" />
@@ -437,6 +447,43 @@ function ResetPinDialog({
 // Main Page
 // ---------------------------------------------------------------------------
 export const AdminEmployeesPage: React.FC = () => {
+  const { user: currentUser } = useAuthStore();
+  const isSuperAdmin = currentUser?.ma_nhan_vien === 'ADMIN';
+
+  /**
+   * Check if current admin can perform actions on target employee.
+   * Rules:
+   * - ADMIN (super) can do everything except delete self
+   * - Other admins cannot touch other admins
+   * - Other admins can manage nhan_vien freely
+   */
+  const canEdit = (emp: NhanVienAdmin) => {
+    if (emp.trang_thai === 'da_xoa') return false;
+    if (isSuperAdmin) return true;
+    if (emp.vai_tro === 'admin' && emp.ma !== currentUser?.ma_nhan_vien) return false;
+    return true;
+  };
+  const canToggle = (emp: NhanVienAdmin) => {
+    if (emp.trang_thai === 'da_xoa') return false;
+    if (emp.ma === 'ADMIN') return false; // Never disable super admin
+    if (isSuperAdmin) return true;
+    if (emp.vai_tro === 'admin') return false;
+    return true;
+  };
+  const canResetPin = (emp: NhanVienAdmin) => {
+    if (emp.trang_thai !== 'hoat_dong') return false;
+    if (isSuperAdmin) return true;
+    if (emp.vai_tro === 'admin' && emp.ma !== currentUser?.ma_nhan_vien) return false;
+    return true;
+  };
+  const canDelete = (emp: NhanVienAdmin) => {
+    if (emp.trang_thai === 'da_xoa') return false;
+    if (emp.ma === 'ADMIN') return false; // Never delete super admin
+    if (isSuperAdmin) return true;
+    if (emp.vai_tro === 'admin') return false;
+    return true;
+  };
+
   const [employees, setEmployees] = useState<NhanVienAdmin[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
@@ -665,7 +712,7 @@ export const AdminEmployeesPage: React.FC = () => {
 
                       {/* Vai trò */}
                       <td className="py-3 px-3 text-center">
-                        <RoleBadge role={emp.vai_tro} />
+                        <RoleBadge role={emp.vai_tro} ma={emp.ma} />
                       </td>
 
                       {/* Trạng thái */}
@@ -693,6 +740,7 @@ export const AdminEmployeesPage: React.FC = () => {
                       {/* Thao tác */}
                       <td className="py-3 px-4 text-right">
                         <div className="flex items-center justify-end gap-1">
+                          {canEdit(emp) && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -705,6 +753,8 @@ export const AdminEmployeesPage: React.FC = () => {
                           >
                             <Pencil className="size-3.5 text-muted-foreground" aria-hidden="true" />
                           </Button>
+                          )}
+                          {canToggle(emp) && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -714,7 +764,6 @@ export const AdminEmployeesPage: React.FC = () => {
                               setToggleTarget(emp);
                               setToggleOpen(true);
                             }}
-                            disabled={emp.trang_thai === 'da_xoa'}
                           >
                             {emp.trang_thai === 'hoat_dong' ? (
                               <ShieldOff className="size-3.5 text-amber-500" aria-hidden="true" />
@@ -722,6 +771,8 @@ export const AdminEmployeesPage: React.FC = () => {
                               <ShieldCheck className="size-3.5 text-emerald-500" aria-hidden="true" />
                             )}
                           </Button>
+                          )}
+                          {canResetPin(emp) && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -731,10 +782,11 @@ export const AdminEmployeesPage: React.FC = () => {
                               setResetPinTarget(emp);
                               setResetPinOpen(true);
                             }}
-                            disabled={emp.trang_thai !== 'hoat_dong'}
                           >
                             <KeyRound className="size-3.5 text-amber-500" aria-hidden="true" />
                           </Button>
+                          )}
+                          {canDelete(emp) && (
                           <Button
                             variant="ghost"
                             size="icon"
@@ -744,10 +796,10 @@ export const AdminEmployeesPage: React.FC = () => {
                               setDeleteTarget(emp);
                               setDeleteOpen(true);
                             }}
-                            disabled={emp.trang_thai === 'da_xoa'}
                           >
                             <Trash2 className="size-3.5" aria-hidden="true" />
                           </Button>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -824,7 +876,7 @@ export const AdminEmployeesPage: React.FC = () => {
                   </div>
 
                   <div className="flex items-center gap-1 shrink-0">
-                    <RoleBadge role={emp.vai_tro} />
+                    <RoleBadge role={emp.vai_tro} ma={emp.ma} />
                     <StatusBadge status={emp.trang_thai} />
                   </div>
                 </div>
@@ -854,6 +906,7 @@ export const AdminEmployeesPage: React.FC = () => {
 
                 {/* Actions */}
                 <div className="flex items-center justify-end gap-1 pt-2 border-t border-border/40">
+                  {canEdit(emp) && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -866,6 +919,8 @@ export const AdminEmployeesPage: React.FC = () => {
                     <Pencil className="size-3.5" aria-hidden="true" />
                     <span>Sửa</span>
                   </Button>
+                  )}
+                  {canToggle(emp) && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -875,7 +930,6 @@ export const AdminEmployeesPage: React.FC = () => {
                       setToggleTarget(emp);
                       setToggleOpen(true);
                     }}
-                    disabled={emp.trang_thai === 'da_xoa'}
                   >
                     {emp.trang_thai === 'hoat_dong' ? (
                       <>
@@ -889,6 +943,8 @@ export const AdminEmployeesPage: React.FC = () => {
                       </>
                     )}
                   </Button>
+                  )}
+                  {canResetPin(emp) && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -898,11 +954,12 @@ export const AdminEmployeesPage: React.FC = () => {
                       setResetPinTarget(emp);
                       setResetPinOpen(true);
                     }}
-                    disabled={emp.trang_thai !== 'hoat_dong'}
                   >
                     <KeyRound className="size-3.5" aria-hidden="true" />
                     <span>PIN</span>
                   </Button>
+                  )}
+                  {canDelete(emp) && (
                   <Button
                     variant="ghost"
                     size="sm"
@@ -912,10 +969,10 @@ export const AdminEmployeesPage: React.FC = () => {
                       setDeleteTarget(emp);
                       setDeleteOpen(true);
                     }}
-                    disabled={emp.trang_thai === 'da_xoa'}
                   >
                     <Trash2 className="size-3.5" aria-hidden="true" />
                   </Button>
+                  )}
                 </div>
               </div>
             ))}

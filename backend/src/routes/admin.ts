@@ -165,6 +165,9 @@ adminRouter.post('/nhan-vien', zValidator('json', NhanVienCreateSchema), async (
 // ---------------------------------------------------------------------------
 adminRouter.put('/nhan-vien/:ma', zValidator('json', NhanVienUpdateSchema), async (c) => {
   const targetMa = c.req.param('ma').toUpperCase();
+  const caller = c.get('user');
+  const callerMa = caller.sub.toUpperCase();
+  const isSuperAdmin = callerMa === 'ADMIN';
   const { ten, vai_tro, trang_thai } = c.req.valid('json');
 
   try {
@@ -176,6 +179,37 @@ adminRouter.put('/nhan-vien/:ma', zValidator('json', NhanVienUpdateSchema), asyn
 
     if (!existing) {
       return errorResponse(c, 'USER_NOT_FOUND', 'Nhân viên không tồn tại', 404);
+    }
+
+    // === SUPER ADMIN PROTECTION ===
+    // 1. Bảo vệ tuyệt đối ADMIN gốc: không ai được hạ quyền hoặc vô hiệu hóa
+    if (targetMa === 'ADMIN') {
+      if ((vai_tro && vai_tro !== 'admin') || (trang_thai && trang_thai !== 'hoat_dong')) {
+        return errorResponse(
+          c,
+          'SUPER_ADMIN_PROTECTED',
+          'Không thể thay đổi vai trò hoặc trạng thái của Admin gốc',
+          403
+        );
+      }
+      // Chỉ Super Admin mới được sửa chính mình (tên)
+      if (!isSuperAdmin) {
+        return errorResponse(c, 'FORBIDDEN', 'Bạn không có quyền chỉnh sửa Admin gốc', 403);
+      }
+    }
+
+    // 2. Admin khác không được sửa admin khác (trừ Super Admin)
+    if (
+      existing.vai_tro === 'admin' &&
+      targetMa !== callerMa &&
+      !isSuperAdmin
+    ) {
+      return errorResponse(
+        c,
+        'FORBIDDEN',
+        'Admin không có quyền chỉnh sửa admin khác. Chỉ Admin gốc mới được thực hiện.',
+        403
+      );
     }
 
     // Chặn vô hiệu hóa hoặc hạ quyền admin cuối cùng trong hệ thống
@@ -253,8 +287,22 @@ adminRouter.put('/nhan-vien/:ma', zValidator('json', NhanVienUpdateSchema), asyn
 // ---------------------------------------------------------------------------
 adminRouter.delete('/nhan-vien/:ma', async (c) => {
   const targetMa = c.req.param('ma').toUpperCase();
+  const caller = c.get('user');
+  const callerMa = caller.sub.toUpperCase();
+  const isSuperAdmin = callerMa === 'ADMIN';
 
   try {
+    // === SUPER ADMIN PROTECTION ===
+    // 1. Chặn tuyệt đối xóa ADMIN gốc, kể cả bởi chính ADMIN
+    if (targetMa === 'ADMIN') {
+      return errorResponse(
+        c,
+        'SUPER_ADMIN_PROTECTED',
+        'Admin gốc không thể bị xóa dưới mọi hình thức',
+        403
+      );
+    }
+
     const existing = await c.env.DB.prepare(
       "SELECT ma, vai_tro, trang_thai FROM nhan_vien WHERE ma = ? AND trang_thai != 'da_xoa'"
     )
@@ -263,6 +311,16 @@ adminRouter.delete('/nhan-vien/:ma', async (c) => {
 
     if (!existing) {
       return errorResponse(c, 'USER_NOT_FOUND', 'Nhân viên không tồn tại', 404);
+    }
+
+    // 2. Admin khác không được xóa admin (chỉ Super Admin mới được)
+    if (existing.vai_tro === 'admin' && !isSuperAdmin) {
+      return errorResponse(
+        c,
+        'FORBIDDEN',
+        'Admin không có quyền xóa admin khác. Chỉ Admin gốc mới được thực hiện.',
+        403
+      );
     }
 
     // Chặn xóa admin cuối cùng trong hệ thống
@@ -315,14 +373,17 @@ adminRouter.delete('/nhan-vien/:ma', async (c) => {
 // ---------------------------------------------------------------------------
 adminRouter.put('/nhan-vien/:ma/reset-pin', zValidator('json', ResetPinSchema), async (c) => {
   const targetMa = c.req.param('ma').toUpperCase();
+  const caller = c.get('user');
+  const callerMa = caller.sub.toUpperCase();
+  const isSuperAdmin = callerMa === 'ADMIN';
   const { pin_moi } = c.req.valid('json');
 
   try {
     const existing = await c.env.DB.prepare(
-      "SELECT ma, trang_thai FROM nhan_vien WHERE ma = ? AND trang_thai != 'da_xoa'"
+      "SELECT ma, vai_tro, trang_thai FROM nhan_vien WHERE ma = ? AND trang_thai != 'da_xoa'"
     )
       .bind(targetMa)
-      .first<{ ma: string; trang_thai: string }>();
+      .first<{ ma: string; vai_tro: string; trang_thai: string }>();
 
     if (!existing) {
       return errorResponse(c, 'USER_NOT_FOUND', 'Nhân viên không tồn tại', 404);
@@ -334,6 +395,21 @@ adminRouter.put('/nhan-vien/:ma/reset-pin', zValidator('json', ResetPinSchema), 
         'ACCOUNT_DISABLED',
         'Tài khoản đang bị vô hiệu hóa, không thể đổi PIN',
         400
+      );
+    }
+
+    // === SUPER ADMIN PROTECTION ===
+    // Admin khác không được reset PIN của admin khác (trừ Super Admin)
+    if (
+      existing.vai_tro === 'admin' &&
+      targetMa !== callerMa &&
+      !isSuperAdmin
+    ) {
+      return errorResponse(
+        c,
+        'FORBIDDEN',
+        'Admin không có quyền đặt lại PIN của admin khác. Chỉ Admin gốc mới được thực hiện.',
+        403
       );
     }
 

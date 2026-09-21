@@ -135,6 +135,49 @@ export interface BienBanViewUrlResponse {
   drive_file_id: string;
 }
 
+export interface StreamTokenResponse {
+  stream_token: string;
+  stream_url: string;
+  expires_in: number;
+}
+
+/**
+ * Lấy stream token ngắn hạn (5 phút) để dùng cho <video src="...?st=token">
+ * POST /api/bien-ban/:id/stream-token
+ */
+export async function fetchStreamToken(
+  id: string,
+  signal?: AbortSignal
+): Promise<ApiResponse<StreamTokenResponse>> {
+  try {
+    const res = await apiClient.post(`${API_BASE}/bien-ban/${encodeURIComponent(id)}/stream-token`, {
+      signal,
+      throwHttpErrors: false,
+    });
+
+    if (!res.ok) {
+      return {
+        success: false,
+        error: {
+          code: 'API_ERROR',
+          message: `Lỗi tạo stream token (HTTP ${res.status})`
+        }
+      };
+    }
+
+    return (await res.json()) as ApiResponse<StreamTokenResponse>;
+  } catch (err: unknown) {
+    if (err instanceof Error && err.name === 'AbortError') throw err;
+    return {
+      success: false,
+      error: {
+        code: 'FETCH_ERROR',
+        message: err instanceof Error ? err.message : 'Không thể tạo stream token'
+      }
+    };
+  }
+}
+
 /**
  * Lấy danh sách biên bản có phân trang và bộ lọc
  */

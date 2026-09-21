@@ -9,8 +9,7 @@ import { CustomVideoPlayer } from '@/components/video/CustomVideoPlayer';
 import { showToast } from '@/stores/toast-store';
 import { formatDuration, formatBytes, formatDateTimeVN } from '@/utils/format';
 import { getCarrierLabel } from '@/utils/detect-carrier';
-import { fetchBienBanDetail, fetchBienBanViewUrl } from '@/services/bien-ban-service';
-import { getStoredToken } from '@/services/api-client';
+import { fetchBienBanDetail, fetchBienBanViewUrl, fetchStreamToken } from '@/services/bien-ban-service';
 import type { BienBan } from '@/types';
 import {
   PlayCircle,
@@ -169,18 +168,24 @@ export const VideoDetailPage: React.FC = () => {
     setViewUrl(null);
     setStreamUrl(null);
 
-    const res = await fetchBienBanViewUrl(id);
-    if (res.success && res.data?.view_url) {
-      setViewUrl(res.data.view_url);
-      if (res.data.stream_url) {
-        const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-        const token = getStoredToken();
-        const tokenParam = token ? `?token=${encodeURIComponent(token)}` : '';
-        setStreamUrl(`${baseUrl}${res.data.stream_url}${tokenParam}`);
-      }
-    } else {
-      setVideoError(res.error?.message || 'Không thể tải đường dẫn xem video.');
+    // 1. Get view_url (Drive preview iframe fallback)
+    const viewRes = await fetchBienBanViewUrl(id);
+    if (viewRes.success && viewRes.data?.view_url) {
+      setViewUrl(viewRes.data.view_url);
     }
+
+    // 2. Get opaque stream token for native <video> playback
+    const streamRes = await fetchStreamToken(id);
+    if (streamRes.success && streamRes.data?.stream_url) {
+      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
+      setStreamUrl(`${baseUrl}${streamRes.data.stream_url}`);
+    } else if (!viewRes.success) {
+      // Both failed
+      setVideoError(
+        viewRes.error?.message || streamRes.error?.message || 'Không thể tải đường dẫn xem video.'
+      );
+    }
+
     setIsVideoLoading(false);
   }, [id]);
 
