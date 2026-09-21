@@ -216,7 +216,10 @@ export const MobilePaginationFooter: React.FC<MobilePaginationFooterProps> = ({
   limitOptions = [10, 20, 50],
   className,
 }) => (
-  <div className={cn('shrink-0 px-2.5 py-2 rounded-xl border border-border bg-card shadow-xs flex items-center justify-between gap-1.5 select-none', className)}>
+  <div className={cn(
+    'fixed bottom-16 left-0 right-0 z-40 px-3 py-1.5 border-t border-border bg-background/95 backdrop-blur-md flex items-center justify-between gap-1.5 select-none lg:hidden pb-[calc(0.375rem+env(safe-area-inset-bottom,0px))]',
+    className
+  )}>
     {/* Left: Info text */}
     <span className="text-[10px] text-muted-foreground whitespace-nowrap">
       <strong className="text-foreground font-semibold">{startIndex}-{endIndex}</strong>/{totalItems}
