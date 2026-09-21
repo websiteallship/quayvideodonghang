@@ -51,13 +51,17 @@ export const Header: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 h-[60px] lg:h-16 px-4 lg:px-8 flex items-center justify-between border-b border-border bg-card/40 backdrop-blur-md shrink-0">
+    <header className="sticky top-0 z-40 h-14 sm:h-[60px] lg:h-16 px-3.5 sm:px-6 lg:px-8 flex items-center justify-between border-b border-border bg-card/60 backdrop-blur-md shrink-0 select-none">
       {/* Mobile Brand Header */}
-      <div className="flex lg:hidden items-center gap-2.5">
-        <div className="w-8 h-8 rounded-lg bg-emerald-500/10 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-sm">
-          <Video size={18} className="stroke-[2.2]" />
+      <div className="flex lg:hidden items-center gap-2 min-w-0 shrink-0">
+        <div className="size-8 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shadow-2xs shrink-0">
+          <Video size={17} className="stroke-[2.2]" />
         </div>
-        <h1 className="text-sm font-bold text-foreground">Quay Video Kho</h1>
+        <div className="min-w-0">
+          <h1 className="text-sm font-bold text-foreground tracking-tight whitespace-nowrap">
+            Quay Video Kho
+          </h1>
+        </div>
       </div>
 
       {/* Desktop Breadcrumb Navigation */}
@@ -70,7 +74,7 @@ export const Header: React.FC = () => {
       </nav>
 
       {/* Header Right Action Controls */}
-      <div className="flex items-center gap-2.5 sm:gap-3">
+      <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         {/* Install PWA Button */}
         <InstallPWAButton />
 
@@ -81,27 +85,33 @@ export const Header: React.FC = () => {
           onClick={toggleTheme}
           title={theme === 'light' ? 'Chuyển sang giao diện tối' : 'Chuyển sang giao diện sáng'}
           aria-label="Đổi giao diện sáng/tối"
-          className="w-9 h-9 rounded-full border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted shadow-2xs"
+          className="size-8 sm:size-9 rounded-full border-border bg-card text-muted-foreground hover:text-foreground hover:bg-muted shadow-2xs shrink-0"
         >
-          {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+          {theme === 'light' ? <Moon size={15} /> : <Sun size={15} />}
         </Button>
 
         {/* Network Status Badge */}
         <div
           title={isOnline ? 'Đang kết nối mạng' : 'Mất kết nối — Chế độ Offline'}
-          className={`inline-flex items-center gap-1.5 px-2.5 lg:px-3 py-1.5 rounded-full border text-xs font-semibold select-none ${
+          className={`inline-flex items-center gap-1.5 h-8 sm:h-9 px-2 sm:px-3 rounded-full border text-xs font-semibold select-none shrink-0 transition-colors ${
             isOnline
               ? 'text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border-emerald-500/25'
-              : 'text-destructive bg-destructive/10 border-destructive/25'
+              : 'text-destructive bg-destructive/10 border-destructive/30 animate-pulse'
           }`}
         >
           <span
-            className={`w-2 h-2 rounded-full ${
+            className={`size-2 rounded-full shrink-0 ${
               isOnline ? 'bg-emerald-500 animate-pulse' : 'bg-destructive'
             }`}
           />
-          {isOnline ? <Wifi size={13} className="hidden sm:inline" /> : <WifiOff size={13} />}
-          <span>{isOnline ? 'Online' : 'Offline'}</span>
+          {isOnline ? (
+            <Wifi size={13} className="hidden md:inline" />
+          ) : (
+            <WifiOff size={13} className="shrink-0" />
+          )}
+          <span className={isOnline ? 'hidden sm:inline' : 'inline'}>
+            {isOnline ? 'Online' : 'Offline'}
+          </span>
         </div>
 
         {/* User Avatar & Dropdown Menu */}
@@ -113,10 +123,10 @@ export const Header: React.FC = () => {
                 size="icon"
                 title={`Tài khoản: ${user.ma_nhan_vien}`}
                 aria-label="Menu tài khoản người dùng"
-                className="w-9 h-9 rounded-full border-border bg-card hover:bg-muted text-foreground flex items-center justify-center shadow-2xs cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/30"
+                className="size-8 sm:size-9 rounded-full border-border bg-card hover:bg-muted text-foreground flex items-center justify-center shadow-2xs cursor-pointer focus-visible:ring-2 focus-visible:ring-primary/30 shrink-0"
               >
-                <div className="w-7 h-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
-                  <User size={15} />
+                <div className="size-6 sm:size-7 rounded-full bg-primary/10 text-primary flex items-center justify-center font-bold text-xs">
+                  <User size={14} className="sm:w-[15px] sm:h-[15px]" />
                 </div>
               </Button>
             </DropdownMenuTrigger>

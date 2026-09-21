@@ -52,10 +52,10 @@ export const InstallPWAButton: React.FC = () => {
         size="sm"
         title="Cài đặt ứng dụng ra màn hình chính (Desktop & Mobile)"
         aria-label="Cài đặt ứng dụng"
-        className="flex items-center gap-1.5 h-8 sm:h-9 px-2.5 sm:px-3 text-xs font-semibold rounded-full border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-800 dark:hover:text-emerald-200 transition-colors shadow-2xs cursor-pointer"
+        className="flex items-center justify-center gap-1.5 size-8 sm:size-auto sm:h-9 px-0 sm:px-3 text-xs font-semibold rounded-full border-emerald-500/40 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300 hover:bg-emerald-500/20 hover:text-emerald-800 dark:hover:text-emerald-200 transition-colors shadow-2xs cursor-pointer shrink-0"
       >
-        <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-600 dark:text-emerald-400 stroke-[2.2]" />
-        <span className="inline">Cài đặt App</span>
+        <Download className="size-4 text-emerald-600 dark:text-emerald-400 stroke-[2.2]" />
+        <span className="hidden sm:inline">Cài đặt App</span>
       </Button>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
