@@ -10,8 +10,6 @@ import {
   HardDrive,
   User,
   Play,
-  ChevronLeft,
-  ChevronRight,
   AlertCircle,
   Copy,
   Check,
