@@ -876,7 +876,7 @@ export const HistoryPage: React.FC = () => {
                 return (
                   <div
                     key={item.id}
-                    className="rounded-2xl border border-border bg-card p-4 shadow-xs flex flex-col gap-3 relative overflow-hidden"
+                    className="shrink-0 rounded-2xl border border-border bg-card p-4 shadow-xs flex flex-col gap-3 relative"
                   >
                     {/* Top Row: Tracking Code + Copy + Status Badge */}
                     <div className="flex items-center justify-between">
@@ -941,7 +941,7 @@ export const HistoryPage: React.FC = () => {
                     <button
                       type="button"
                       onClick={() => void handleOpenVideo(item)}
-                      className="w-full h-9 rounded-xl border border-emerald-500/30 bg-emerald-500/10 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300 font-semibold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-all cursor-pointer"
+                      className="w-full h-10 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-orange-500/20 active:scale-[0.98] transition-transform cursor-pointer shrink-0"
                     >
                       <Play size={14} className="fill-current" />
                       <span>Xem video biên bản</span>

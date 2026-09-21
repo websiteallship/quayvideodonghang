@@ -852,7 +852,7 @@ export const AdminCarriersPage: React.FC = () => {
                 <div
                   key={item.id}
                   className={cn(
-                    'rounded-xl border border-border/80 p-2.5 bg-card flex flex-col gap-1.5 shadow-2xs transition-all',
+                    'shrink-0 rounded-xl border border-border/80 p-2.5 bg-card flex flex-col gap-1.5 shadow-2xs transition-all',
                     !item.isBuiltIn && 'border-amber-500/30 bg-amber-500/[0.02]'
                   )}
                 >
