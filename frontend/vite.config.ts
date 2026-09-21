@@ -13,6 +13,9 @@ export default defineConfig({
     basicSsl(),
     VitePWA({
       registerType: 'autoUpdate',
+      devOptions: {
+        enabled: true
+      },
       includeAssets: ['icons/*.png', 'sounds/*.mp3', 'favicon.ico'],
       manifest: {
         name: 'Quay Video Đóng Hàng',
