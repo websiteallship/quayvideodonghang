@@ -386,7 +386,7 @@ export const VideoDetailPage: React.FC = () => {
   const syncTime = calculateSyncDuration(item.thoi_gian_tao, item.thoi_gian_upload);
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-5 pb-6 w-full">
+    <div className="flex flex-col gap-4 lg:gap-5 pb-8 lg:pb-6 w-full">
       {/* ---------------------------------------------------------------- */}
       {/* Breadcrumb + Header Info */}
       {/* ---------------------------------------------------------------- */}
@@ -525,9 +525,6 @@ export const VideoDetailPage: React.FC = () => {
                     src={streamUrl}
                     expectedDuration={item.thoi_luong_video}
                     title={`${item.ma_van_don} | ${formatDateTimeVN(item.thoi_gian_tao)}`}
-                    onError={() => {
-                      setVideoMode('iframe');
-                    }}
                   />
                 ) : viewUrl ? (
                   <>

@@ -53,7 +53,7 @@ export const AppShell: React.FC = () => {
       {/* Main Content Area */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
         <Header />
-        <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 pt-3 lg:pt-5 pb-20 lg:pb-4 box-border min-w-0 overflow-y-auto relative flex flex-col">
+        <main className="flex-1 w-full px-4 sm:px-6 lg:px-8 pt-3 lg:pt-5 pb-24 lg:pb-4 box-border min-w-0 overflow-y-auto relative flex flex-col">
           {isPageLoading ? (
             <div className="flex flex-col w-full h-full min-h-[50vh] items-center justify-center gap-3 animate-fade-in">
               <Spinner size={36} className="text-primary" />
