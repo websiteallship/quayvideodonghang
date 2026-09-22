@@ -1142,7 +1142,10 @@ export const HistoryPage: React.FC = () => {
       {/* VietFul Live Sync Dialog */}
       {/* ================================================================== */}
       <Dialog open={isSyncModalOpen} onOpenChange={setIsSyncModalOpen}>
-        <DialogContent className="w-[96vw] max-w-[96vw] sm:max-w-md sm:w-full p-0 rounded-2xl overflow-hidden border-border bg-card">
+        <DialogContent
+          showCloseButton={false}
+          className="w-[96vw] max-w-[96vw] sm:max-w-md sm:w-full p-0 rounded-2xl overflow-hidden border-border bg-card"
+        >
           <DialogHeader className="px-5 py-4 border-b border-border flex flex-row items-center justify-between space-y-0 shrink-0">
             <div>
               <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-2">
