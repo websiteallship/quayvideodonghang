@@ -8,6 +8,7 @@ import { useRef, useEffect, useState } from 'react';
 import { Square, AlertCircle, ScanLine, Layers } from 'lucide-react';
 import type { OverlayInfo } from '../../hooks/use-media-recorder';
 import { RecordTimer } from './RecordTimer';
+import { formatDuration } from '../../utils/format';
 
 interface RecordingViewProps {
   /** Active camera stream */
@@ -108,12 +109,12 @@ export function RecordingView({
       )}
 
       {/* Top Right: Record Timer */}
-      <div className="absolute top-5 right-5 z-10">
+      <div className="absolute top-3.5 right-3.5 sm:top-5 sm:right-5 z-30">
         <RecordTimer duration={duration} isRecording={isRecording} />
       </div>
 
       {/* Minimal Bottom Left HUD (Matches Canvas output) */}
-      <div className="absolute bottom-28 left-3 right-3 z-10 flex flex-col gap-0.5 text-white font-mono text-[11px] leading-[1.4] pointer-events-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
+      <div className="absolute bottom-28 left-3 right-3 z-20 flex flex-col gap-0.5 text-white font-mono text-[11px] leading-[1.4] pointer-events-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
         <div className="font-bold text-[13px]">
           [{isDongGoi ? 'ĐÓNG GÓI' : 'KHUI HÀNG'}] {overlayInfo.maVanDon}
         </div>
@@ -128,8 +129,14 @@ export function RecordingView({
         <div className="text-amber-400">
           {overlayInfo.warehouseName || 'Kho: chưa cấu hình'}
         </div>
-        <div className="opacity-80">
-          {now.toLocaleTimeString('vi-VN')} {now.toLocaleDateString('vi-VN')}
+        <div className="flex items-center gap-2 pt-0.5">
+          <span className="opacity-80">
+            {now.toLocaleTimeString('vi-VN')} {now.toLocaleDateString('vi-VN')}
+          </span>
+          <span className="text-red-400 font-bold font-mono text-[11px] flex items-center gap-1 bg-black/60 px-1.5 py-0.5 rounded border border-red-500/30">
+            <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            REC {formatDuration(duration)}
+          </span>
         </div>
       </div>
 

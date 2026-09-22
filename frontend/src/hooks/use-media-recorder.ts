@@ -7,6 +7,7 @@
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { DonViVanChuyen, LoaiBienBan } from '../types';
 import { useWakeLock } from './use-wake-lock';
+import { formatDuration } from '../utils/format';
 
 export interface OverlayInfo {
   maVanDon: string;
@@ -87,7 +88,8 @@ export function drawCanvasOverlay(
   width: number,
   height: number,
   overlay: OverlayInfo,
-  now: Date
+  now: Date,
+  duration: number = 0
 ): void {
   // 1. Draw camera video frame scaled to canvas
   if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
@@ -103,6 +105,38 @@ export function drawCanvasOverlay(
   ctx.shadowOffsetX = 1;
   ctx.shadowOffsetY = 1;
 
+  const isPortrait = height > width;
+  const durationStr = formatDuration(duration);
+
+  // 2A. Top-right Live REC Badge directly on Canvas
+  const badgeWidth = isPortrait ? 104 : 116;
+  const badgeHeight = isPortrait ? 26 : 28;
+  const badgeX = width - badgeWidth - (isPortrait ? 16 : 20);
+  const badgeY = isPortrait ? 16 : 20;
+
+  ctx.fillStyle = 'rgba(15, 23, 42, 0.75)';
+  ctx.beginPath();
+  if (typeof ctx.roundRect === 'function') {
+    ctx.roundRect(badgeX, badgeY, badgeWidth, badgeHeight, badgeHeight / 2);
+  } else {
+    ctx.rect(badgeX, badgeY, badgeWidth, badgeHeight);
+  }
+  ctx.fill();
+
+  // Red Dot
+  ctx.fillStyle = '#ef4444';
+  ctx.beginPath();
+  ctx.arc(badgeX + 14, badgeY + badgeHeight / 2, isPortrait ? 4 : 5, 0, Math.PI * 2);
+  ctx.fill();
+
+  // REC Time text
+  ctx.fillStyle = '#ffffff';
+  ctx.font = isPortrait ? 'bold 12px monospace' : 'bold 13px monospace';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(`REC ${durationStr}`, badgeX + 24, badgeY + badgeHeight / 2 + 1);
+
+  // 2B. Bottom Left Information Overlay
   const isDongGoi = overlay.loaiBienBan === 'dong_goi';
   const line1 = `[${isDongGoi ? 'ĐÓNG GÓI' : 'KHUI HÀNG'}] ${overlay.maVanDon}`;
   const line2 = `NV: ${overlay.maNhanVien} | ĐVVC: ${overlay.donViVc}`;
@@ -118,9 +152,8 @@ export function drawCanvasOverlay(
   const line4 = `Kho: ${overlay.warehouseName || 'Chưa cấu hình (Vào Cài đặt)'}`;
   const timeStr = timeFormatter ? timeFormatter.format(now) : now.toLocaleTimeString('vi-VN');
   const dateStr = dateFormatter ? dateFormatter.format(now) : now.toLocaleDateString('vi-VN');
-  const line5 = `${timeStr} ${dateStr}`;
+  const line5 = `${timeStr} ${dateStr} · REC ${durationStr}`;
 
-  const isPortrait = height > width;
   const startX = isPortrait ? 16 : 20;
   const lineHeight = isPortrait ? 24 : 28;
   let currentY = height - (isPortrait ? 150 : 160);
@@ -156,7 +189,7 @@ export function drawCanvasOverlay(
   ctx.fillText(displayLine4, startX, currentY);
   currentY += lineHeight;
 
-  // Line 5: Timestamp
+  // Line 5: Timestamp & REC Duration
   ctx.fillStyle = '#ffffff';
   ctx.font = isPortrait ? 'bold 15px monospace' : 'bold 18px monospace';
   ctx.fillText(line5, startX, currentY);
@@ -203,6 +236,7 @@ export function useMediaRecorder({
 
   // H2: Use ref for previewUrl to avoid closure/dependency issues in cleanup
   const previewUrlRef = useRef<string | null>(null);
+  const recordingStartTimeRef = useRef<number>(0);
 
   const detectedMimeType = useRef<string>(getSupportedMimeType());
 
@@ -318,14 +352,16 @@ export function useMediaRecorder({
       // rAF runs at 60fps — drawing 60fps for 30fps recording wastes ~50% CPU on mobile kho
       const frameDurationMs = 1000 / fps;
       let lastFrameTime = 0;
+      recordingStartTimeRef.current = Date.now();
 
       const renderLoop = (timestamp: number) => {
         if (timestamp - lastFrameTime >= frameDurationMs) {
           lastFrameTime = timestamp;
           if (ctx && sourceVideo) {
             try {
+              const elapsedSec = Math.max(0, Math.floor((Date.now() - recordingStartTimeRef.current) / 1000));
               // H1: Read overlayInfo from ref — always latest value, no stale closure
-              drawCanvasOverlay(ctx, sourceVideo, canvasWidth, canvasHeight, overlayInfoRef.current, new Date());
+              drawCanvasOverlay(ctx, sourceVideo, canvasWidth, canvasHeight, overlayInfoRef.current, new Date(), elapsedSec);
             } catch {
               // Ignore frame render errors
             }
