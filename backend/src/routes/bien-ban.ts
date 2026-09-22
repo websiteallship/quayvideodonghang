@@ -84,6 +84,17 @@ bienBanRouter.get(
 
       const da_co_video = so_luong_video > 0;
 
+      // Tra cứu thông tin đơn hàng và cảnh báo từ VietFul nếu có
+      const orderRecord = await c.env.DB.prepare(
+        `SELECT ot.*, COALESCE(ot.nha_ban, vm.name) as nha_ban, vm.code as merchant_code
+         FROM order_tracking ot
+         LEFT JOIN vietful_merchants vm ON ot.merchant_id = vm.id
+         WHERE ot.ma_van_don = ? OR ot.ma_don_hang = ?
+         LIMIT 1`
+      )
+        .bind(ma_van_don, ma_van_don)
+        .first();
+
       return successResponse(c, {
         da_co_video,
         so_luong_video,
@@ -95,6 +106,7 @@ bienBanRouter.get(
               ma_nhan_vien: existing.ma_nhan_vien
             }
           : null,
+        order: orderRecord || null,
         // Tương thích ngược
         exists: da_co_video,
         record: existing || null
@@ -133,7 +145,10 @@ bienBanRouter.get(
       ngay_den,
       don_vi_vc,
       loai_bien_ban,
-      ma_nhan_vien
+      ma_nhan_vien,
+      merchant_id,
+      canh_bao,
+      trang_thai_don
     } = c.req.valid('query');
     const offset = (page - 1) * limit;
     const user = c.get('user');
@@ -159,12 +174,12 @@ bienBanRouter.get(
         params.push(targetStatus);
       }
 
-      // 3. Tìm kiếm theo mã vận đơn (hỗ trợ search và ma_van_don)
+      // 3. Tìm kiếm kép theo mã vận đơn hoặc mã đơn hàng VietFul (search và ma_van_don)
       const searchCode = search || ma_van_don;
       if (searchCode) {
         const escapedSearch = searchCode.replace(/[%_\\]/g, '\\$&');
-        whereClause += " AND b.ma_van_don LIKE ? ESCAPE '\\'";
-        params.push(`%${escapedSearch}%`);
+        whereClause += " AND (b.ma_van_don LIKE ? ESCAPE '\\' OR ot.ma_don_hang LIKE ? ESCAPE '\\')";
+        params.push(`%${escapedSearch}%`, `%${escapedSearch}%`);
       }
 
       // 4. Lọc đơn vị vận chuyển
@@ -189,8 +204,33 @@ bienBanRouter.get(
         params.push(ngay_den);
       }
 
+      // 7. Lọc theo nhà bán (Multi-Merchant)
+      if (merchant_id) {
+        whereClause += ' AND ot.merchant_id = ?';
+        params.push(merchant_id);
+      }
+
+      // 8. Lọc theo cảnh báo nghiệp vụ
+      if (canh_bao && canh_bao !== 'ALL') {
+        if (canh_bao === 'has_warning') {
+          whereClause += " AND ot.canh_bao IS NOT NULL AND ot.canh_bao != 'NONE'";
+        } else {
+          whereClause += ' AND ot.canh_bao = ?';
+          params.push(canh_bao);
+        }
+      }
+
+      // 9. Lọc theo trạng thái đơn hàng VietFul
+      if (trang_thai_don && trang_thai_don !== 'ALL') {
+        whereClause += ' AND ot.trang_thai_don = ?';
+        params.push(trang_thai_don);
+      }
+
       const countResult = await c.env.DB.prepare(
-        `SELECT COUNT(*) as total FROM bien_ban b ${whereClause}`
+        `SELECT COUNT(*) as total 
+         FROM bien_ban b 
+         LEFT JOIN order_tracking ot ON b.id = ot.bien_ban_id OR b.ma_van_don = ot.ma_van_don
+         ${whereClause}`
       )
         .bind(...params)
         .first<{ total: number }>();
@@ -198,9 +238,23 @@ bienBanRouter.get(
       const total = countResult?.total || 0;
 
       const items = await c.env.DB.prepare(
-        `SELECT b.*, n.ten as ten_nhan_vien
+        `SELECT b.*, n.ten as ten_nhan_vien,
+                ot.id as ot_id,
+                ot.ma_don_hang as ot_ma_don_hang,
+                ot.or_id as ot_or_id,
+                ot.trang_thai_don as ot_trang_thai_don,
+                ot.trang_thai_dong_hang as ot_trang_thai_dong_hang,
+                ot.trang_thai_kiem_hoan as ot_trang_thai_kiem_hoan,
+                ot.canh_bao as ot_canh_bao,
+                ot.ghi_chu_don as ot_ghi_chu_don,
+                ot.san_pham_summary as ot_san_pham_summary,
+                COALESCE(ot.nha_ban, vm.name) as ot_nha_ban,
+                vm.code as ot_merchant_code,
+                vm.id as ot_merchant_id
          FROM bien_ban b
          LEFT JOIN nhan_vien n ON b.ma_nhan_vien = n.ma
+         LEFT JOIN order_tracking ot ON b.id = ot.bien_ban_id OR b.ma_van_don = ot.ma_van_don
+         LEFT JOIN vietful_merchants vm ON ot.merchant_id = vm.id
          ${whereClause}
          ORDER BY b.thoi_gian_tao DESC
          LIMIT ? OFFSET ?`
@@ -208,8 +262,34 @@ bienBanRouter.get(
         .bind(...params, limit, offset)
         .all();
 
+      const formattedItems = (items.results || []).map((row: any) => {
+        const order = row.ot_id || row.ot_ma_don_hang ? {
+          id: row.ot_id,
+          ma_don_hang: row.ot_ma_don_hang || null,
+          or_id: row.ot_or_id || null,
+          trang_thai_don: row.ot_trang_thai_don || 'CHO_DONG_GOI',
+          trang_thai_dong_hang: row.ot_trang_thai_dong_hang || 'da_dong',
+          trang_thai_kiem_hoan: row.ot_trang_thai_kiem_hoan || 'khong_ap_dung',
+          canh_bao: row.ot_canh_bao || 'NONE',
+          nha_ban: row.ot_nha_ban || null,
+          merchant_id: row.ot_merchant_id || null,
+          merchant_code: row.ot_merchant_code || null,
+          ghi_chu_don: row.ot_ghi_chu_don || null,
+          san_pham_summary: row.ot_san_pham_summary || null,
+        } : null;
+
+        const cleanRow: Record<string, unknown> = {};
+        for (const key of Object.keys(row)) {
+          if (!key.startsWith('ot_')) {
+            cleanRow[key] = row[key];
+          }
+        }
+        cleanRow.order = order;
+        return cleanRow;
+      });
+
       return successResponse(c, {
-        items: items.results,
+        items: formattedItems,
         pagination: {
           page,
           limit,
@@ -248,17 +328,27 @@ bienBanRouter.get(
 
     try {
       const record = await c.env.DB.prepare(
-        `SELECT b.*, n.ten as ten_nhan_vien
+        `SELECT b.*, n.ten as ten_nhan_vien,
+                ot.id as ot_id,
+                ot.ma_don_hang as ot_ma_don_hang,
+                ot.or_id as ot_or_id,
+                ot.trang_thai_don as ot_trang_thai_don,
+                ot.trang_thai_dong_hang as ot_trang_thai_dong_hang,
+                ot.trang_thai_kiem_hoan as ot_trang_thai_kiem_hoan,
+                ot.canh_bao as ot_canh_bao,
+                ot.ghi_chu_don as ot_ghi_chu_don,
+                ot.san_pham_summary as ot_san_pham_summary,
+                COALESCE(ot.nha_ban, vm.name) as ot_nha_ban,
+                vm.code as ot_merchant_code,
+                vm.id as ot_merchant_id
          FROM bien_ban b
          LEFT JOIN nhan_vien n ON b.ma_nhan_vien = n.ma
+         LEFT JOIN order_tracking ot ON b.id = ot.bien_ban_id OR b.ma_van_don = ot.ma_van_don
+         LEFT JOIN vietful_merchants vm ON ot.merchant_id = vm.id
          WHERE b.id = ?`
       )
         .bind(id)
-        .first<{
-          id: string;
-          ma_nhan_vien: string;
-          [key: string]: unknown;
-        }>();
+        .first<any>();
 
       if (!record) {
         return errorResponse(c, 'NOT_FOUND', 'Không tìm thấy biên bản', 404);
@@ -269,7 +359,30 @@ bienBanRouter.get(
         return errorResponse(c, 'FORBIDDEN', 'Bạn không có quyền xem biên bản này', 403);
       }
 
-      return successResponse(c, record);
+      const order = record.ot_id || record.ot_ma_don_hang ? {
+        id: record.ot_id,
+        ma_don_hang: record.ot_ma_don_hang || null,
+        or_id: record.ot_or_id || null,
+        trang_thai_don: record.ot_trang_thai_don || 'CHO_DONG_GOI',
+        trang_thai_dong_hang: record.ot_trang_thai_dong_hang || 'da_dong',
+        trang_thai_kiem_hoan: record.ot_trang_thai_kiem_hoan || 'khong_ap_dung',
+        canh_bao: record.ot_canh_bao || 'NONE',
+        nha_ban: record.ot_nha_ban || null,
+        merchant_id: record.ot_merchant_id || null,
+        merchant_code: record.ot_merchant_code || null,
+        ghi_chu_don: record.ot_ghi_chu_don || null,
+        san_pham_summary: record.ot_san_pham_summary || null,
+      } : null;
+
+      const cleanRecord: Record<string, unknown> = {};
+      for (const key of Object.keys(record)) {
+        if (!key.startsWith('ot_')) {
+          cleanRecord[key] = record[key];
+        }
+      }
+      cleanRecord.order = order;
+
+      return successResponse(c, cleanRecord);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : 'Database error';
       return errorResponse(c, 'DATABASE_ERROR', message, 500);
