@@ -10,6 +10,8 @@ import { dashboardRouter } from './routes/dashboard';
 import { configRouter } from './routes/config';
 import { adminRouter } from './routes/admin';
 import { vietfulMerchantRouter } from './routes/vietful-merchant';
+import { vietfulWebhookRouter } from './routes/vietful-webhook';
+import { orderSyncRouter } from './routes/order-sync';
 import { errorResponse, successResponse } from './utils/response';
 import { runRetentionCleanup } from './services/retention-service';
 
@@ -43,6 +45,8 @@ app.route('/api/dashboard', dashboardRouter);
 app.route('/api/config', configRouter);
 app.route('/api/admin', adminRouter);
 app.route('/api/admin/vietful-merchants', vietfulMerchantRouter);
+app.route('/api/webhooks/vietful', vietfulWebhookRouter);
+app.route('/api/orders', orderSyncRouter);
 
 // 404 Not Found Handler
 app.notFound((c) => {
