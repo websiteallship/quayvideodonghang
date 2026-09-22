@@ -50,13 +50,15 @@ export function getSupportedMimeType(): string {
     return 'video/webm';
   }
 
+  // Ưu tiên video/mp4 (H.264/AVC) để phát được native trên 100% thiết bị (iOS Safari, Android, Desktop).
+  // Fallback sang video/webm nếu trình duyệt không hỗ trợ quay MP4.
   const preferredTypes = [
-    'video/webm;codecs=vp9,opus',
-    'video/webm;codecs=vp8,opus',
-    'video/webm',
     'video/mp4;codecs=avc1,mp4a.40.2',
     'video/mp4;codecs=avc1',
     'video/mp4',
+    'video/webm;codecs=vp9,opus',
+    'video/webm;codecs=vp8,opus',
+    'video/webm',
   ];
 
   for (const type of preferredTypes) {

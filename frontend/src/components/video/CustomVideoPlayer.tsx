@@ -215,6 +215,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         ref={videoRef}
         src={src}
         playsInline
+        webkit-playsinline="true"
         preload="auto"
         onClick={togglePlay}
         onLoadStart={() => setIsLoading(true)}
@@ -236,6 +237,8 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         onError={() => {
           setIsLoading(false);
           setIsBuffering(false);
+          const err = videoRef.current?.error;
+          console.warn('[CustomVideoPlayer] Playback error code:', err?.code, err?.message);
           onError?.();
         }}
         className="w-full h-full object-contain cursor-pointer"

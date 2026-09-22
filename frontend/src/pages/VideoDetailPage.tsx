@@ -177,8 +177,9 @@ export const VideoDetailPage: React.FC = () => {
     // 2. Get opaque stream token for native <video> playback
     const streamRes = await fetchStreamToken(id);
     if (streamRes.success && streamRes.data?.stream_url) {
-      const baseUrl = import.meta.env.VITE_API_BASE_URL || '';
-      setStreamUrl(`${baseUrl}${streamRes.data.stream_url}`);
+      const rawApi = import.meta.env.VITE_API_BASE_URL || import.meta.env.VITE_API_URL || '';
+      const apiOrigin = rawApi.replace(/\/api\/?$/, '').replace(/\/+$/, '');
+      setStreamUrl(`${apiOrigin}${streamRes.data.stream_url}`);
     } else if (!viewRes.success) {
       // Both failed
       setVideoError(
@@ -485,8 +486,8 @@ export const VideoDetailPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column: Video Player & Controls (7 cols) */}
         <div className="lg:col-span-7 flex flex-col gap-3.5">
-          {/* Video Container Box */}
-          <div className="w-full aspect-[4/3] md:aspect-video bg-black rounded-2xl overflow-hidden relative shadow-md border border-black/20 dark:border-white/10 flex items-center justify-center">
+          {/* Video Container Box: Chuẩn 16:9 responsive, tối ưu tuyệt đối cho mobile */}
+          <div className="w-full aspect-video min-h-[220px] sm:min-h-[280px] md:min-h-[360px] bg-black rounded-2xl overflow-hidden relative shadow-md border border-black/20 dark:border-white/10 flex items-center justify-center">
             {isVideoLoading && (
               <div className="flex flex-col items-center gap-3 text-center p-4">
                 <RefreshCw size={28} className="text-amber-500 animate-spin" />
@@ -533,7 +534,7 @@ export const VideoDetailPage: React.FC = () => {
                     onError={() => {
                       // Auto-fallback to iframe when native player fails
                       if (viewUrl) {
-                        showToast.error('Trình phát gốc gặp sự cố, tự động chuyển sang Google Drive Viewer');
+                        showToast.error('Trình phát gốc gặp sự cố định dạng trên iOS, tự động chuyển sang Google Drive Viewer');
                         setVideoMode('iframe');
                       } else {
                         setVideoError('Không thể phát video. Vui lòng thử lại sau.');
@@ -541,27 +542,29 @@ export const VideoDetailPage: React.FC = () => {
                     }}
                   />
                 ) : viewUrl ? (
-                  <iframe
-                    src={viewUrl}
-                    className="absolute top-0 left-0 w-full h-full border-0"
-                    allow="autoplay; encrypted-media"
-                    allowFullScreen
-                    title={`Video xem lại ${item.ma_van_don}`}
-                  />
+                  <div className="w-full h-full relative overflow-hidden bg-black flex items-center justify-center">
+                    <iframe
+                      src={viewUrl}
+                      className="border-0 w-[140%] h-[140%] max-w-none max-h-none origin-top-left scale-[0.714] sm:w-full sm:h-full sm:scale-100"
+                      allow="autoplay; encrypted-media; fullscreen"
+                      allowFullScreen
+                      title={`Video xem lại ${item.ma_van_don}`}
+                    />
+                  </div>
                 ) : null}
               </>
             )}
 
             {!isVideoLoading && !videoError && !streamUrl && viewUrl && (
-              <>
+              <div className="w-full h-full relative overflow-hidden bg-black flex items-center justify-center">
                 <iframe
                   src={viewUrl}
-                  className="absolute top-0 left-0 w-full h-full border-0"
-                  allow="autoplay; encrypted-media"
+                  className="border-0 w-[140%] h-[140%] max-w-none max-h-none origin-top-left scale-[0.714] sm:w-full sm:h-full sm:scale-100"
+                  allow="autoplay; encrypted-media; fullscreen"
                   allowFullScreen
                   title={`Video xem lại ${item.ma_van_don}`}
                 />
-              </>
+              </div>
             )}
           </div>
 
@@ -591,11 +594,21 @@ export const VideoDetailPage: React.FC = () => {
               </TabsList>
             </Tabs>
 
-            {item.drive_file_id && (
+            {videoMode === 'iframe' && driveDirectLink ? (
+              <a
+                href={driveDirectLink}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
+              >
+                <span>Mở toàn màn hình (Google Drive)</span>
+                <ExternalLink size={12} />
+              </a>
+            ) : item.drive_file_id ? (
               <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[200px]" title={item.drive_file_id}>
                 Drive ID: {item.drive_file_id.slice(0, 10)}...
               </span>
-            )}
+            ) : null}
           </div>
 
           {/* Action Buttons Bar */}

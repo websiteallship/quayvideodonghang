@@ -404,6 +404,7 @@ export class DriveService {
 
     // Cache video trên CDN 5 phút, client 1 phút
     responseHeaders.set('Cache-Control', 'public, max-age=60, s-maxage=300');
+    responseHeaders.set('Access-Control-Expose-Headers', 'Content-Range, Content-Length, Accept-Ranges, Content-Type');
 
     return new Response(driveRes.body, {
       status: driveRes.status, // 200 hoặc 206 (Partial Content)
