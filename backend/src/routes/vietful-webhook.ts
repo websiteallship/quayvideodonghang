@@ -42,13 +42,15 @@ async function processWebhookPayload(
 
   // 1. Tìm thông tin merchant nếu có merchantId
   let merchantName = 'VietFul';
+  let resolvedMerchantId: string | null = null;
   if (merchantId) {
     const merchant = await db
-      .prepare('SELECT name FROM vietful_merchants WHERE id = ? OR code = ? LIMIT 1')
+      .prepare('SELECT id, name FROM vietful_merchants WHERE id = ? OR code = ? LIMIT 1')
       .bind(merchantId, merchantId)
-      .first<{ name: string }>();
+      .first<{ id: string; name: string }>();
     if (merchant) {
       merchantName = merchant.name;
+      resolvedMerchantId = merchant.id;
     }
   }
 
@@ -103,6 +105,8 @@ async function processWebhookPayload(
         san_pham_summary = COALESCE(?, san_pham_summary),
         du_lieu_raw_json = ?,
         bien_ban_id = COALESCE(?, bien_ban_id),
+        merchant_id = COALESCE(?, merchant_id),
+        nha_ban = CASE WHEN ? != 'VietFul' THEN ? ELSE nha_ban END,
         ngay_cap_nhat = datetime('now')
       WHERE id = ?
     `
@@ -120,6 +124,9 @@ async function processWebhookPayload(
         summary,
         rawJson,
         linkedBienBanId,
+        resolvedMerchantId,
+        merchantName,
+        merchantName,
         recordId
       )
       .run();
@@ -139,7 +146,7 @@ async function processWebhookPayload(
       .bind(
         recordId,
         linkedBienBanId,
-        merchantId || null,
+        resolvedMerchantId,
         targetTrackingCode,
         partnerORCode || orCode || targetTrackingCode,
         orId,
