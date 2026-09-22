@@ -542,29 +542,25 @@ export const VideoDetailPage: React.FC = () => {
                     }}
                   />
                 ) : viewUrl ? (
-                  <div className="w-full h-full relative overflow-hidden bg-black flex items-center justify-center">
-                    <iframe
-                      src={viewUrl}
-                      className="border-0 w-[140%] h-[140%] max-w-none max-h-none origin-top-left scale-[0.714] sm:w-full sm:h-full sm:scale-100"
-                      allow="autoplay; encrypted-media; fullscreen"
-                      allowFullScreen
-                      title={`Video xem lại ${item.ma_van_don}`}
-                    />
-                  </div>
+                  <iframe
+                    src={viewUrl}
+                    className="absolute inset-0 w-full h-full border-0"
+                    allow="autoplay; encrypted-media; fullscreen"
+                    allowFullScreen
+                    title={`Video xem lại ${item.ma_van_don}`}
+                  />
                 ) : null}
               </>
             )}
 
             {!isVideoLoading && !videoError && !streamUrl && viewUrl && (
-              <div className="w-full h-full relative overflow-hidden bg-black flex items-center justify-center">
-                <iframe
-                  src={viewUrl}
-                  className="border-0 w-[140%] h-[140%] max-w-none max-h-none origin-top-left scale-[0.714] sm:w-full sm:h-full sm:scale-100"
-                  allow="autoplay; encrypted-media; fullscreen"
-                  allowFullScreen
-                  title={`Video xem lại ${item.ma_van_don}`}
-                />
-              </div>
+              <iframe
+                src={viewUrl}
+                className="absolute inset-0 w-full h-full border-0"
+                allow="autoplay; encrypted-media; fullscreen"
+                allowFullScreen
+                title={`Video xem lại ${item.ma_van_don}`}
+              />
             )}
           </div>
 
@@ -594,21 +590,11 @@ export const VideoDetailPage: React.FC = () => {
               </TabsList>
             </Tabs>
 
-            {videoMode === 'iframe' && driveDirectLink ? (
-              <a
-                href={driveDirectLink}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-[11px] font-semibold text-blue-600 dark:text-blue-400 hover:underline inline-flex items-center gap-1"
-              >
-                <span>Mở toàn màn hình (Google Drive)</span>
-                <ExternalLink size={12} />
-              </a>
-            ) : item.drive_file_id ? (
-              <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[200px]" title={item.drive_file_id}>
+            {item.drive_file_id && (
+              <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[200px] hidden sm:inline" title={item.drive_file_id}>
                 Drive ID: {item.drive_file_id.slice(0, 10)}...
               </span>
-            ) : null}
+            )}
           </div>
 
           {/* Action Buttons Bar */}
