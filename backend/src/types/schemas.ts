@@ -47,7 +47,10 @@ export const BienBanQuerySchema = z.object({
   ngay_den: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'Định dạng ngày YYYY-MM-DD').optional(),
   don_vi_vc: z.string().optional(),
   loai_bien_ban: z.enum(['dong_goi', 'khui_hang']).optional(),
-  ma_nhan_vien: z.string().optional()
+  ma_nhan_vien: z.string().optional(),
+  merchant_id: z.string().optional(),
+  canh_bao: z.string().optional(),
+  trang_thai_don: z.string().optional()
 });
 
 export const NhanVienCreateSchema = z.object({
@@ -127,6 +130,34 @@ export const KhoHangUpdateSchema = z.object({
   'Phải cập nhật ít nhất 1 trường'
 );
 
+export const VietfulMerchantCreateSchema = z.object({
+  code: z.string().trim().min(1, 'Mã nhà bán bắt buộc').max(50).transform(v => v.toUpperCase()),
+  name: z.string().trim().min(1, 'Tên nhà bán bắt buộc').max(100),
+  realm: z.string().trim().min(1).default('asp'),
+  auth_url: z.string().trim().url('Auth URL không hợp lệ').default('https://auth.vnfai.com'),
+  api_url: z.string().trim().url('API URL không hợp lệ').default('https://ext-api.vnfai.com'),
+  client_id: z.string().trim().min(1, 'Client ID bắt buộc'),
+  client_secret: z.string().trim().min(1, 'Client Secret bắt buộc'),
+  warehouse_codes: z.union([z.array(z.string()), z.string()]).optional().default(['ZPTDN']),
+  webhook_secret: z.string().trim().optional(),
+  is_active: z.number().int().min(0).max(1).optional().default(1)
+});
+
+export const VietfulMerchantUpdateSchema = z.object({
+  name: z.string().trim().min(1).max(100).optional(),
+  realm: z.string().trim().min(1).optional(),
+  auth_url: z.string().trim().url().optional(),
+  api_url: z.string().trim().url().optional(),
+  client_id: z.string().trim().min(1).optional(),
+  client_secret: z.string().trim().min(1).optional(),
+  warehouse_codes: z.union([z.array(z.string()), z.string()]).optional(),
+  webhook_secret: z.string().trim().optional(),
+  is_active: z.number().int().min(0).max(1).optional()
+}).refine(
+  data => Object.keys(data).length > 0,
+  'Phải cập nhật ít nhất 1 trường'
+);
+
 export type LoginRequestDTO = z.infer<typeof LoginRequestSchema>;
 export type UploadInitDTO = z.infer<typeof UploadInitSchema>;
 export type UploadCompleteDTO = z.infer<typeof UploadCompleteSchema>;
@@ -142,3 +173,5 @@ export type CauHinhUpdateDTO = z.infer<typeof CauHinhUpdateSchema>;
 export type CheckMaVanDonParamDTO = z.infer<typeof CheckMaVanDonParamSchema>;
 export type KhoHangCreateDTO = z.infer<typeof KhoHangCreateSchema>;
 export type KhoHangUpdateDTO = z.infer<typeof KhoHangUpdateSchema>;
+export type VietfulMerchantCreateDTO = z.infer<typeof VietfulMerchantCreateSchema>;
+export type VietfulMerchantUpdateDTO = z.infer<typeof VietfulMerchantUpdateSchema>;
