@@ -62,16 +62,25 @@ export const RESOLUTION_CHAIN_720P: ResolutionConstraint[] = [
 ];
 
 /**
- * Build resolution chain with dynamic FPS.
- * When fps > 30, camera may fallback to lower resolution — this is expected browser behavior.
+ * Build resolution chain with dynamic FPS and orientation awareness.
+ * When in portrait on mobile, inverts ideal width/height (e.g. 720x1280) so camera streams native vertical.
  */
 export function getResolutionChain(resolution: '1080p' | '720p', fps: number = 30): ResolutionConstraint[] {
+  const isPortrait = typeof window !== 'undefined' && (
+    window.innerHeight > window.innerWidth ||
+    window.matchMedia?.('(orientation: portrait)').matches
+  );
+
   const base = resolution === '1080p' ? RESOLUTION_CHAIN_1080P : RESOLUTION_CHAIN_720P;
-  if (fps === 30) return base;
-  return base.map((c) => ({
-    ...c,
-    frameRate: { ideal: fps },
-  }));
+  return base.map((c) => {
+    const idealW = c.width.ideal;
+    const idealH = c.height.ideal;
+    return {
+      width: { ideal: isPortrait ? Math.min(idealW, idealH) : Math.max(idealW, idealH) },
+      height: { ideal: isPortrait ? Math.max(idealW, idealH) : Math.min(idealW, idealH) },
+      frameRate: { ideal: fps },
+    };
+  });
 }
 
 // ---------------------------------------------------------------------------

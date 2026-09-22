@@ -91,8 +91,30 @@ export function drawCanvasOverlay(
   now: Date,
   duration: number = 0
 ): void {
-  // 1. Draw camera video frame scaled to canvas
-  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
+  // 1. Draw camera video frame scaled to canvas preserving aspect ratio (object-fit: cover)
+  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth && video.videoHeight) {
+    const vWidth = video.videoWidth;
+    const vHeight = video.videoHeight;
+    const videoRatio = vWidth / vHeight;
+    const canvasRatio = width / height;
+
+    let sx = 0;
+    let sy = 0;
+    let sWidth = vWidth;
+    let sHeight = vHeight;
+
+    if (videoRatio > canvasRatio) {
+      // Video rộng hơn canvas -> crop 2 bên trái/phải để giữ đúng tỉ lệ không bị kéo dẹt
+      sWidth = vHeight * canvasRatio;
+      sx = (vWidth - sWidth) / 2;
+    } else {
+      // Video cao hơn canvas -> crop trên/dưới
+      sHeight = vWidth / canvasRatio;
+      sy = (vHeight - sHeight) / 2;
+    }
+
+    ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, width, height);
+  } else if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
     ctx.drawImage(video, 0, 0, width, height);
   } else {
     ctx.fillStyle = '#000000';
@@ -324,12 +346,24 @@ export function useMediaRecorder({
         });
       }
 
+      // Nhận diện hướng thiết bị và camera:
+      const isDevicePortrait = typeof window !== 'undefined' && (
+        window.innerHeight > window.innerWidth ||
+        window.matchMedia?.('(orientation: portrait)').matches
+      );
+      const isMobile = typeof navigator !== 'undefined' && (
+        /Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+        ('ontouchstart' in window && window.innerWidth < 1024)
+      );
+
       // Xác định tỉ lệ hướng quay thực tế của camera
       const videoTrack = stream.getVideoTracks()[0];
       const settings = videoTrack?.getSettings ? videoTrack.getSettings() : undefined;
       const vWidth = sourceVideo.videoWidth || settings?.width || 0;
       const vHeight = sourceVideo.videoHeight || settings?.height || 0;
-      const isPortrait = (vHeight > 0 && vWidth > 0) ? (vHeight > vWidth) : false;
+
+      // Ưu tiên: nếu là thiết bị di động đang cầm dọc HOẶC camera stream có chiều cao > chiều rộng
+      const isPortrait = (isMobile && isDevicePortrait) || (vHeight > 0 && vWidth > 0 && vHeight > vWidth);
 
       // Giữ nguyên tỉ lệ quay: dọc (720x1280 / 1080x1920) hoặc ngang (1280x720 / 1920x1080)
       const canvasWidth = isPortrait ? Math.min(targetWidth, targetHeight) : Math.max(targetWidth, targetHeight);
@@ -357,11 +391,12 @@ export function useMediaRecorder({
       const renderLoop = (timestamp: number) => {
         if (timestamp - lastFrameTime >= frameDurationMs) {
           lastFrameTime = timestamp;
-          if (ctx && sourceVideo) {
+          const activeVideo = sourceVideoRef.current || sourceVideo;
+          if (ctx && activeVideo) {
             try {
               const elapsedSec = Math.max(0, Math.floor((Date.now() - recordingStartTimeRef.current) / 1000));
               // H1: Read overlayInfo from ref — always latest value, no stale closure
-              drawCanvasOverlay(ctx, sourceVideo, canvasWidth, canvasHeight, overlayInfoRef.current, new Date(), elapsedSec);
+              drawCanvasOverlay(ctx, activeVideo, canvasWidth, canvasHeight, overlayInfoRef.current, new Date(), elapsedSec);
             } catch {
               // Ignore frame render errors
             }
