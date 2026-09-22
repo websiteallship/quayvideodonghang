@@ -486,8 +486,8 @@ export const VideoDetailPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column: Video Player & Controls (7 cols) */}
         <div className="lg:col-span-7 flex flex-col gap-3.5">
-          {/* Video Container Box: Chuẩn 16:9 responsive, tối ưu tuyệt đối cho mobile */}
-          <div className="w-full aspect-video min-h-[220px] sm:min-h-[280px] md:min-h-[360px] bg-black rounded-2xl overflow-hidden relative shadow-md border border-black/20 dark:border-white/10 flex items-center justify-center">
+          {/* Video Container Box: aspect-[4/3] trên mobile vừa vặn camera webcam kho, aspect-video trên desktop */}
+          <div className="w-full aspect-[4/3] sm:aspect-video bg-black rounded-2xl overflow-hidden relative shadow-md border border-black/20 dark:border-white/10 flex items-center justify-center">
             {isVideoLoading && (
               <div className="flex flex-col items-center gap-3 text-center p-4">
                 <RefreshCw size={28} className="text-amber-500 animate-spin" />
