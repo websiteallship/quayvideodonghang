@@ -67,14 +67,12 @@ export const Sidebar: React.FC = () => {
         end={item.to === '/'}
         title={sidebarCollapsed ? item.label : undefined}
         className={({ isActive }) =>
-          `group relative flex items-center rounded-xl text-sm font-medium transition-all cursor-pointer ${
-            sidebarCollapsed
-              ? 'justify-center h-12 w-full px-0'
-              : 'justify-between px-3.5 py-2.5 w-full'
-          } ${
-            isActive
-              ? 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold shadow-xs'
-              : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+          `group relative flex items-center rounded-xl text-sm font-medium transition-all cursor-pointer ${sidebarCollapsed
+            ? 'justify-center h-12 w-full px-0'
+            : 'justify-between px-3.5 py-2.5 w-full'
+          } ${isActive
+            ? 'bg-amber-500/10 dark:bg-amber-500/20 text-amber-600 dark:text-amber-400 font-semibold shadow-xs'
+            : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
           }`
         }
       >
@@ -83,11 +81,10 @@ export const Sidebar: React.FC = () => {
             <div className="flex items-center gap-3 min-w-0">
               <Icon
                 size={18}
-                className={`shrink-0 transition-colors ${
-                  isActive
-                    ? 'text-amber-500'
-                    : 'text-muted-foreground group-hover:text-foreground'
-                }`}
+                className={`shrink-0 transition-colors ${isActive
+                  ? 'text-amber-500'
+                  : 'text-muted-foreground group-hover:text-foreground'
+                  }`}
               />
               {!sidebarCollapsed && <span className="truncate">{item.label}</span>}
             </div>
@@ -117,15 +114,13 @@ export const Sidebar: React.FC = () => {
   return (
     <aside
       aria-label="Thanh điều hướng Desktop"
-      className={`hidden lg:flex border-r border-border bg-card/60 flex-col shrink-0 select-none transition-all duration-300 relative ${
-        sidebarCollapsed ? 'w-20' : 'w-56 xl:w-60'
-      }`}
+      className={`hidden lg:flex border-r border-border bg-card/60 flex-col shrink-0 select-none transition-all duration-300 relative ${sidebarCollapsed ? 'w-20' : 'w-56 xl:w-60'
+        }`}
     >
       {/* Sidebar Brand Header with Collapse / Expand button at top */}
       <div
-        className={`h-16 px-4 flex items-center justify-between border-b border-border ${
-          sidebarCollapsed ? 'justify-center' : ''
-        }`}
+        className={`h-16 px-4 flex items-center justify-between border-b border-border ${sidebarCollapsed ? 'justify-center' : ''
+          }`}
       >
         {!sidebarCollapsed ? (
           <>
@@ -172,19 +167,18 @@ export const Sidebar: React.FC = () => {
         <button
           type="button"
           onClick={() => openGuideModal('steps')}
-          title={sidebarCollapsed ? 'Hướng dẫn thao tác' : undefined}
-          className={`group relative flex items-center rounded-xl text-sm font-medium transition-all cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/70 ${
-            sidebarCollapsed
-              ? 'justify-center h-12 w-full px-0'
-              : 'justify-between px-3.5 py-2.5 w-full'
-          }`}
+          title={sidebarCollapsed ? 'Hướng dẫn' : undefined}
+          className={`group relative flex items-center rounded-xl text-sm font-medium transition-all cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/70 ${sidebarCollapsed
+            ? 'justify-center h-12 w-full px-0'
+            : 'justify-between px-3.5 py-2.5 w-full'
+            }`}
         >
           <div className="flex items-center gap-3 min-w-0">
             <BookOpen
               size={18}
               className="shrink-0 text-amber-500 transition-colors group-hover:text-amber-600 dark:group-hover:text-amber-400"
             />
-            {!sidebarCollapsed && <span className="truncate">Hướng dẫn thao tác</span>}
+            {!sidebarCollapsed && <span className="truncate">Hướng dẫn</span>}
           </div>
           {!sidebarCollapsed && (
             <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
