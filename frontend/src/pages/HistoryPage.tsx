@@ -50,6 +50,13 @@ import { feedbackSuccess } from '@/utils/barcode-feedback';
 import { getCarrierLabel as getCarrierLabelUtil } from '@/utils/detect-carrier';
 import { useConfigStore } from '@/stores/config-store';
 import type { BienBan, BarcodeResult } from '@/types';
+import {
+  OrderTableCells,
+  OrderMobileTag,
+  fetchVietfulMerchants,
+  syncOrderFromVietful,
+} from '@/modules/order-tracking';
+import { RotateCw } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // Helpers
@@ -150,9 +157,18 @@ export const HistoryPage: React.FC = () => {
   const [loaiBienBan, setLoaiBienBan] = useState('all');
   const [trangThai, setTrangThai] = useState('all');
   const [maNhanVien, setMaNhanVien] = useState('');
+  const [merchant, setMerchant] = useState('all');
+  const [canhBao, setCanhBao] = useState('all');
+  const [merchantList, setMerchantList] = useState<{ id: string; name: string }[]>([]);
   const [showFilters, setShowFilters] = useState(false);
   const [showFilterModal, setShowFilterModal] = useState(false);
   const [nhanVienList, setNhanVienList] = useState<{ ma: string; ten: string }[]>([]);
+
+  // Sync VietFul on-demand modal state
+  const [isSyncModalOpen, setIsSyncModalOpen] = useState(false);
+  const [syncCodeInput, setSyncCodeInput] = useState('');
+  const [isSyncing, setIsSyncing] = useState(false);
+  const [syncResult, setSyncResult] = useState<{ success: boolean; message: string } | null>(null);
 
   // Fetch nhan vien list for admin
   useEffect(() => {
@@ -168,6 +184,17 @@ export const HistoryPage: React.FC = () => {
         .catch((err) => console.error('Lỗi tải danh sách nhân viên', err));
     }
   }, [isAdmin]);
+
+  // Fetch VietFul merchant list for filter
+  useEffect(() => {
+    fetchVietfulMerchants()
+      .then((res) => {
+        if (res.success && Array.isArray(res.data)) {
+          setMerchantList(res.data.map((m) => ({ id: m.id, name: m.name })));
+        }
+      })
+      .catch((err) => console.error('Lỗi tải danh sách nhà bán VietFul', err));
+  }, []);
 
   // 3. Pagination & Data
   const [page, setPage] = useState(1);
@@ -262,6 +289,8 @@ export const HistoryPage: React.FC = () => {
     setLoaiBienBan('all');
     setTrangThai('all');
     setMaNhanVien('');
+    setMerchant('all');
+    setCanhBao('all');
     setPage(1);
   };
 
@@ -278,8 +307,10 @@ export const HistoryPage: React.FC = () => {
     if (loaiBienBan !== 'all') count++;
     if (trangThai !== 'all') count++;
     if (maNhanVien !== '') count++;
+    if (merchant !== 'all') count++;
+    if (canhBao !== 'all') count++;
     return count;
-  }, [isDefaultDate, carrier, loaiBienBan, trangThai, maNhanVien]);
+  }, [isDefaultDate, carrier, loaiBienBan, trangThai, maNhanVien, merchant, canhBao]);
 
   // Fetch list
   const loadData = useCallback(async () => {
@@ -296,6 +327,8 @@ export const HistoryPage: React.FC = () => {
       loai_bien_ban: loaiBienBan !== 'all' ? loaiBienBan : undefined,
       trang_thai: trangThai !== 'all' ? trangThai : undefined,
       ma_nhan_vien: isAdmin && maNhanVien.trim() ? maNhanVien.trim() : undefined,
+      merchant_id: merchant !== 'all' ? merchant : undefined,
+      canh_bao: canhBao !== 'all' ? canhBao : undefined,
     };
 
     const res = await fetchBienBanList(params);
@@ -312,7 +345,37 @@ export const HistoryPage: React.FC = () => {
     }
 
     setIsLoading(false);
-  }, [page, limit, debouncedSearch, dateRange, carrier, loaiBienBan, trangThai, maNhanVien, isAdmin]);
+  }, [page, limit, debouncedSearch, dateRange, carrier, loaiBienBan, trangThai, maNhanVien, merchant, canhBao, isAdmin]);
+
+  // Handle live sync from VietFul
+  const handleSyncVietfulOrder = async () => {
+    const code = syncCodeInput.trim();
+    if (!code) return;
+    setIsSyncing(true);
+    setSyncResult(null);
+    try {
+      const res = await syncOrderFromVietful(code);
+      if (res.success && res.data?.order) {
+        setSyncResult({
+          success: true,
+          message: `Đồng bộ thành công đơn hàng ${res.data.order.ma_don_hang || code} từ VietFul.`
+        });
+        void loadData();
+      } else {
+        setSyncResult({
+          success: false,
+          message: res.error?.message || 'Không tìm thấy hoặc lỗi kết nối máy chủ VietFul.'
+        });
+      }
+    } catch {
+      setSyncResult({
+        success: false,
+        message: 'Lỗi mạng hoặc kết nối máy chủ không phản hồi.'
+      });
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   useEffect(() => {
     void loadData();
@@ -470,6 +533,16 @@ export const HistoryPage: React.FC = () => {
             </Button>
 
             <Button
+              variant="outline"
+              onClick={() => { setIsSyncModalOpen(true); setSyncResult(null); }}
+              title="Đồng bộ trực tiếp thông tin đơn hàng từ VietFul"
+              className="h-10 px-3 rounded-xl border border-violet-200 dark:border-violet-900 bg-violet-50/50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 hover:bg-violet-100 dark:hover:bg-violet-900/50 text-xs font-semibold gap-1.5 shrink-0 shadow-xs cursor-pointer"
+            >
+              <RotateCw size={14} className="text-violet-600 dark:text-violet-400" />
+              <span className="hidden xl:inline">Đồng bộ VietFul</span>
+            </Button>
+
+            <Button
               variant={showFilters || activeFiltersCount > 0 ? 'default' : 'outline'}
               onClick={() => setShowFilters(!showFilters)}
               title="Bật / tắt bảng bộ lọc nâng cao"
@@ -518,6 +591,16 @@ export const HistoryPage: React.FC = () => {
             <Scan size={16} className="text-blue-600 dark:text-blue-400" />
           </Button>
 
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => { setIsSyncModalOpen(true); setSyncResult(null); }}
+            title="Đồng bộ VietFul"
+            className="size-10 rounded-xl border border-violet-200 dark:border-violet-900 bg-violet-50/50 dark:bg-violet-950/30 text-violet-700 dark:text-violet-300 hover:bg-violet-100 shadow-xs shrink-0 cursor-pointer"
+          >
+            <RotateCw size={16} />
+          </Button>
+
           <button
             type="button"
             onClick={() => setShowFilterModal(true)}
@@ -553,6 +636,11 @@ export const HistoryPage: React.FC = () => {
         setTrangThai={setTrangThai}
         maNhanVien={maNhanVien}
         setMaNhanVien={setMaNhanVien}
+        merchant={merchant}
+        setMerchant={setMerchant}
+        canhBao={canhBao}
+        setCanhBao={setCanhBao}
+        merchantList={merchantList}
         setPage={setPage}
         showFilters={showFilters}
         setShowFilters={setShowFilters}
@@ -586,6 +674,24 @@ export const HistoryPage: React.FC = () => {
             <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-lg bg-blue-500/10 text-blue-600 border border-blue-500/20 shrink-0 font-medium">
               ĐVVC: {getCarrierLabel(carrier)}
               <button type="button" onClick={() => { setCarrier('all'); setPage(1); }} className="hover:opacity-70 cursor-pointer">
+                <X size={12} />
+              </button>
+            </span>
+          )}
+
+          {canhBao !== 'all' && (
+            <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-lg bg-amber-500/10 text-amber-700 dark:text-amber-300 border border-amber-500/20 shrink-0 font-medium">
+              Cảnh báo: {canhBao === 'has_warning' ? 'Tất cả cảnh báo' : canhBao}
+              <button type="button" onClick={() => { setCanhBao('all'); setPage(1); }} className="hover:opacity-70 cursor-pointer">
+                <X size={12} />
+              </button>
+            </span>
+          )}
+
+          {merchant !== 'all' && (
+            <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-lg bg-violet-500/10 text-violet-700 dark:text-violet-300 border border-violet-500/20 shrink-0 font-medium">
+              Nhà bán: {merchantList.find((m) => m.id === merchant)?.name || merchant}
+              <button type="button" onClick={() => { setMerchant('all'); setPage(1); }} className="hover:opacity-70 cursor-pointer">
                 <X size={12} />
               </button>
             </span>
@@ -737,6 +843,8 @@ export const HistoryPage: React.FC = () => {
                 <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm shadow-xs border-b border-border/80">
                   <tr className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground select-none">
                     <th className="py-3 px-4 bg-card">Mã vận đơn</th>
+                    <th className="py-3 px-3 bg-card">Đơn hàng &amp; Nhà bán</th>
+                    <th className="py-3 px-3 bg-card">Trạng thái đơn</th>
                     <th className="py-3 px-3 bg-card">Loại</th>
                     <th className="py-3 px-3 bg-card">Người tạo</th>
                     <th className="py-3 px-3 bg-card">Thời gian</th>
@@ -780,6 +888,9 @@ export const HistoryPage: React.FC = () => {
                             </div>
                           </div>
                         </td>
+
+                        {/* VietFul Order Cells (Đơn hàng & Nhà bán + Trạng thái & Cảnh báo) */}
+                        <OrderTableCells order={item.order} maVanDon={item.ma_van_don} />
 
                         {/* Loại biên bản */}
                         <td className="py-3 px-3">
@@ -915,6 +1026,9 @@ export const HistoryPage: React.FC = () => {
                       </span>
                     </div>
 
+                    {/* VietFul Mobile Order Tag */}
+                    <OrderMobileTag order={item.order} />
+
                     {/* Metadata Grid */}
                     <div className="grid grid-cols-2 gap-2 text-[11px] text-muted-foreground border-y border-border/60 py-2.5">
                       <div className="flex items-center gap-1.5 truncate">
@@ -1018,6 +1132,103 @@ export const HistoryPage: React.FC = () => {
               >
                 <X size={14} />
                 <span>Đóng</span>
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* ================================================================== */}
+      {/* VietFul Live Sync Dialog */}
+      {/* ================================================================== */}
+      <Dialog open={isSyncModalOpen} onOpenChange={setIsSyncModalOpen}>
+        <DialogContent className="w-[96vw] max-w-[96vw] sm:max-w-md sm:w-full p-0 rounded-2xl overflow-hidden border-border bg-card">
+          <DialogHeader className="px-5 py-4 border-b border-border flex flex-row items-center justify-between space-y-0 shrink-0">
+            <div>
+              <DialogTitle className="text-sm font-bold text-foreground flex items-center gap-2">
+                <RotateCw size={16} className="text-violet-600 dark:text-violet-400" />
+                <span>Đồng bộ đơn hàng từ VietFul</span>
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground mt-0.5">
+                Tra cứu trực tiếp qua Keycloak OAuth2 &amp; VietFul Order API
+              </DialogDescription>
+            </div>
+            <button
+              type="button"
+              onClick={() => setIsSyncModalOpen(false)}
+              className="p-1.5 text-muted-foreground hover:text-foreground rounded-lg hover:bg-muted cursor-pointer"
+            >
+              <X size={18} />
+            </button>
+          </DialogHeader>
+
+          <div className="p-5 flex flex-col gap-4">
+            <div className="flex flex-col gap-1.5">
+              <label className="text-xs font-semibold text-foreground">
+                Mã vận đơn hoặc Mã đơn hàng VietFul:
+              </label>
+              <div className="relative">
+                <Input
+                  type="text"
+                  placeholder="Ví dụ: SPX123456789 hoặc OR202603..."
+                  value={syncCodeInput}
+                  onChange={(e) => setSyncCodeInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') void handleSyncVietfulOrder();
+                  }}
+                  className="w-full h-10 px-3 text-xs font-mono bg-muted/30 border border-border rounded-xl"
+                  autoFocus
+                />
+              </div>
+              <p className="text-[11px] text-muted-foreground">
+                Hệ thống sẽ tự động xác định nhà bán và kéo đầy đủ SKU, trạng thái, cảnh báo từ VietFul.
+              </p>
+            </div>
+
+            {syncResult && (
+              <div
+                className={cn(
+                  'p-3 rounded-xl border text-xs flex items-start gap-2',
+                  syncResult.success
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-500/30 text-emerald-800 dark:text-emerald-200'
+                    : 'bg-rose-50 dark:bg-rose-950/40 border-rose-500/30 text-rose-800 dark:text-rose-200'
+                )}
+              >
+                {syncResult.success ? (
+                  <Check size={16} className="text-emerald-600 shrink-0 mt-0.5" />
+                ) : (
+                  <AlertCircle size={16} className="text-rose-600 shrink-0 mt-0.5" />
+                )}
+                <span>{syncResult.message}</span>
+              </div>
+            )}
+
+            <div className="flex items-center justify-end gap-2 pt-2 border-t border-border">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsSyncModalOpen(false)}
+                className="h-9 px-4 rounded-xl text-xs"
+              >
+                Đóng
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSyncVietfulOrder}
+                disabled={isSyncing || !syncCodeInput.trim()}
+                className="h-9 px-4 rounded-xl bg-violet-600 hover:bg-violet-700 text-white text-xs font-bold gap-1.5 shadow-xs"
+              >
+                {isSyncing ? (
+                  <>
+                    <RefreshCw size={14} className="animate-spin" />
+                    <span>Đang đồng bộ...</span>
+                  </>
+                ) : (
+                  <>
+                    <RotateCw size={14} />
+                    <span>Đồng bộ ngay</span>
+                  </>
+                )}
               </Button>
             </div>
           </div>

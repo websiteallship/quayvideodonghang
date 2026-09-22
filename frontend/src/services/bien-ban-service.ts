@@ -112,6 +112,9 @@ export interface BienBanFilterParams {
   loai_bien_ban?: string;
   trang_thai?: string;
   ma_nhan_vien?: string;
+  merchant_id?: string;
+  canh_bao?: string;
+  trang_thai_don?: string;
 }
 
 export interface BienBanListResponse {

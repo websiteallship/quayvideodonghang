@@ -1,4 +1,3 @@
-import React from 'react';
 import {
   SlidersHorizontal,
   Calendar,
@@ -8,7 +7,9 @@ import {
   X,
   RotateCcw,
   Check,
-  ExternalLink
+  ExternalLink,
+  Store,
+  AlertTriangle
 } from 'lucide-react';
 import {
   Select,
@@ -45,6 +46,15 @@ const STATUS_LIST = [
   { label: 'Lỗi tải lên', value: 'loi', colorDot: 'bg-rose-500' }
 ];
 
+const WARNING_FILTER_OPTIONS = [
+  { label: 'Tất cả đơn', value: 'all' },
+  { label: 'Có cảnh báo (Tất cả)', value: 'has_warning' },
+  { label: 'Đơn đã hủy (DON_HUY)', value: 'DON_HUY' },
+  { label: 'Quét trùng (QUET_TRUNG)', value: 'QUET_TRUNG' },
+  { label: 'Hold đơn (HOLD_DON)', value: 'HOLD_DON' },
+  { label: 'Chờ kiểm hoàn (DANG_HOAN)', value: 'DANG_HOAN' },
+];
+
 export interface HistoryFilterProps {
   isAdmin: boolean;
   nhanVienList: { ma: string; ten: string }[];
@@ -56,6 +66,11 @@ export interface HistoryFilterProps {
   setTrangThai: (val: string) => void;
   maNhanVien: string;
   setMaNhanVien: (val: string) => void;
+  merchant?: string;
+  setMerchant?: (val: string) => void;
+  canhBao?: string;
+  setCanhBao?: (val: string) => void;
+  merchantList?: { id: string; name: string }[];
   setPage: (val: number) => void;
   showFilters: boolean;
   setShowFilters: (val: boolean) => void;
@@ -78,6 +93,11 @@ export const HistoryFilter: React.FC<HistoryFilterProps> = ({
   setTrangThai,
   maNhanVien,
   setMaNhanVien,
+  merchant = 'all',
+  setMerchant,
+  canhBao = 'all',
+  setCanhBao,
+  merchantList = [],
   setPage,
   showFilters,
   setShowFilters,
@@ -129,8 +149,8 @@ export const HistoryFilter: React.FC<HistoryFilterProps> = ({
             </div>
           </div>
 
-          {/* 4 Filters Grid */}
-          <div className={cn("grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs", isAdmin ? "lg:grid-cols-4" : "lg:grid-cols-3")}>
+          {/* Filters Grid */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-3 xl:grid-cols-5 gap-4 text-xs">
             {/* 1. Khoảng thời gian */}
             <div className="flex flex-col gap-1.5">
               <label className="font-bold text-foreground flex items-center gap-1.5 text-xs">
@@ -166,7 +186,7 @@ export const HistoryFilter: React.FC<HistoryFilterProps> = ({
               </Select>
             </div>
 
-            {/* 3. Trạng thái */}
+            {/* 3. Trạng thái lưu trữ */}
             <div className="flex flex-col gap-1.5">
               <label className="font-bold text-foreground flex items-center gap-1.5 text-xs">
                 <HardDrive size={14} className="text-blue-600 dark:text-blue-400" />
@@ -192,9 +212,56 @@ export const HistoryFilter: React.FC<HistoryFilterProps> = ({
               </Select>
             </div>
 
-            {/* 4. Nhân viên */}
+            {/* 4. Cảnh báo đơn hàng */}
+            <div className="flex flex-col gap-1.5">
+              <label className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                <AlertTriangle size={14} className="text-amber-500" />
+                <span>Cảnh báo đơn hàng</span>
+              </label>
+              <Select value={canhBao} onValueChange={(val) => { setCanhBao?.(val); setPage(1); }}>
+                <SelectTrigger className={cn(
+                  "w-full h-10 px-3.5 rounded-2xl border bg-card text-foreground font-medium text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-amber-500/20 focus:border-amber-500 shadow-2xs hover:bg-muted/40 transition-all cursor-pointer",
+                  canhBao !== 'all' ? "border-amber-500/60 bg-amber-50/40 dark:bg-amber-950/20 text-amber-900 dark:text-amber-300 font-semibold" : "border-slate-200 dark:border-slate-800"
+                )}>
+                  <SelectValue placeholder="Tất cả cảnh báo" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl shadow-xl border-slate-100 dark:border-slate-800">
+                  {WARNING_FILTER_OPTIONS.map((w) => (
+                    <SelectItem key={w.value} value={w.value}>
+                      {w.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 5. Nhà bán VietFul */}
+            <div className="flex flex-col gap-1.5">
+              <label className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                <Store size={14} className="text-violet-500" />
+                <span>Nhà bán (VietFul)</span>
+              </label>
+              <Select value={merchant} onValueChange={(val) => { setMerchant?.(val); setPage(1); }}>
+                <SelectTrigger className={cn(
+                  "w-full h-10 px-3.5 rounded-2xl border bg-card text-foreground font-medium text-xs sm:text-sm focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 shadow-2xs hover:bg-muted/40 transition-all cursor-pointer",
+                  merchant !== 'all' ? "border-violet-500/60 bg-violet-50/40 dark:bg-violet-950/20 text-violet-900 dark:text-violet-300 font-semibold" : "border-slate-200 dark:border-slate-800"
+                )}>
+                  <SelectValue placeholder="Tất cả nhà bán" />
+                </SelectTrigger>
+                <SelectContent className="rounded-2xl shadow-xl border-slate-100 dark:border-slate-800 max-h-64">
+                  <SelectItem value="all">Tất cả nhà bán</SelectItem>
+                  {merchantList.map((m) => (
+                    <SelectItem key={m.id} value={m.id}>
+                      {m.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {/* 6. Nhân viên (Admin) */}
             {isAdmin && (
-              <div className="flex flex-col gap-1.5">
+              <div className="flex flex-col gap-1.5 sm:col-span-2 md:col-span-1">
                 <label className="font-bold text-foreground flex items-center gap-1.5 text-xs">
                   <User size={14} className="text-blue-600 dark:text-blue-400" />
                   <span>Nhân viên thực hiện</span>
@@ -355,33 +422,82 @@ export const HistoryFilter: React.FC<HistoryFilterProps> = ({
               </div>
             </div>
 
-            {/* 4. Nhân viên & Thiết bị */}
-            {isAdmin && (
-              <>
-                <Separator className="opacity-60" />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="flex flex-col gap-2">
-                    <label className="font-bold text-foreground flex items-center gap-1.5 text-xs">
-                      <User size={15} className="text-blue-600 dark:text-blue-400" />
-                      <span>Nhân viên thực hiện (Admin)</span>
-                    </label>
-                    <Select value={maNhanVien || "all"} onValueChange={(val) => { setMaNhanVien(val === "all" ? "" : val); setPage(1); }}>
-                      <SelectTrigger className="w-full h-10 px-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-card text-foreground font-medium text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs">
-                        <SelectValue placeholder="Tất cả nhân viên" />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-2xl shadow-xl border-slate-100 dark:border-slate-800 max-h-64">
-                        <SelectItem value="all">Tất cả nhân viên</SelectItem>
-                        {nhanVienList.map((nv) => (
-                          <SelectItem key={nv.ma} value={nv.ma}>
-                            {nv.ma} - {nv.ten}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+            <Separator className="opacity-60" />
+
+            {/* 4. Cảnh báo đơn hàng VietFul */}
+            <div className="flex flex-col gap-2.5">
+              <label className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                <AlertTriangle size={15} className="text-amber-500" />
+                <span>Cảnh báo & Rủi ro đơn hàng</span>
+              </label>
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                {WARNING_FILTER_OPTIONS.map((w) => {
+                  const isSelected = (canhBao || 'all') === w.value;
+                  return (
+                    <button
+                      key={w.value}
+                      type="button"
+                      onClick={() => { setCanhBao?.(w.value); setPage(1); }}
+                      className={cn(
+                        "p-2.5 rounded-xl border text-xs font-semibold text-left transition-all cursor-pointer",
+                        isSelected
+                          ? "bg-amber-50 dark:bg-amber-950/50 border-amber-500 text-amber-950 dark:text-amber-200 shadow-2xs font-bold"
+                          : "bg-card border-border text-foreground hover:bg-muted/80"
+                      )}
+                    >
+                      {w.label}
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <Separator className="opacity-60" />
+
+            {/* 5. Nhà bán & Nhân viên */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <label className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                  <Store size={15} className="text-violet-500" />
+                  <span>Nhà bán (VietFul)</span>
+                </label>
+                <Select value={merchant || "all"} onValueChange={(val) => { setMerchant?.(val); setPage(1); }}>
+                  <SelectTrigger className="w-full h-10 px-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-card text-foreground font-medium text-xs focus:outline-none focus:ring-2 focus:ring-violet-500/20 focus:border-violet-500 shadow-2xs">
+                    <SelectValue placeholder="Tất cả nhà bán" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl shadow-xl border-slate-100 dark:border-slate-800 max-h-64">
+                    <SelectItem value="all">Tất cả nhà bán</SelectItem>
+                    {merchantList.map((m) => (
+                      <SelectItem key={m.id} value={m.id}>
+                        {m.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+
+              {isAdmin && (
+                <div className="flex flex-col gap-2">
+                  <label className="font-bold text-foreground flex items-center gap-1.5 text-xs">
+                    <User size={15} className="text-blue-600 dark:text-blue-400" />
+                    <span>Nhân viên thực hiện (Admin)</span>
+                  </label>
+                  <Select value={maNhanVien || "all"} onValueChange={(val) => { setMaNhanVien(val === "all" ? "" : val); setPage(1); }}>
+                    <SelectTrigger className="w-full h-10 px-3.5 rounded-2xl border border-slate-200 dark:border-slate-800 bg-card text-foreground font-medium text-xs focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 shadow-2xs">
+                      <SelectValue placeholder="Tất cả nhân viên" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-2xl shadow-xl border-slate-100 dark:border-slate-800 max-h-64">
+                      <SelectItem value="all">Tất cả nhân viên</SelectItem>
+                      {nhanVienList.map((nv) => (
+                        <SelectItem key={nv.ma} value={nv.ma}>
+                          {nv.ma} - {nv.ten}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
                 </div>
-              </>
-            )}
+              )}
+            </div>
           </div>
 
           {/* Footer Actions */}

@@ -38,6 +38,7 @@ import {
   ArrowLeft,
   ChevronRight,
 } from 'lucide-react';
+import { OrderWarningAlert, OrderSummaryCard } from '@/modules/order-tracking';
 
 // ---------------------------------------------------------------------------
 // Helpers (moved from VideoDetailModal)
@@ -481,6 +482,9 @@ export const VideoDetailPage: React.FC = () => {
         </div>
       </div>
 
+      {/* VietFul Order Warning Alert (DON_HUY, QUET_TRUNG, HOLD_DON, DANG_HOAN) */}
+      <OrderWarningAlert order={item.order} />
+
       {/* ---------------------------------------------------------------- */}
       {/* 2-Column Layout (Desktop) / Stack (Mobile) */}
       {/* ---------------------------------------------------------------- */}
@@ -673,6 +677,15 @@ export const VideoDetailPage: React.FC = () => {
 
         {/* Right Column: Detailed Info & Metadata (5 cols) */}
         <div className="lg:col-span-5 flex flex-col gap-4">
+          {/* VietFul Order Details Card (Live Sync, SKU List, Merchant Info) */}
+          <OrderSummaryCard
+            order={item.order}
+            maVanDon={item.ma_van_don}
+            onOrderUpdated={(updatedOrder) => {
+              setItem((prev) => (prev ? { ...prev, order: updatedOrder } : null));
+            }}
+          />
+
           {/* Section 1: Thông tin vận đơn */}
           <div className="rounded-xl border border-border bg-card p-3.5 space-y-2.5">
             <div className="flex items-center justify-between">
