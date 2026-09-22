@@ -5,7 +5,8 @@ import {
   Volume2,
   VolumeX,
   Maximize,
-  Minimize
+  Minimize,
+  RotateCw,
 } from 'lucide-react';
 import { Spinner } from '@/components/ui/Spinner';
 import { formatDuration } from '@/utils/format';
@@ -16,6 +17,7 @@ interface CustomVideoPlayerProps {
   title?: string;
   className?: string;
   onError?: () => void;
+  onOrientationChange?: (isPortrait: boolean) => void;
 }
 
 export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
@@ -24,6 +26,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   title,
   className = '',
   onError,
+  onOrientationChange,
 }) => {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -37,7 +40,13 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
   const [isBuffering, setIsBuffering] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
   const [showControls, setShowControls] = useState(true);
+  const [rotation, setRotation] = useState<number>(0);
+  const [isPortrait, setIsPortrait] = useState<boolean>(false);
   const controlsTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleRotate = useCallback(() => {
+    setRotation((prev) => (prev + 90) % 360);
+  }, []);
 
   // Reset loading state when source changes
   useEffect(() => {
@@ -77,6 +86,13 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
     if (!videoRef.current) return;
     const vid = videoRef.current;
     
+    // Tự động nhận diện video khung dọc (Portrait) hay khung ngang (Landscape)
+    if (vid.videoWidth && vid.videoHeight) {
+      const portrait = vid.videoHeight > vid.videoWidth;
+      setIsPortrait(portrait);
+      onOrientationChange?.(portrait);
+    }
+
     // Nếu trình duyệt nhận diện duration hợp lệ (> 1s và hữu hạn)
     if (Number.isFinite(vid.duration) && vid.duration > 1) {
       setVideoDuration(vid.duration);
@@ -95,7 +111,7 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
         // Safe catch
       }
     }
-  }, [expectedDuration]);
+  }, [expectedDuration, onOrientationChange]);
 
   // Cập nhật currentTime theo chu kỳ phát
   const handleTimeUpdate = useCallback(() => {
@@ -241,6 +257,14 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
           console.warn('[CustomVideoPlayer] Playback error code:', err?.code, err?.message);
           onError?.();
         }}
+        style={
+          rotation !== 0
+            ? {
+                transform: `rotate(${rotation}deg)`,
+                transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+              }
+            : { transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)' }
+        }
         className="w-full h-full object-contain cursor-pointer"
       />
 
@@ -256,8 +280,9 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
 
       {/* Title / Watermark Overlay */}
       {title && (
-        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-xs text-[11px] font-mono text-white/90 z-20 pointer-events-none select-none">
-          {title}
+        <div className="absolute top-3 left-3 px-2.5 py-1 rounded-md bg-black/60 backdrop-blur-xs text-[11px] font-mono text-white/90 z-20 pointer-events-none select-none flex items-center gap-1.5">
+          <span>{title}</span>
+          <span className="text-white/60">({isPortrait ? '9:16' : '16:9'})</span>
         </div>
       )}
 
@@ -373,6 +398,17 @@ export const CustomVideoPlayer: React.FC<CustomVideoPlayerProps> = ({
                 className="w-12 h-1 accent-primary cursor-pointer hidden sm:inline-block"
               />
             </div>
+
+            {/* Rotate Video */}
+            <button
+              type="button"
+              onClick={handleRotate}
+              aria-label="Xoay video 90 độ"
+              title={`Xoay video 90° (hiện tại: ${rotation}°)`}
+              className="p-1.5 hover:bg-white/15 rounded-md transition-colors text-white cursor-pointer"
+            >
+              <RotateCw size={16} />
+            </button>
 
             {/* Fullscreen Toggle */}
             <button

@@ -97,14 +97,12 @@ export function drawCanvasOverlay(
     ctx.fillRect(0, 0, width, height);
   }
 
-  // 2. Top-left Badge: Mode & Barcode
-  // Define text shadow for readability without bulky boxes
+  // 2. Watermark Overlay
   ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
   ctx.shadowBlur = 4;
   ctx.shadowOffsetX = 1;
   ctx.shadowOffsetY = 1;
 
-  // Render everything compactly at the bottom left to save space
   const isDongGoi = overlay.loaiBienBan === 'dong_goi';
   const line1 = `[${isDongGoi ? 'ĐÓNG GÓI' : 'KHUI HÀNG'}] ${overlay.maVanDon}`;
   const line2 = `NV: ${overlay.maNhanVien} | ĐVVC: ${overlay.donViVc}`;
@@ -118,54 +116,56 @@ export function drawCanvasOverlay(
   }
 
   const line4 = `Kho: ${overlay.warehouseName || 'Chưa cấu hình (Vào Cài đặt)'}`;
-  // M5: Use cached formatters instead of toLocaleTimeString/toLocaleDateString per frame
   const timeStr = timeFormatter ? timeFormatter.format(now) : now.toLocaleTimeString('vi-VN');
   const dateStr = dateFormatter ? dateFormatter.format(now) : now.toLocaleDateString('vi-VN');
   const line5 = `${timeStr} ${dateStr}`;
 
-  const startX = 20;
-  let currentY = height - 160; // Start higher to fit all lines
-  const lineHeight = 28;
+  const isPortrait = height > width;
+  const startX = isPortrait ? 16 : 20;
+  const lineHeight = isPortrait ? 24 : 28;
+  let currentY = height - (isPortrait ? 150 : 160);
 
   ctx.textAlign = 'left';
   ctx.textBaseline = 'middle';
 
   // Line 1: Mode + Code
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 20px monospace';
+  ctx.font = isPortrait ? 'bold 17px monospace' : 'bold 20px monospace';
   ctx.fillText(line1, startX, currentY);
   currentY += lineHeight;
 
   // Line 2: NV + DVVC
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 18px monospace';
+  ctx.font = isPortrait ? 'bold 15px monospace' : 'bold 18px monospace';
   ctx.fillText(line2, startX, currentY);
   currentY += lineHeight;
 
   // Line 3: GPS
   ctx.fillStyle = overlay.gpsCoords ? '#7dd3fc' : '#cbd5e1';
-  ctx.font = 'bold 16px monospace';
-  const maxChars3 = 55;
+  ctx.font = isPortrait ? 'bold 14px monospace' : 'bold 16px monospace';
+  const maxChars3 = isPortrait ? 38 : 55;
   const displayLine3 = line3.length > maxChars3 ? line3.slice(0, maxChars3) + '…' : line3;
   ctx.fillText(displayLine3, startX, currentY);
   currentY += lineHeight;
 
   // Line 4: Warehouse
   ctx.fillStyle = overlay.warehouseName ? '#fbbf24' : '#cbd5e1';
-  ctx.font = 'bold 18px monospace';
-  ctx.fillText(line4, startX, currentY);
+  ctx.font = isPortrait ? 'bold 15px monospace' : 'bold 18px monospace';
+  const maxChars4 = isPortrait ? 40 : 60;
+  const displayLine4 = line4.length > maxChars4 ? line4.slice(0, maxChars4) + '…' : line4;
+  ctx.fillText(displayLine4, startX, currentY);
   currentY += lineHeight;
 
   // Line 5: Timestamp
   ctx.fillStyle = '#ffffff';
-  ctx.font = 'bold 18px monospace';
+  ctx.font = isPortrait ? 'bold 15px monospace' : 'bold 18px monospace';
   ctx.fillText(line5, startX, currentY);
 
   // Bottom-right Badge: Watermark
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
-  ctx.font = '16px sans-serif';
+  ctx.font = isPortrait ? '13px sans-serif' : '16px sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('QuayVideo Kho PWA', width - 20, height - 20);
+  ctx.fillText('QuayVideo Kho PWA', width - (isPortrait ? 16 : 20), height - (isPortrait ? 16 : 20));
 
   // Clear shadow before exit
   ctx.shadowColor = 'transparent';
@@ -260,19 +260,6 @@ export function useMediaRecorder({
         throw new Error('MediaRecorder không được hỗ trợ trên trình duyệt này');
       }
 
-      // Create offscreen canvas for rendering overlay
-      const canvas = document.createElement('canvas');
-      canvas.width = targetWidth;
-      canvas.height = targetHeight;
-      canvasRef.current = canvas;
-
-      let ctx: CanvasRenderingContext2D | null = null;
-      try {
-        ctx = canvas.getContext('2d', { alpha: false });
-      } catch {
-        ctx = null;
-      }
-
       // Create or use source video element to feed the stream into canvas
       let sourceVideo = sourceVideoRef.current;
       if (!sourceVideo) {
@@ -292,6 +279,41 @@ export function useMediaRecorder({
         sourceVideoRef.current = sourceVideo;
       }
 
+      // Đợi sourceVideo nạp metadata để nhận diện chiều quay (Portrait vs Landscape)
+      if (sourceVideo.readyState < HTMLMediaElement.HAVE_METADATA) {
+        await new Promise<void>((resolve) => {
+          const timer = setTimeout(resolve, 300);
+          sourceVideo!.onloadedmetadata = () => {
+            clearTimeout(timer);
+            resolve();
+          };
+        });
+      }
+
+      // Xác định tỉ lệ hướng quay thực tế của camera
+      const videoTrack = stream.getVideoTracks()[0];
+      const settings = videoTrack?.getSettings ? videoTrack.getSettings() : undefined;
+      const vWidth = sourceVideo.videoWidth || settings?.width || 0;
+      const vHeight = sourceVideo.videoHeight || settings?.height || 0;
+      const isPortrait = (vHeight > 0 && vWidth > 0) ? (vHeight > vWidth) : false;
+
+      // Giữ nguyên tỉ lệ quay: dọc (720x1280 / 1080x1920) hoặc ngang (1280x720 / 1920x1080)
+      const canvasWidth = isPortrait ? Math.min(targetWidth, targetHeight) : Math.max(targetWidth, targetHeight);
+      const canvasHeight = isPortrait ? Math.max(targetWidth, targetHeight) : Math.min(targetWidth, targetHeight);
+
+      // Create offscreen canvas for rendering overlay
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      canvasRef.current = canvas;
+
+      let ctx: CanvasRenderingContext2D | null = null;
+      try {
+        ctx = canvas.getContext('2d', { alpha: false });
+      } catch {
+        ctx = null;
+      }
+
       // M1: Frame rendering loop throttled to target FPS (30fps)
       // rAF runs at 60fps — drawing 60fps for 30fps recording wastes ~50% CPU on mobile kho
       const frameDurationMs = 1000 / fps;
@@ -303,7 +325,7 @@ export function useMediaRecorder({
           if (ctx && sourceVideo) {
             try {
               // H1: Read overlayInfo from ref — always latest value, no stale closure
-              drawCanvasOverlay(ctx, sourceVideo, targetWidth, targetHeight, overlayInfoRef.current, new Date());
+              drawCanvasOverlay(ctx, sourceVideo, canvasWidth, canvasHeight, overlayInfoRef.current, new Date());
             } catch {
               // Ignore frame render errors
             }

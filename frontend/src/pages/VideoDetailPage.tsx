@@ -127,6 +127,7 @@ export const VideoDetailPage: React.FC = () => {
   const [isVideoLoading, setIsVideoLoading] = useState(false);
   const [videoError, setVideoError] = useState<string | null>(null);
   const [videoMode, setVideoMode] = useState<'native' | 'iframe'>('native');
+  const [isPortraitVideo, setIsPortraitVideo] = useState<boolean>(false);
 
   // Copy states
   const [copiedCode, setCopiedCode] = useState(false);
@@ -486,8 +487,13 @@ export const VideoDetailPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column: Video Player & Controls (7 cols) */}
         <div className="lg:col-span-7 flex flex-col gap-3.5">
-          {/* Video Container Box: min-h-[300px] để cụm điều khiển Google Drive không bị cắt cụt */}
-          <div className="w-full aspect-[4/3] sm:aspect-video min-h-[300px] sm:min-h-[360px] bg-black rounded-xl overflow-hidden relative shadow-md border border-border/40 flex items-center justify-center">
+          {/* Video Container Box: Tự động co dãn theo khung dọc (Portrait) hoặc ngang (Landscape) */}
+          <div className={cn(
+            "w-full bg-black rounded-xl overflow-hidden relative shadow-md border border-border/40 flex items-center justify-center transition-all duration-300",
+            isPortraitVideo
+              ? "max-w-md mx-auto aspect-[9/16] max-h-[75vh] min-h-[420px]"
+              : "aspect-[4/3] sm:aspect-video min-h-[300px] sm:min-h-[360px]"
+          )}>
             {isVideoLoading && (
               <div className="flex flex-col items-center gap-3 text-center p-4">
                 <RefreshCw size={28} className="text-amber-500 animate-spin" />
@@ -531,6 +537,7 @@ export const VideoDetailPage: React.FC = () => {
                     src={streamUrl}
                     expectedDuration={item.thoi_luong_video}
                     title={`${item.ma_van_don} | ${formatDateTimeVN(item.thoi_gian_tao)}`}
+                    onOrientationChange={setIsPortraitVideo}
                     onError={() => {
                       // Auto-fallback to iframe when native player fails
                       if (viewUrl) {
@@ -590,11 +597,23 @@ export const VideoDetailPage: React.FC = () => {
               </TabsList>
             </Tabs>
 
-            {item.drive_file_id && (
-              <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[200px] hidden sm:inline" title={item.drive_file_id}>
-                Drive ID: {item.drive_file_id.slice(0, 10)}...
-              </span>
-            )}
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setIsPortraitVideo((prev) => !prev)}
+                className="h-8 px-2.5 text-xs font-medium cursor-pointer"
+                title="Chuyển đổi tỉ lệ khung nhìn ngang / dọc"
+              >
+                {isPortraitVideo ? 'Khung dọc 9:16' : 'Khung ngang 16:9'}
+              </Button>
+
+              {item.drive_file_id && (
+                <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[180px] hidden sm:inline" title={item.drive_file_id}>
+                  Drive ID: {item.drive_file_id.slice(0, 10)}...
+                </span>
+              )}
+            </div>
           </div>
 
           {/* Tip hướng dẫn khi xem qua Google Drive Viewer */}

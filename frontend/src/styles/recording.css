@@ -381,12 +381,15 @@
   background: #000000;
   border-radius: var(--radius-lg, 0.75rem);
   overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .video-preview-card__player {
   width: 100%;
-  max-height: 380px;
-  aspect-ratio: 16 / 9;
+  max-height: 520px;
+  object-fit: contain;
   display: block;
 }
 
