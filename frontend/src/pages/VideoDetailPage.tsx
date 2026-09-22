@@ -543,7 +543,7 @@ export const VideoDetailPage: React.FC = () => {
                 ) : viewUrl ? (
                   <iframe
                     src={viewUrl}
-                    className="w-full h-full border-0"
+                    className="absolute top-0 left-0 w-full h-full border-0"
                     allow="autoplay; encrypted-media"
                     allowFullScreen
                     title={`Video xem lại ${item.ma_van_don}`}
@@ -556,7 +556,7 @@ export const VideoDetailPage: React.FC = () => {
               <>
                 <iframe
                   src={viewUrl}
-                  className="w-full h-full border-0"
+                  className="absolute top-0 left-0 w-full h-full border-0"
                   allow="autoplay; encrypted-media"
                   allowFullScreen
                   title={`Video xem lại ${item.ma_van_don}`}
