@@ -10,6 +10,8 @@ export type UploadStatus = 'cho_upload' | 'dang_upload' | 'da_upload' | 'loi' | 
 
 export type ThietBiType = 'mobile' | 'pc_webcam' | 'laptop';
 
+import type { OrderTrackingInfo } from '../modules/order-tracking/types';
+
 export interface BienBan {
   id: string;
   ma_van_don: string;
@@ -28,6 +30,7 @@ export interface BienBan {
   thoi_gian_tao: string;
   thoi_gian_upload?: string | null;
   ngay_cap_nhat?: string;
+  order?: OrderTrackingInfo | null;
 }
 
 export interface QueueItem {
