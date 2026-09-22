@@ -64,6 +64,20 @@ const RESOLUTION_OPTIONS = [
   { value: '640x480', label: '480p (SD)' },
 ];
 
+const ALLOWED_CONFIG_KEYS: readonly CauHinhKey[] = [
+  'drive_folder_id',
+  'sheet_id',
+  'do_phan_giai',
+  'bitrate_mbps',
+  'auto_scan',
+  'quay_lien_tuc',
+  'watermark',
+  'don_vi_vc_danh_sach',
+  'retention_archive_days',
+  'retention_delete_days',
+  'retention_thang',
+];
+
 // ---------------------------------------------------------------------------
 // Sub-components
 // ---------------------------------------------------------------------------
@@ -249,7 +263,10 @@ export const AdminSettingsPage: React.FC = () => {
   }, []);
 
   const updateField = useCallback((key: CauHinhKey, value: string) => {
-    const cleanValue = extractGoogleId(key, value.trim());
+    let cleanValue = extractGoogleId(key, value.trim());
+    if (key === 'bitrate_mbps') {
+      cleanValue = cleanValue.replace(',', '.');
+    }
     setConfig((prev) => ({ ...prev, [key]: cleanValue }));
   }, [extractGoogleId]);
 
@@ -258,7 +275,7 @@ export const AdminSettingsPage: React.FC = () => {
     setSaving(true);
     try {
       const changedKeys = (Object.keys(config) as CauHinhKey[]).filter(
-        (k) => config[k] !== originalConfig[k]
+        (k) => ALLOWED_CONFIG_KEYS.includes(k) && config[k] !== originalConfig[k]
       );
       if (changedKeys.length === 0) {
         showToast.info('Thông báo', 'Không có thay đổi nào để lưu');
@@ -266,20 +283,47 @@ export const AdminSettingsPage: React.FC = () => {
       }
       const configs: Record<string, string> = {};
       for (const k of changedKeys) {
-        configs[k] = config[k] ?? '';
+        let val = config[k] ?? '';
+        if (k === 'bitrate_mbps') {
+          val = val.replace(',', '.');
+        }
+        configs[k] = String(val).trim();
       }
 
-      const res = await apiClient
-        .patch(API_ENDPOINTS.ADMIN.CAU_HINH.BATCH, { json: { configs } })
-        .json<{ success: boolean }>();
+      let res: { success: boolean; error?: { message?: string } };
+      try {
+        res = await apiClient
+          .patch(API_ENDPOINTS.ADMIN.CAU_HINH.BATCH, { json: { configs } })
+          .json<{ success: boolean; error?: { message?: string } }>();
+      } catch {
+        // Fallback to PUT if PATCH preflight is blocked by CORS/proxy
+        res = await apiClient
+          .put(API_ENDPOINTS.ADMIN.CAU_HINH.BATCH, { json: { configs } })
+          .json<{ success: boolean; error?: { message?: string } }>();
+      }
 
       if (res.success) {
         setOriginalConfig({ ...config });
         void useConfigStore.getState().fetchSystemConfig();
         showToast.success('Đã lưu cấu hình', 'Đã lưu cấu hình hệ thống thành công');
+      } else {
+        showToast.error('Lỗi lưu cấu hình', res.error?.message || 'Không thể lưu cấu hình');
       }
-    } catch {
-      showToast.error('Lỗi lưu cấu hình', 'Lỗi khi lưu cấu hình');
+    } catch (err: unknown) {
+      let msg = 'Lỗi khi lưu cấu hình';
+      if (err && typeof err === 'object' && 'response' in err) {
+        try {
+          const body = await (err as { response: Response }).response.json();
+          if (body?.error?.message) {
+            msg = body.error.message;
+          }
+        } catch {
+          // ignore
+        }
+      } else if (err instanceof Error) {
+        msg = err.message;
+      }
+      showToast.error('Lỗi lưu cấu hình', msg);
     } finally {
       setSaving(false);
     }

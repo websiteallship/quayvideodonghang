@@ -50,6 +50,7 @@ const handleGetPublicConfig = async (c: Context<{ Bindings: Env }>) => {
     bitrate_mbps: parseFloat(configs.bitrate_mbps || '2.5'),
     watermark: configs.watermark !== 'false',
     auto_scan: configs.auto_scan === 'true',
+    quay_lien_tuc: configs.quay_lien_tuc === 'true',
     retention_archive_days: parseInt(configs.retention_archive_days || (configs.retention_thang ? String(parseInt(configs.retention_thang, 10) * 30) : '30'), 10),
     retention_delete_days: parseInt(configs.retention_delete_days || '60', 10),
     retention_thang: parseInt(configs.retention_thang || '6', 10),

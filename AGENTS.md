@@ -35,6 +35,7 @@ Mọi quyết định thiết kế và lập trình phải tuân thủ nghiêm n
 - [`13-huong-dan-lay-refresh-token.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/13-huong-dan-lay-refresh-token.md): Hướng dẫn lấy OAuth2 Refresh Token cho Google Drive cá nhân (15GB miễn phí).
 - [`14-admin-crud-specification.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/14-admin-crud-specification.md): Đặc tả quản trị nhân viên, kho hàng, cấu hình và retention.
 - [`15-huong-dan-trien-khai-deploy.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/15-huong-dan-trien-khai-deploy.md): Quy trình triển khai Production Cloudflare Pages, Workers, D1 và checklist vận hành.
+- [`16-tich-hop-dong-bo-don-hang-vietful.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/16-tich-hop-dong-bo-don-hang-vietful.md): Đặc tả tích hợp VietFul API, đồng bộ đơn hàng đóng/khui hàng, schema D1 và luồng quét barcode.
 
 ---
 

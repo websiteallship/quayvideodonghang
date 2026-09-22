@@ -477,8 +477,8 @@ adminRouter.put('/cau-hinh', zValidator('json', CauHinhUpdateSchema), async (c) 
   }
 });
 
-// Cập nhật batch cấu hình hệ thống
-adminRouter.patch('/cau-hinh/batch', zValidator('json', CauHinhBatchUpdateSchema), async (c) => {
+// Cập nhật batch cấu hình hệ thống (hỗ trợ cả PATCH và PUT)
+adminRouter.on(['PATCH', 'PUT'], '/cau-hinh/batch', zValidator('json', CauHinhBatchUpdateSchema), async (c) => {
   const { configs } = c.req.valid('json');
 
   try {
@@ -487,7 +487,7 @@ adminRouter.patch('/cau-hinh/batch', zValidator('json', CauHinhBatchUpdateSchema
         `INSERT INTO cau_hinh (khoa, gia_tri, ngay_cap_nhat)
          VALUES (?, ?, datetime('now'))
          ON CONFLICT(khoa) DO UPDATE SET gia_tri = excluded.gia_tri, ngay_cap_nhat = datetime('now')`
-      ).bind(khoa, gia_tri);
+      ).bind(khoa, String(gia_tri));
     });
 
     if (statements.length > 0) {

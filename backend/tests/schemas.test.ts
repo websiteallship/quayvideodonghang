@@ -12,6 +12,7 @@ import {
   ResetPinSchema,
   NhanVienQuerySchema,
   CauHinhUpdateSchema,
+  CauHinhBatchUpdateSchema,
   CheckMaVanDonParamSchema,
   BienBanIdParamSchema
 } from '../src/types/schemas';
@@ -233,6 +234,27 @@ describe('CauHinhUpdateSchema', () => {
     const result = CauHinhUpdateSchema.safeParse({
       khoa: '',
       gia_tri: 'value'
+    });
+    expect(result.success).toBe(false);
+  });
+});
+
+describe('CauHinhBatchUpdateSchema', () => {
+  it('should accept valid batch update configs', () => {
+    const result = CauHinhBatchUpdateSchema.safeParse({
+      configs: {
+        do_phan_giai: '1920x1080',
+        bitrate_mbps: '2.5'
+      }
+    });
+    expect(result.success).toBe(true);
+  });
+
+  it('should reject empty key in configs', () => {
+    const result = CauHinhBatchUpdateSchema.safeParse({
+      configs: {
+        '': 'value'
+      }
     });
     expect(result.success).toBe(false);
   });
