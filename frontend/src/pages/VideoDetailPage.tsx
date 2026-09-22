@@ -486,8 +486,8 @@ export const VideoDetailPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
         {/* Left Column: Video Player & Controls (7 cols) */}
         <div className="lg:col-span-7 flex flex-col gap-3.5">
-          {/* Video Container Box: aspect-[4/3] trên mobile vừa vặn camera webcam kho, aspect-video trên desktop */}
-          <div className="w-full aspect-[4/3] sm:aspect-video bg-black rounded-2xl overflow-hidden relative shadow-md border border-black/20 dark:border-white/10 flex items-center justify-center">
+          {/* Video Container Box: min-h-[300px] để cụm điều khiển Google Drive không bị cắt cụt */}
+          <div className="w-full aspect-[4/3] sm:aspect-video min-h-[300px] sm:min-h-[360px] bg-black rounded-xl overflow-hidden relative shadow-md border border-border/40 flex items-center justify-center">
             {isVideoLoading && (
               <div className="flex flex-col items-center gap-3 text-center p-4">
                 <RefreshCw size={28} className="text-amber-500 animate-spin" />
@@ -596,6 +596,13 @@ export const VideoDetailPage: React.FC = () => {
               </span>
             )}
           </div>
+
+          {/* Tip hướng dẫn khi xem qua Google Drive Viewer */}
+          {videoMode === 'iframe' && (
+            <p className="text-[11px] text-muted-foreground/80 italic pl-1">
+              * Giao diện Google Drive tự động ẩn các phím điều khiển sau vài giây khi video đang phát. Bấm &quot;Mở trên Drive&quot; bên dưới để xem toàn màn hình.
+            </p>
+          )}
 
           {/* Action Buttons Bar */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
