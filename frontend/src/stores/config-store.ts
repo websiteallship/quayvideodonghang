@@ -1,7 +1,7 @@
 import { create } from 'zustand';
 import { ThietBiType } from '../types';
 import { KhoHang } from '../types/kho-hang';
-import { apiClient } from '../services/api-client';
+import { apiClient, getStoredUser } from '../services/api-client';
 import { API_ENDPOINTS } from '../config/api';
 
 export type AppTheme = 'light' | 'dark';
@@ -63,6 +63,8 @@ interface ConfigState {
   setIsRecordingActive: (active: boolean) => void;
   setSidebarCollapsed: (collapsed: boolean) => void;
   toggleSidebar: () => void;
+  loadUserWarehouse: (maNhanVien: string) => void;
+  clearWarehouse: () => void;
 }
 
 const getInitialTheme = (): AppTheme => {
@@ -75,14 +77,18 @@ const getInitialTheme = (): AppTheme => {
 
 const getInitialWarehouseName = (): string => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('warehouse_name') || '';
+    const user = getStoredUser();
+    const suffix = user?.ma_nhan_vien ? `_${user.ma_nhan_vien}` : '';
+    return localStorage.getItem(`warehouse_name${suffix}`) || '';
   }
   return '';
 };
 
 const getInitialWarehouseId = (): string => {
   if (typeof window !== 'undefined') {
-    return localStorage.getItem('warehouse_id') || '';
+    const user = getStoredUser();
+    const suffix = user?.ma_nhan_vien ? `_${user.ma_nhan_vien}` : '';
+    return localStorage.getItem(`warehouse_id${suffix}`) || '';
   }
   return '';
 };
@@ -143,9 +149,11 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
 
   setWarehouseName: (name: string, id?: string) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('warehouse_name', name);
+      const user = getStoredUser();
+      const suffix = user?.ma_nhan_vien ? `_${user.ma_nhan_vien}` : '';
+      localStorage.setItem(`warehouse_name${suffix}`, name);
       if (id) {
-        localStorage.setItem('warehouse_id', id);
+        localStorage.setItem(`warehouse_id${suffix}`, id);
       }
     }
     set((state) => ({
@@ -156,8 +164,10 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
 
   setWarehouse: (warehouse: KhoHang) => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('warehouse_name', warehouse.ten);
-      localStorage.setItem('warehouse_id', warehouse.id);
+      const user = getStoredUser();
+      const suffix = user?.ma_nhan_vien ? `_${user.ma_nhan_vien}` : '';
+      localStorage.setItem(`warehouse_name${suffix}`, warehouse.ten);
+      localStorage.setItem(`warehouse_id${suffix}`, warehouse.id);
     }
     set({
       warehouseName: warehouse.ten,
@@ -233,6 +243,18 @@ export const useConfigStore = create<ConfigState>((set, get) => ({
   toggleSidebar: () => {
     const next = !get().sidebarCollapsed;
     get().setSidebarCollapsed(next);
+  },
+
+  loadUserWarehouse: (maNhanVien: string) => {
+    if (typeof window !== 'undefined') {
+      const name = localStorage.getItem(`warehouse_name_${maNhanVien}`) || '';
+      const id = localStorage.getItem(`warehouse_id_${maNhanVien}`) || '';
+      set({ warehouseName: name, warehouseId: id });
+    }
+  },
+
+  clearWarehouse: () => {
+    set({ warehouseName: '', warehouseId: '' });
   },
 }));
 

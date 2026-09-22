@@ -9,6 +9,7 @@ import { API_ENDPOINTS } from '../config/api';
 
 import { useUserSettingsStore } from './user-settings-store';
 import { useOnboardingStore } from './onboarding-store';
+import { useConfigStore } from './config-store';
 import { clearDashboardStatsCache } from '../services/dashboard-service';
 
 interface AuthState {
@@ -39,6 +40,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     if (user?.ma_nhan_vien) {
       useUserSettingsStore.getState().loadUserSettings(user.ma_nhan_vien);
       useOnboardingStore.getState().loadUserOnboarding(user.ma_nhan_vien);
+      useConfigStore.getState().loadUserWarehouse(user.ma_nhan_vien);
     }
   },
 
@@ -48,6 +50,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     clearDashboardStatsCache();
     useUserSettingsStore.getState().resetUserSettings();
     useOnboardingStore.getState().resetOnboarding();
+    useConfigStore.getState().clearWarehouse();
     set({ token: null, user: null, isAuthenticated: false });
   },
 
@@ -72,6 +75,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
         if (nhanVien?.ma_nhan_vien) {
           useUserSettingsStore.getState().loadUserSettings(nhanVien.ma_nhan_vien);
           useOnboardingStore.getState().loadUserOnboarding(nhanVien.ma_nhan_vien);
+          useConfigStore.getState().loadUserWarehouse(nhanVien.ma_nhan_vien);
         }
         return true;
       }
