@@ -16,9 +16,9 @@ INSERT INTO vietful_merchants (
     is_active
 ) VALUES 
 (
-    'merchant_asp_1',
-    'ASP_SHOP_1',
-    'Nhà bán ASP 1',
+    'merchant_zpt',
+    'ZPT',
+    'ZPT',
     'asp',
     'https://auth.vnfai.com',
     'https://ext-api.vnfai.com',
@@ -28,9 +28,9 @@ INSERT INTO vietful_merchants (
     1
 ),
 (
-    'merchant_asp_2',
-    'ASP_SHOP_2',
-    'Nhà bán ASP 2',
+    'merchant_all',
+    'ALL',
+    'ALL',
     'asp',
     'https://auth.vnfai.com',
     'https://ext-api.vnfai.com',
