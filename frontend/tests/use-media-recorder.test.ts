@@ -128,7 +128,7 @@ describe('useMediaRecorder', () => {
         expect.any(Number),
         expect.any(Number)
       );
-      expect(fillTextSpy).toHaveBeenCalledWith('QuayVideo Kho PWA', expect.any(Number), expect.any(Number));
+      expect(fillTextSpy).toHaveBeenCalledWith('QuayVideo Kho - by Allship', expect.any(Number), expect.any(Number));
     });
   });
 

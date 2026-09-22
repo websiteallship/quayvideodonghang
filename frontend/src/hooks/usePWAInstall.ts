@@ -17,6 +17,47 @@ declare global {
 
 export type PWAInstallPlatform = 'ios' | 'android' | 'desktop';
 
+const PWA_DISMISSED_KEY = 'pwa_prompt_dismissed_until';
+const PWA_NEVER_SHOW_KEY = 'pwa_prompt_never_show';
+
+export function isPWAPromptDismissed(): boolean {
+  if (typeof window === 'undefined') return true;
+  try {
+    if (localStorage.getItem(PWA_NEVER_SHOW_KEY) === 'true') {
+      return true;
+    }
+    const dismissedUntil = localStorage.getItem(PWA_DISMISSED_KEY);
+    if (dismissedUntil) {
+      const untilTime = parseInt(dismissedUntil, 10);
+      if (!isNaN(untilTime) && Date.now() < untilTime) {
+        return true;
+      }
+    }
+  } catch {
+    return false;
+  }
+  return false;
+}
+
+export function dismissPWAPrompt(days: number = 7): void {
+  if (typeof window === 'undefined') return;
+  try {
+    const until = Date.now() + days * 24 * 60 * 60 * 1000;
+    localStorage.setItem(PWA_DISMISSED_KEY, until.toString());
+  } catch {
+    // ignore
+  }
+}
+
+export function neverShowPWAPromptAgain(): void {
+  if (typeof window === 'undefined') return;
+  try {
+    localStorage.setItem(PWA_NEVER_SHOW_KEY, 'true');
+  } catch {
+    // ignore
+  }
+}
+
 export function usePWAInstall() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(
     typeof window !== 'undefined' ? (window.__pwaInstallPrompt || null) : null
@@ -103,5 +144,8 @@ export function usePWAInstall() {
     hasNativePrompt: !!deferredPrompt,
     platform,
     triggerInstall,
+    isDismissed: isPWAPromptDismissed(),
+    dismissPrompt: dismissPWAPrompt,
+    neverShowAgain: neverShowPWAPromptAgain,
   };
 }

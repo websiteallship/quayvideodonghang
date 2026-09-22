@@ -3,6 +3,7 @@ import { Outlet, useLocation } from 'react-router-dom';
 import { Header } from './Header';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
+import { PWAPromptModal } from '../pwa/PWAPromptModal';
 import { useConfigStore } from '@/stores/config-store';
 import { useUploadStore } from '@/stores/upload-store';
 import { Spinner } from '@/components/ui/Spinner';
@@ -82,6 +83,9 @@ export const AppShell: React.FC = () => {
 
       {/* Mobile Bottom Navigation */}
       <BottomNav />
+
+      {/* PWA Prompt Modal upon Login / Web Access */}
+      <PWAPromptModal />
     </div>
   );
 };

@@ -162,7 +162,7 @@ export function drawCanvasOverlay(
   const isDongGoi = overlay.loaiBienBan === 'dong_goi';
   const line1 = `[${isDongGoi ? 'ĐÓNG GÓI' : 'KHUI HÀNG'}] ${overlay.maVanDon}`;
   const line2 = `NV: ${overlay.maNhanVien} | ĐVVC: ${overlay.donViVc}`;
-  
+
   let line3 = 'GPS: N/A (Đang tìm hoặc từ chối)';
   if (overlay.gpsCoords) {
     const coordsText = `${overlay.gpsCoords.lat.toFixed(5)}, ${overlay.gpsCoords.lng.toFixed(5)}`;
@@ -220,7 +220,7 @@ export function drawCanvasOverlay(
   ctx.fillStyle = 'rgba(255, 255, 255, 0.5)';
   ctx.font = isPortrait ? '13px sans-serif' : '16px sans-serif';
   ctx.textAlign = 'right';
-  ctx.fillText('QuayVideo Kho PWA', width - (isPortrait ? 16 : 20), height - (isPortrait ? 16 : 20));
+  ctx.fillText('QuayVideo Kho - by Allship', width - (isPortrait ? 16 : 20), height - (isPortrait ? 16 : 20));
 
   // Clear shadow before exit
   ctx.shadowColor = 'transparent';
@@ -327,7 +327,7 @@ export function useMediaRecorder({
         try {
           const playPromise = sourceVideo.play();
           if (playPromise !== undefined) {
-            await playPromise.catch(() => {});
+            await playPromise.catch(() => { });
           }
         } catch {
           // Ignore play errors in environments without media support (e.g. jsdom)
@@ -336,7 +336,8 @@ export function useMediaRecorder({
       }
 
       // Đợi sourceVideo nạp metadata để nhận diện chiều quay (Portrait vs Landscape)
-      if (sourceVideo.readyState < HTMLMediaElement.HAVE_METADATA) {
+      const isJsdom = typeof navigator !== 'undefined' && navigator.userAgent.includes('jsdom');
+      if (!isJsdom && sourceVideo.readyState < HTMLMediaElement.HAVE_METADATA) {
         await new Promise<void>((resolve) => {
           const timer = setTimeout(resolve, 300);
           sourceVideo!.onloadedmetadata = () => {
