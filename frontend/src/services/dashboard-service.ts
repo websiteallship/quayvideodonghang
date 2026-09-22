@@ -62,6 +62,12 @@ function setCachedStats(data: DashboardStats): void {
   }
 }
 
+export function clearDashboardStatsCache(): void {
+  try {
+    localStorage.removeItem(CACHE_KEY);
+  } catch {}
+}
+
 // ---------------------------------------------------------------------------
 // API
 // ---------------------------------------------------------------------------

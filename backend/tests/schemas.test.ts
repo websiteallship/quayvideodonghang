@@ -115,6 +115,14 @@ describe('UploadInitSchema', () => {
       expect(result.data.thiet_bi).toBe('mobile');
     }
   });
+
+  it('should accept optional ma_nhan_vien attribution', () => {
+    const result = UploadInitSchema.safeParse({ ...validPayload, ma_nhan_vien: 'NV_ORIGINAL' });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.ma_nhan_vien).toBe('NV_ORIGINAL');
+    }
+  });
 });
 
 describe('UploadCompleteSchema', () => {

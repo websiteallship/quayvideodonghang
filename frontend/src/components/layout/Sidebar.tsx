@@ -13,16 +13,19 @@ import {
   Truck,
   Building2,
   LayoutDashboard,
+  BookOpen,
 } from 'lucide-react';
 import { useConfigStore } from '@/stores/config-store';
 import { useUploadStore } from '@/stores/upload-store';
 import { useAuthStore } from '@/stores/auth-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { Separator } from '@/components/ui/separator';
 
 export const Sidebar: React.FC = () => {
   const { sidebarCollapsed, setSidebarCollapsed } = useConfigStore();
   const { queue } = useUploadStore();
   const { user } = useAuthStore();
+  const { openGuideModal } = useOnboardingStore();
 
   const isAdmin = user?.vai_tro === 'admin';
 
@@ -164,6 +167,31 @@ export const Sidebar: React.FC = () => {
         )}
 
         {navItems.map(renderNavItem)}
+
+        {/* Nút Hướng Dẫn Thao Tác Kho */}
+        <button
+          type="button"
+          onClick={() => openGuideModal('steps')}
+          title={sidebarCollapsed ? 'Hướng dẫn thao tác' : undefined}
+          className={`group relative flex items-center rounded-xl text-sm font-medium transition-all cursor-pointer text-muted-foreground hover:text-foreground hover:bg-muted/70 ${
+            sidebarCollapsed
+              ? 'justify-center h-12 w-full px-0'
+              : 'justify-between px-3.5 py-2.5 w-full'
+          }`}
+        >
+          <div className="flex items-center gap-3 min-w-0">
+            <BookOpen
+              size={18}
+              className="shrink-0 text-amber-500 transition-colors group-hover:text-amber-600 dark:group-hover:text-amber-400"
+            />
+            {!sidebarCollapsed && <span className="truncate">Hướng dẫn thao tác</span>}
+          </div>
+          {!sidebarCollapsed && (
+            <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-muted text-muted-foreground">
+              F1
+            </span>
+          )}
+        </button>
 
         {/* Admin Section */}
         {isAdmin && (

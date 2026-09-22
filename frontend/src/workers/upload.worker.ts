@@ -215,6 +215,7 @@ async function processSingleItem(item: QueueItem, signal: AbortSignal) {
       ma_van_don: item.ma_van_don,
       don_vi_vc: item.don_vi_vc,
       loai_bien_ban: item.loai_bien_ban,
+      ma_nhan_vien: item.ma_nhan_vien,
       thiet_bi: item.thiet_bi,
       thoi_luong_video: Math.round(item.thoi_luong_video),
       kich_thuoc_bytes: item.kich_thuoc_bytes || item.blob?.size || 1,

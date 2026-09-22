@@ -4,15 +4,30 @@ import { Header } from './Header';
 import { BottomNav } from './BottomNav';
 import { Sidebar } from './Sidebar';
 import { PWAPromptModal } from '../pwa/PWAPromptModal';
+import { UserGuideModal } from '../guide/UserGuideModal';
 import { useConfigStore } from '@/stores/config-store';
 import { useUploadStore } from '@/stores/upload-store';
+import { useAuthStore } from '@/stores/auth-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 import { Spinner } from '@/components/ui/Spinner';
 
 export const AppShell: React.FC = () => {
+  const { isAuthenticated } = useAuthStore();
+  const { hasSeenGuide, openGuideModal } = useOnboardingStore();
   const { setIsOnline, fetchSystemConfig, fetchWarehouses } = useConfigStore();
   const { loadQueue } = useUploadStore();
   const location = useLocation();
   const [isPageLoading, setIsPageLoading] = useState(false);
+
+  useEffect(() => {
+    // Tự động hiển thị popup hướng dẫn sau 800ms khi nhân viên vào hệ thống lần đầu
+    if (isAuthenticated && !hasSeenGuide) {
+      const timer = setTimeout(() => {
+        openGuideModal('steps');
+      }, 800);
+      return () => clearTimeout(timer);
+    }
+  }, [isAuthenticated, hasSeenGuide, openGuideModal]);
 
   useEffect(() => {
     // Hiển thị loading spinner ngắn khi chuyển đổi giữa các trang
@@ -86,6 +101,9 @@ export const AppShell: React.FC = () => {
 
       {/* PWA Prompt Modal upon Login / Web Access */}
       <PWAPromptModal />
+
+      {/* Onboarding & Quick User Guide Modal */}
+      <UserGuideModal />
     </div>
   );
 };

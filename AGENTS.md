@@ -36,6 +36,7 @@ Mọi quyết định thiết kế và lập trình phải tuân thủ nghiêm n
 - [`14-admin-crud-specification.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/14-admin-crud-specification.md): Đặc tả quản trị nhân viên, kho hàng, cấu hình và retention.
 - [`15-huong-dan-trien-khai-deploy.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/15-huong-dan-trien-khai-deploy.md): Quy trình triển khai Production Cloudflare Pages, Workers, D1 và checklist vận hành.
 - [`16-tich-hop-dong-bo-don-hang-vietful.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/16-tich-hop-dong-bo-don-hang-vietful.md): Đặc tả tích hợp VietFul API, đồng bộ đơn hàng đóng/khui hàng, schema D1 và luồng quét barcode.
+- [`17-huong-dan-su-dung-va-onboarding-nhan-vien.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/17-huong-dan-su-dung-va-onboarding-nhan-vien.md): Đặc tả hướng dẫn sử dụng cho nhân viên, onboarding popup lần đầu, tích hợp menu hướng dẫn trên PC & Mobile.
 
 ---
 

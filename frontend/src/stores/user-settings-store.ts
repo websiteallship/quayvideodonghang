@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { persist, subscribeWithSelector } from 'zustand/middleware';
+import { subscribeWithSelector } from 'zustand/middleware';
 import { useConfigStore } from './config-store';
 
 export type VideoResolution = '1080p' | '720p';
@@ -20,9 +20,13 @@ export interface UserSettingsState {
   soundBeepEnabled: boolean;
   /** Daily personal shift target (chỉ tiêu ca), default 300 */
   shiftTarget: number;
+  /** Active user ID for isolated storage namespace */
+  activeUser: string | null;
 }
 
 export interface UserSettingsActions {
+  loadUserSettings: (maNhanVien: string) => void;
+  resetUserSettings: () => void;
   setVideoResolution: (res: VideoResolution, isOverride?: boolean) => void;
   resetResolutionToSystem: () => void;
   setVideoFps: (fps: VideoFps, isOverride?: boolean) => void;
@@ -35,7 +39,7 @@ export interface UserSettingsActions {
 
 export type UserSettingsStore = UserSettingsState & UserSettingsActions;
 
-export const DEFAULT_USER_SETTINGS: UserSettingsState = {
+export const DEFAULT_USER_SETTINGS: Omit<UserSettingsState, 'activeUser'> = {
   videoResolution: '720p',
   isResolutionOverridden: false,
   videoFps: 30,
@@ -44,6 +48,47 @@ export const DEFAULT_USER_SETTINGS: UserSettingsState = {
   soundBeepEnabled: true,
   shiftTarget: 300,
 };
+
+function getInitialUser(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const raw = sessionStorage.getItem('auth_user') || localStorage.getItem('auth_user');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      return parsed?.ma_nhan_vien || null;
+    }
+  } catch {}
+  return null;
+}
+
+function readFromStorage(user: string | null): Partial<UserSettingsState> {
+  if (typeof window === 'undefined') return {};
+  try {
+    const key = user ? `user_settings_${user}` : 'user_settings';
+    const raw = localStorage.getItem(key) || (!user ? null : localStorage.getItem('user_settings'));
+    if (raw) {
+      return JSON.parse(raw);
+    }
+  } catch {}
+  return {};
+}
+
+function saveToStorage(user: string | null, state: UserSettingsState): void {
+  if (typeof window === 'undefined') return;
+  const dataToSave = {
+    videoResolution: state.videoResolution,
+    isResolutionOverridden: state.isResolutionOverridden,
+    videoFps: state.videoFps,
+    isFpsOverridden: state.isFpsOverridden,
+    autoRecordAfterScan: state.autoRecordAfterScan,
+    soundBeepEnabled: state.soundBeepEnabled,
+    shiftTarget: state.shiftTarget,
+  };
+  const key = user ? `user_settings_${user}` : 'user_settings';
+  try {
+    localStorage.setItem(key, JSON.stringify(dataToSave));
+  } catch {}
+}
 
 /** Get effective resolution: user override priority, fallback to system config default */
 export function getEffectiveResolution(): VideoResolution {
@@ -64,27 +109,85 @@ export function getEffectiveFps(): VideoFps {
   return 30;
 }
 
+const initialUser = getInitialUser();
+const initialSettings = readFromStorage(initialUser);
+
 export const useUserSettingsStore = create<UserSettingsStore>()(
-  subscribeWithSelector(
-    persist(
-      (set) => ({
+  subscribeWithSelector((set) => ({
+    ...DEFAULT_USER_SETTINGS,
+    ...initialSettings,
+    activeUser: initialUser,
+
+    loadUserSettings: (maNhanVien: string) => {
+      const saved = readFromStorage(maNhanVien);
+      set({
         ...DEFAULT_USER_SETTINGS,
-        setVideoResolution: (videoResolution, isOverride = true) =>
-          set({ videoResolution, isResolutionOverridden: isOverride }),
-        resetResolutionToSystem: () =>
-          set({ isResolutionOverridden: false }),
-        setVideoFps: (videoFps, isOverride = true) =>
-          set({ videoFps, isFpsOverridden: isOverride }),
-        resetFpsToSystem: () =>
-          set({ isFpsOverridden: false }),
-        setAutoRecordAfterScan: (autoRecordAfterScan) => set({ autoRecordAfterScan }),
-        setSoundBeepEnabled: (soundBeepEnabled) => set({ soundBeepEnabled }),
-        setShiftTarget: (shiftTarget) => set({ shiftTarget }),
-        resetSettings: () => set(DEFAULT_USER_SETTINGS),
+        ...saved,
+        activeUser: maNhanVien,
+      });
+    },
+
+    resetUserSettings: () => {
+      set({
+        ...DEFAULT_USER_SETTINGS,
+        activeUser: null,
+      });
+    },
+
+    setVideoResolution: (videoResolution, isOverride = true) =>
+      set((state) => {
+        const next = { ...state, videoResolution, isResolutionOverridden: isOverride };
+        saveToStorage(state.activeUser, next);
+        return next;
       }),
-      {
-        name: 'user_settings',
-      }
-    )
-  )
+
+    resetResolutionToSystem: () =>
+      set((state) => {
+        const next = { ...state, isResolutionOverridden: false };
+        saveToStorage(state.activeUser, next);
+        return next;
+      }),
+
+    setVideoFps: (videoFps, isOverride = true) =>
+      set((state) => {
+        const next = { ...state, videoFps, isFpsOverridden: isOverride };
+        saveToStorage(state.activeUser, next);
+        return next;
+      }),
+
+    resetFpsToSystem: () =>
+      set((state) => {
+        const next = { ...state, isFpsOverridden: false };
+        saveToStorage(state.activeUser, next);
+        return next;
+      }),
+
+    setAutoRecordAfterScan: (autoRecordAfterScan) =>
+      set((state) => {
+        const next = { ...state, autoRecordAfterScan };
+        saveToStorage(state.activeUser, next);
+        return next;
+      }),
+
+    setSoundBeepEnabled: (soundBeepEnabled) =>
+      set((state) => {
+        const next = { ...state, soundBeepEnabled };
+        saveToStorage(state.activeUser, next);
+        return next;
+      }),
+
+    setShiftTarget: (shiftTarget) =>
+      set((state) => {
+        const next = { ...state, shiftTarget };
+        saveToStorage(state.activeUser, next);
+        return next;
+      }),
+
+    resetSettings: () =>
+      set((state) => {
+        const next = { ...DEFAULT_USER_SETTINGS, activeUser: state.activeUser };
+        saveToStorage(state.activeUser, next);
+        return next;
+      }),
+  }))
 );

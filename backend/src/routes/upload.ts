@@ -18,6 +18,7 @@ uploadRouter.post('/init', authMiddleware, zValidator('json', UploadInitSchema),
   const data = c.req.valid('json');
   const user = c.get('user');
   const userAgent = c.req.header('User-Agent') || '';
+  const tacGia = data.ma_nhan_vien?.trim() || user.sub;
 
   try {
     // Batch: INSERT bien_ban + upload_log in single D1 roundtrip (perf optimization)
@@ -33,7 +34,7 @@ uploadRouter.post('/init', authMiddleware, zValidator('json', UploadInitSchema),
         data.ma_van_don,
         data.don_vi_vc,
         data.loai_bien_ban,
-        user.sub,
+        tacGia,
         data.thiet_bi,
         userAgent,
         data.thoi_luong_video,
@@ -42,12 +43,12 @@ uploadRouter.post('/init', authMiddleware, zValidator('json', UploadInitSchema),
       ),
       c.env.DB.prepare(
         'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
-      ).bind(data.id, 'init', `Size: ${data.kich_thuoc_bytes} bytes`)
+      ).bind(data.id, 'init', `Size: ${data.kich_thuoc_bytes} bytes (Tac gia: ${tacGia}, Nguoi tai: ${user.sub})`)
     ]);
 
     const loaiPrefix = data.loai_bien_ban === 'dong_goi' ? 'DongGoi' : 'KhuiHang';
     const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
-    const fileName = `${loaiPrefix}_${data.ma_van_don}_${data.don_vi_vc}_${user.sub}_${timestamp}.webm`;
+    const fileName = `${loaiPrefix}_${data.ma_van_don}_${data.don_vi_vc}_${tacGia}_${timestamp}.webm`;
 
     let uploadUrl: string;
     
@@ -102,7 +103,7 @@ uploadRouter.post('/complete', authMiddleware, zValidator('json', UploadComplete
   const user = c.get('user');
 
   try {
-    // L4: Verify ownership — only the user who created the bien_ban can complete it
+    // Authenticated worker completing upload session for the record
     const result = await c.env.DB.prepare(
       `UPDATE bien_ban
        SET trang_thai = 'da_upload',
@@ -110,19 +111,19 @@ uploadRouter.post('/complete', authMiddleware, zValidator('json', UploadComplete
            drive_file_name = ?,
            thoi_gian_upload = datetime('now'),
            ngay_cap_nhat = datetime('now')
-       WHERE id = ? AND ma_nhan_vien = ?`
+       WHERE id = ?`
     )
-      .bind(drive_file_id, drive_file_name, id, user.sub)
+      .bind(drive_file_id, drive_file_name, id)
       .run();
 
     if (!result.meta.changes) {
-      return errorResponse(c, 'NOT_FOUND', 'Biên bản không tồn tại hoặc không thuộc quyền của bạn', 404);
+      return errorResponse(c, 'NOT_FOUND', 'Biên bản không tồn tại', 404);
     }
 
     await c.env.DB.prepare(
       'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
     )
-      .bind(id, 'complete', `Drive File ID: ${drive_file_id}`)
+      .bind(id, 'complete', `Drive File ID: ${drive_file_id} (Uploaded by: ${user.sub})`)
       .run();
 
     // Append row to Google Sheet (non-blocking — failure doesn't fail the request)
@@ -195,21 +196,20 @@ uploadRouter.post('/error', authMiddleware, zValidator('json', UploadErrorSchema
   const user = c.get('user');
 
   try {
-    // L4: Verify ownership
     await c.env.DB.prepare(
       `UPDATE bien_ban
        SET trang_thai = 'loi',
            loi_message = ?,
            ngay_cap_nhat = datetime('now')
-       WHERE id = ? AND ma_nhan_vien = ?`
+       WHERE id = ?`
     )
-      .bind(loi_message, id, user.sub)
+      .bind(loi_message, id)
       .run();
 
     await c.env.DB.prepare(
       'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
     )
-      .bind(id, 'error', loi_message)
+      .bind(id, 'error', `${loi_message} (Reported by: ${user.sub})`)
       .run();
 
     return successResponse(c, { message: 'Đã ghi nhận lỗi upload' });
@@ -229,19 +229,19 @@ uploadRouter.post('/cancel', authMiddleware, zValidator('json', UploadCancelSche
        SET trang_thai = 'loi',
            loi_message = 'USER_CANCELLED',
            ngay_cap_nhat = datetime('now')
-       WHERE id = ? AND ma_nhan_vien = ?`
+       WHERE id = ?`
     )
-      .bind(id, user.sub)
+      .bind(id)
       .run();
 
     if (!result.meta.changes) {
-      return errorResponse(c, 'NOT_FOUND', 'Biên bản không tồn tại hoặc không thuộc quyền của bạn', 404);
+      return errorResponse(c, 'NOT_FOUND', 'Biên bản không tồn tại', 404);
     }
 
     await c.env.DB.prepare(
       'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
     )
-      .bind(id, 'error', 'USER_CANCELLED')
+      .bind(id, 'error', `USER_CANCELLED (By: ${user.sub})`)
       .run();
 
     return successResponse(c, {

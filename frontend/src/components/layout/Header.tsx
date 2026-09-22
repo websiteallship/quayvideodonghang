@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
 import { useLocation, Link } from 'react-router-dom';
-import { Video, Wifi, WifiOff, LogOut, User, Sun, Moon, Settings, UploadCloud, AlertTriangle } from 'lucide-react';
+import { Video, Wifi, WifiOff, LogOut, User, Sun, Moon, Settings, UploadCloud, AlertTriangle, HelpCircle } from 'lucide-react';
 import { useAuthStore } from '@/stores/auth-store';
 import { useConfigStore } from '@/stores/config-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
+import { useUploadStore } from '@/stores/upload-store';
 import { Button } from '../ui/button';
 import {
   DropdownMenu,
@@ -27,7 +29,13 @@ export const Header: React.FC = () => {
   const location = useLocation();
   const { user, logout, isAuthenticated } = useAuthStore();
   const { isOnline, theme, toggleTheme, warehouseName } = useConfigStore();
+  const { openGuideModal } = useOnboardingStore();
+  const { queue } = useUploadStore();
   const [isLogoutOpen, setIsLogoutOpen] = useState(false);
+
+  const pendingUploads = queue.filter(
+    (item) => item.status === 'cho_upload' || item.status === 'dang_upload' || item.status === 'loi'
+  ).length;
 
   const getPageTitle = (pathname: string) => {
     switch (pathname) {
@@ -78,6 +86,18 @@ export const Header: React.FC = () => {
       <div className="flex items-center gap-1.5 sm:gap-2.5 shrink-0">
         {/* Install PWA Button */}
         <InstallPWAButton />
+
+        {/* Quick User Guide Button */}
+        <Button
+          variant="outline"
+          size="icon"
+          onClick={() => openGuideModal('steps')}
+          title="Hướng dẫn thao tác kho"
+          aria-label="Hướng dẫn thao tác kho"
+          className="size-8 sm:size-9 rounded-full border-border bg-card text-muted-foreground hover:text-amber-500 hover:bg-amber-500/10 shadow-2xs shrink-0 cursor-pointer"
+        >
+          <HelpCircle size={15} />
+        </Button>
 
         {/* Dark / Light Mode Toggle Button */}
         <Button
@@ -204,11 +224,26 @@ export const Header: React.FC = () => {
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
-              <AlertTriangle className="text-destructive h-5 w-5" />
+              <AlertTriangle className={pendingUploads > 0 ? "text-amber-500 h-5 w-5 shrink-0" : "text-destructive h-5 w-5 shrink-0"} />
               Xác nhận đăng xuất
             </AlertDialogTitle>
-            <AlertDialogDescription>
-              Bạn có chắc chắn muốn đăng xuất khỏi hệ thống? Các video đang chờ tải lên vẫn được lưu lại an toàn trên thiết bị và sẽ được tiếp tục đồng bộ khi bạn hoặc ai đó đăng nhập lại.
+            <AlertDialogDescription asChild>
+              <div className="space-y-2 text-left text-sm text-muted-foreground mt-2">
+                {pendingUploads > 0 ? (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-800 dark:text-amber-300 text-xs leading-relaxed space-y-1.5">
+                    <div className="font-bold flex items-center gap-1.5 text-amber-900 dark:text-amber-200">
+                      <span>Cảnh báo: Còn {pendingUploads} video chưa tải lên Google Drive!</span>
+                    </div>
+                    <div>
+                      Toàn bộ video này vẫn được <strong>bảo toàn an toàn tuyệt đối trong IndexedDB</strong> của máy và sẽ tự động tiếp tục tải lên khi có ca làm việc tiếp theo đăng nhập.
+                    </div>
+                  </div>
+                ) : (
+                  <p>
+                    Bạn có chắc chắn muốn đăng xuất khỏi hệ thống? Cài đặt cá nhân của bạn sẽ được lưu lại riêng biệt cho tài khoản này trên máy.
+                  </p>
+                )}
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

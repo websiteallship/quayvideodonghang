@@ -7,6 +7,10 @@ import {
 } from '../services/api-client';
 import { API_ENDPOINTS } from '../config/api';
 
+import { useUserSettingsStore } from './user-settings-store';
+import { useOnboardingStore } from './onboarding-store';
+import { clearDashboardStatsCache } from '../services/dashboard-service';
+
 interface AuthState {
   token: string | null;
   user: AuthUser | null;
@@ -32,11 +36,18 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setStoredToken(token);
     setStoredUser(user);
     set({ token, user, isAuthenticated: true });
+    if (user?.ma_nhan_vien) {
+      useUserSettingsStore.getState().loadUserSettings(user.ma_nhan_vien);
+      useOnboardingStore.getState().loadUserOnboarding(user.ma_nhan_vien);
+    }
   },
 
   logout: () => {
     removeStoredToken();
     removeStoredUser();
+    clearDashboardStatsCache();
+    useUserSettingsStore.getState().resetUserSettings();
+    useOnboardingStore.getState().resetOnboarding();
     set({ token: null, user: null, isAuthenticated: false });
   },
 
@@ -56,7 +67,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       }>();
 
       if (res.success && res.data) {
-        set({ user: res.data.nhan_vien, isAuthenticated: true });
+        const nhanVien = res.data.nhan_vien;
+        set({ user: nhanVien, isAuthenticated: true });
+        if (nhanVien?.ma_nhan_vien) {
+          useUserSettingsStore.getState().loadUserSettings(nhanVien.ma_nhan_vien);
+          useOnboardingStore.getState().loadUserOnboarding(nhanVien.ma_nhan_vien);
+        }
         return true;
       }
       get().logout();

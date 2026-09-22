@@ -14,6 +14,7 @@ export const UploadInitSchema = z.object({
     .regex(/^[a-zA-Z0-9_-]+$/, 'Mã vận đơn chỉ được chứa chữ cái, chữ số, gạch nối hoặc gạch dưới'),
   don_vi_vc: z.string().min(1, 'Đơn vị vận chuyển không được rỗng'),
   loai_bien_ban: z.enum(['dong_goi', 'khui_hang']),
+  ma_nhan_vien: z.string().optional(),
   thiet_bi: z.enum(['mobile', 'pc_webcam', 'laptop']).default('mobile'),
   thoi_luong_video: z.number().int().nonnegative('Thời lượng video không được âm'),
   kich_thuoc_bytes: z.number().int().positive('Kích thước bytes phải lớn hơn 0'),

@@ -7,7 +7,6 @@ import {
   Monitor,
   Smartphone,
   CheckCircle2,
-  X,
   Zap,
   ShieldCheck,
 } from 'lucide-react';
@@ -21,10 +20,12 @@ import {
 import { Button } from '@/components/ui/button';
 import { usePWAInstall, type PWAInstallPlatform, isPWAPromptDismissed, dismissPWAPrompt, neverShowPWAPromptAgain } from '@/hooks/usePWAInstall';
 import { useAuthStore } from '@/stores/auth-store';
+import { useOnboardingStore } from '@/stores/onboarding-store';
 
 export const PWAPromptModal: React.FC = () => {
   const { isAuthenticated } = useAuthStore();
   const { isInstalled, hasNativePrompt, platform, triggerInstall } = usePWAInstall();
+  const { hasSeenGuide, isGuideModalOpen } = useOnboardingStore();
 
   const [isOpen, setIsOpen] = useState(false);
   const [selectedTab, setSelectedTab] = useState<PWAInstallPlatform>(platform);
@@ -35,20 +36,20 @@ export const PWAPromptModal: React.FC = () => {
   }, [platform]);
 
   useEffect(() => {
-    // Chỉ kích hoạt khi đã đăng nhập, KHÔNG phải đang chạy trong PWA, và chưa bị dismiss
-    if (!isAuthenticated || isInstalled || isPWAPromptDismissed()) {
+    // Tránh xung đột: Chỉ kích hoạt khi đã đăng nhập, KHÔNG chạy PWA, chưa dismiss, và đã hoàn tất Onboarding
+    if (!isAuthenticated || isInstalled || isPWAPromptDismissed() || !hasSeenGuide || isGuideModalOpen) {
       return;
     }
 
-    // Delay 1.5 giây sau khi vào hệ thống để trải nghiệm mượt mà
+    // Delay 1.5 giây sau khi xem xong hướng dẫn để trải nghiệm mượt mà
     const timer = setTimeout(() => {
-      if (!isPWAPromptDismissed()) {
+      if (!isPWAPromptDismissed() && !useOnboardingStore.getState().isGuideModalOpen) {
         setIsOpen(true);
       }
     }, 1500);
 
     return () => clearTimeout(timer);
-  }, [isAuthenticated, isInstalled]);
+  }, [isAuthenticated, isInstalled, hasSeenGuide, isGuideModalOpen]);
 
   // Đang chạy trong PWA standalone -> không hiển thị gì
   if (isInstalled) {
@@ -80,28 +81,18 @@ export const PWAPromptModal: React.FC = () => {
     <Dialog open={isOpen} onOpenChange={(open) => !open && handleDismiss()}>
       <DialogContent className="max-w-md w-[92vw] p-5 sm:p-6 rounded-2xl bg-card border-border shadow-2xl">
         <DialogHeader className="text-left space-y-2">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400">
-                <Sparkles className="w-5 h-5" />
-              </div>
-              <div>
-                <DialogTitle className="text-base sm:text-lg font-bold text-foreground">
-                  Trải nghiệm App mượt mà hơn
-                </DialogTitle>
-                <DialogDescription className="text-xs text-muted-foreground">
-                  Cài đặt PWA để sử dụng đầy đủ tính năng kho vận chuyên nghiệp
-                </DialogDescription>
-              </div>
+          <div className="flex items-center gap-2.5 pr-6">
+            <div className="w-10 h-10 rounded-xl bg-emerald-500/15 flex items-center justify-center text-emerald-600 dark:text-emerald-400 shrink-0">
+              <Sparkles className="w-5 h-5" />
             </div>
-            <button
-              type="button"
-              onClick={handleDismiss}
-              aria-label="Đóng"
-              className="rounded-lg p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
-            >
-              <X size={16} />
-            </button>
+            <div>
+              <DialogTitle className="text-base sm:text-lg font-bold text-foreground">
+                Trải nghiệm App mượt mà hơn
+              </DialogTitle>
+              <DialogDescription className="text-xs text-muted-foreground">
+                Cài đặt PWA để sử dụng đầy đủ tính năng kho vận chuyên nghiệp
+              </DialogDescription>
+            </div>
           </div>
         </DialogHeader>
 
