@@ -175,6 +175,11 @@ export const HistoryPage: React.FC = () => {
   const [items, setItems] = useState<BienBanItem[]>([]);
   const [totalItems, setTotalItems] = useState(0);
   const [totalPages, setTotalPages] = useState(1);
+  const [tabCounts, setTabCounts] = useState<{ all: number; dong_goi: number; khui_hang: number }>({
+    all: 0,
+    dong_goi: 0,
+    khui_hang: 0,
+  });
   const [isLoading, setIsLoading] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
 
@@ -306,6 +311,15 @@ export const HistoryPage: React.FC = () => {
       const tPages = res.data.pagination?.total_pages ?? res.data.total_pages ?? 1;
       setTotalItems(total);
       setTotalPages(Math.max(1, tPages));
+      if (res.data.counts) {
+        setTabCounts(res.data.counts);
+      } else {
+        setTabCounts((prev) => ({
+          all: loaiBienBan === 'all' ? total : prev.all,
+          dong_goi: loaiBienBan === 'dong_goi' ? total : prev.dong_goi,
+          khui_hang: loaiBienBan === 'khui_hang' ? total : prev.khui_hang,
+        }));
+      }
     } else {
       setLoadError(res.error?.message || 'Không thể kết nối đến máy chủ để tải lịch sử.');
       setItems([]);
@@ -340,11 +354,11 @@ export const HistoryPage: React.FC = () => {
   // Tab counts for loaiBienBan
   const counts = useMemo(
     () => ({
-      all: totalItems,
-      dong_goi: items.filter((i) => i.loai_bien_ban === 'dong_goi').length,
-      khui_hang: items.filter((i) => i.loai_bien_ban === 'khui_hang').length,
+      all: tabCounts.all,
+      dong_goi: tabCounts.dong_goi,
+      khui_hang: tabCounts.khui_hang,
     }),
-    [items, totalItems]
+    [tabCounts]
   );
 
   const startIndex = (page - 1) * limit + 1;

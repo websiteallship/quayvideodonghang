@@ -20,7 +20,7 @@ import {
   Check
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { Pagination } from '@/components/ui/pagination';
+import { Pagination, PaginationInfo, PaginationLimitSelect, MobilePaginationFooter } from '@/components/ui/pagination';
 import { useUploadQueue } from '@/hooks/use-upload-queue';
 import { useAuthStore } from '@/stores/auth-store';
 import { Badge } from '@/components/ui/badge';
@@ -49,8 +49,6 @@ import {
 } from "@/components/ui/alert-dialog";
 import { formatBytes, formatDuration, formatDateTimeVN, formatDateTimeShortVN } from '@/utils/format';
 import type { QueueItem, UploadStatus, LoaiBienBan } from '@/types';
-
-const ITEMS_PER_PAGE = 10;
 
 type FilterStatus = 'all' | UploadStatus;
 type FilterType = 'all' | LoaiBienBan;
@@ -661,6 +659,7 @@ export const QueuePage: React.FC = () => {
   const [filterStatus, setFilterStatus] = useState<FilterStatus>('cho_upload');
   const [filterType, setFilterType] = useState<FilterType>('all');
   const [currentPage, setCurrentPage] = useState(1);
+  const [limit, setLimit] = useState(20);
   const [playingItem, setPlayingItem] = useState<QueueItem | null>(null);
 
   // Bulk select state
@@ -710,11 +709,15 @@ export const QueuePage: React.FC = () => {
   }, [queue, filterType, filterStatus, searchQuery]);
 
   // Pagination
-  const totalPages = Math.max(1, Math.ceil(filteredQueue.length / ITEMS_PER_PAGE));
+  const totalItems = filteredQueue.length;
+  const totalPages = Math.max(1, Math.ceil(totalItems / limit));
+  const startIndex = (currentPage - 1) * limit + 1;
+  const endIndex = Math.min(currentPage * limit, totalItems);
+  
   const paginatedItems = useMemo(() => {
-    const start = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredQueue.slice(start, start + ITEMS_PER_PAGE);
-  }, [filteredQueue, currentPage]);
+    const start = (currentPage - 1) * limit;
+    return filteredQueue.slice(start, start + limit);
+  }, [filteredQueue, currentPage, limit]);
 
   // Selection handlers
   const handleToggleSelect = useCallback((id: string) => {
@@ -1116,9 +1119,9 @@ export const QueuePage: React.FC = () => {
         })}
       </div>
 
-      {/* 7. Selection Control Row */}
+      {/* 7. Selection Control Row (Mobile Only) */}
       {paginatedItems.length > 0 && (
-        <div className="flex items-center justify-between px-1 text-xs text-muted-foreground shrink-0">
+        <div className="flex lg:hidden items-center justify-between px-1 text-xs text-muted-foreground shrink-0 mt-1">
           <div
             className="flex items-center gap-1.5 cursor-pointer select-none text-foreground hover:text-primary transition-colors"
             onClick={handleSelectAllVisible}
@@ -1128,11 +1131,11 @@ export const QueuePage: React.FC = () => {
             ) : (
               <Square size={16} className="text-muted-foreground" />
             )}
-            <span className="font-medium text-[12px]">Chọn tất cả trang này ({paginatedItems.length})</span>
+            <span className="font-medium text-[12px]">Chọn tất cả ({paginatedItems.length})</span>
           </div>
 
           <span className="text-[11px] font-medium text-muted-foreground">
-            {filteredQueue.length} video phù hợp
+            {totalItems} video
           </span>
         </div>
       )}
@@ -1159,43 +1162,212 @@ export const QueuePage: React.FC = () => {
           )}
         </div>
       ) : (
-        <div className="flex-1 min-h-0 flex flex-col gap-2">
-          {/* Middle Scrollable list of cards */}
-          <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pr-1 saas-scrollbar">
-            {paginatedItems.map((item) => (
-              <QueueCard
-                key={item.id}
-                item={item}
-                isSelected={selectedIds.has(item.id)}
-                onToggleSelect={handleToggleSelect}
-                onPlayVideo={handlePlayVideo}
-                onUploadSingle={handleRequestUploadSingle}
-                onRetry={handleRetry}
-                onRemove={handleRequestRemoveItem}
-                onCancelUpload={handleCancelUpload}
-                isUploadingThis={currentUpload === item.id}
-                uploadProgress={currentUpload === item.id ? currentProgress : 0}
+        <>
+          {/* Desktop Table View */}
+          <div className="hidden lg:flex flex-1 min-h-0 flex-col rounded-2xl border border-slate-200/90 dark:border-slate-800 bg-card shadow-xs overflow-hidden mt-1">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-auto relative saas-scrollbar">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 z-10 bg-card/95 backdrop-blur-sm shadow-xs border-b border-border/80">
+                  <tr className="text-[11px] font-bold uppercase tracking-wider text-muted-foreground select-none">
+                    <th className="py-3 px-4 bg-card w-12 text-center">
+                      <div 
+                        className="flex items-center justify-center cursor-pointer"
+                        onClick={handleSelectAllVisible}
+                        title="Chọn tất cả trang này"
+                      >
+                        {isAllCurrentPageSelected ? (
+                          <CheckSquare size={16} className="text-primary" />
+                        ) : (
+                          <Square size={16} className="text-muted-foreground" />
+                        )}
+                      </div>
+                    </th>
+                    <th className="py-3 px-3 bg-card">Mã vận đơn</th>
+                    <th className="py-3 px-3 bg-card">Loại</th>
+                    <th className="py-3 px-3 bg-card">Thời gian</th>
+                    <th className="py-3 px-3 bg-card">File</th>
+                    <th className="py-3 px-3 bg-card">Trạng thái</th>
+                    <th className="py-3 px-4 bg-card text-right">Thao tác</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/60 text-xs">
+                  {paginatedItems.map((item) => {
+                    const isDongGoi = item.loai_bien_ban === 'dong_goi';
+                    const isError = item.status === 'loi';
+                    const isPending = item.status === 'cho_upload';
+                    const isUploadingThis = currentUpload === item.id;
+                    const isUploading = item.status === 'dang_upload' || isUploadingThis;
+                    const uploadProgress = isUploadingThis ? currentProgress : 0;
+                    const isSelected = selectedIds.has(item.id);
+
+                    return (
+                      <tr 
+                        key={item.id} 
+                        className={cn("hover:bg-muted/40 transition-colors group cursor-pointer", isSelected ? "bg-primary/5" : "")}
+                        onClick={() => handlePlayVideo(item)}
+                      >
+                        <td className="py-3 px-4" onClick={(e) => e.stopPropagation()}>
+                          {item.status !== 'da_upload' ? (
+                            <div
+                              className="flex items-center justify-center cursor-pointer"
+                              onClick={() => handleToggleSelect(item.id)}
+                            >
+                              {isSelected ? (
+                                <CheckSquare size={18} className="text-primary" />
+                              ) : (
+                                <Square size={18} className="text-muted-foreground" />
+                              )}
+                            </div>
+                          ) : null}
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-2">
+                            <div>
+                              <div className="font-mono font-bold text-xs text-foreground tracking-wide">
+                                {item.ma_van_don}
+                              </div>
+                              <div className="mt-1">
+                                <span className={`inline-block text-[10px] font-semibold px-2 py-0.5 rounded border ${
+                                  isDongGoi ? 'bg-indigo-500/10 text-indigo-600 border-indigo-500/20' : 'bg-amber-500/10 text-amber-600 border-amber-500/20'
+                                }`}>
+                                  {item.don_vi_vc}
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          <span className={cn('inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-semibold border',
+                            isDongGoi ? 'bg-blue-500/10 text-blue-600 border-blue-500/20' : 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20'
+                          )}>
+                            {isDongGoi ? <Package size={12} /> : <PackageOpen size={12} />}
+                            <span>{isDongGoi ? 'Đóng gói' : 'Khui hàng'}</span>
+                          </span>
+                        </td>
+                        <td className="py-3 px-3 text-muted-foreground font-mono text-[11px]">
+                          {formatDateTimeShortVN(item.created_at)}
+                        </td>
+                        <td className="py-3 px-3">
+                          <div className="flex items-center gap-1.5 text-muted-foreground font-medium text-[11px]">
+                            <Clock size={12} />
+                            <span>{formatDuration(item.thoi_luong_video)}</span>
+                            <span className="text-muted-foreground/40">·</span>
+                            <HardDrive size={12} />
+                            <span>{formatBytes(item.kich_thuoc_bytes)}</span>
+                          </div>
+                        </td>
+                        <td className="py-3 px-3">
+                          {item.status === 'da_upload' ? (
+                            <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/25 hover:bg-emerald-500/15 text-[10px] font-bold uppercase tracking-wider rounded-full shadow-none">
+                              ĐÃ LƯU
+                            </Badge>
+                          ) : item.status === 'cho_upload' ? (
+                            <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/25 hover:bg-amber-500/15 text-[10px] font-bold uppercase tracking-wider rounded-full shadow-none">
+                              CHỜ TẢI
+                            </Badge>
+                          ) : isUploading ? (
+                            <div className="flex flex-col gap-1 w-24">
+                              <Badge className="bg-sky-500/10 text-sky-600 border-sky-500/25 hover:bg-sky-500/15 text-[10px] font-bold uppercase tracking-wider rounded-full shadow-none self-start">
+                                ĐANG TẢI
+                              </Badge>
+                              <Progress value={uploadProgress} className="h-1.5" />
+                            </div>
+                          ) : (
+                            <div className="flex flex-col gap-1">
+                              <Badge className="bg-rose-500/10 text-rose-600 border-rose-500/25 hover:bg-rose-500/15 text-[10px] font-bold uppercase tracking-wider rounded-full shadow-none self-start">
+                                LỖI
+                              </Badge>
+                              {item.last_error && <span className="text-[9px] text-destructive max-w-[120px] truncate" title={item.last_error}>{item.last_error}</span>}
+                            </div>
+                          )}
+                        </td>
+                        <td className="py-3 px-4 text-right" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {isUploading && (
+                              <Button variant="outline" size="sm" onClick={() => handleCancelUpload(item)} className="h-8 px-2 text-[11px]">
+                                Tạm dừng
+                              </Button>
+                            )}
+                            {isPending && (
+                              <Button size="sm" onClick={() => handleRequestUploadSingle(item)} className="h-8 px-2.5 text-[11px] font-bold">
+                                <UploadCloud size={14} className="mr-1" /> Tải
+                              </Button>
+                            )}
+                            {isError && (
+                              <Button variant="secondary" size="sm" onClick={() => handleRetry(item.id)} className="h-8 px-2.5 text-[11px] font-bold text-amber-600 bg-amber-500/10 hover:bg-amber-500/20 border-transparent">
+                                <RotateCcw size={14} className="mr-1" /> Thử lại
+                              </Button>
+                            )}
+                            {item.status === 'da_upload' && (
+                              <Button variant="outline" size="sm" onClick={() => handlePlayVideo(item)} className="h-8 px-2.5 text-[11px] font-semibold">
+                                <Play size={12} className="text-amber-500 mr-1 fill-current" /> Xem
+                              </Button>
+                            )}
+                            {item.status !== 'da_upload' && (
+                              <Button variant="outline" size="sm" onClick={() => handleRequestRemoveItem(item)} className="h-8 w-8 p-0 text-destructive border-border hover:bg-destructive hover:text-white">
+                                <Trash2 size={14} />
+                              </Button>
+                            )}
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            {/* Desktop Pagination Footer */}
+            <div className="shrink-0 px-5 py-3 border-t border-border/80 bg-card flex items-center justify-between flex-wrap gap-4 text-xs text-muted-foreground select-none shadow-[0_-4px_15px_rgba(0,0,0,0.03)]">
+              <div className="flex items-center gap-4 flex-wrap">
+                <PaginationInfo startIndex={startIndex} endIndex={endIndex} totalItems={totalItems} />
+                <PaginationLimitSelect 
+                  limit={limit} 
+                  onLimitChange={(val) => { setLimit(val); setCurrentPage(1); }} 
+                />
+              </div>
+              <Pagination 
+                currentPage={currentPage} 
+                totalPages={totalPages} 
+                onPageChange={setCurrentPage} 
+                showFirstLast 
               />
-            ))}
+            </div>
           </div>
 
-          {/* Fixed Bottom Pagination Footer */}
-          <div className="shrink-0 p-3 rounded-xl border border-border bg-card shadow-xs flex items-center justify-between flex-wrap gap-2 text-xs text-muted-foreground select-none">
-            <div className="text-xs text-muted-foreground font-medium">
-              Hiển thị <strong className="text-foreground">{paginatedItems.length}</strong> / <strong>{filteredQueue.length}</strong> video
+          {/* Mobile Card View */}
+          <div className="flex lg:hidden flex-1 min-h-0 flex-col gap-2 mt-1">
+            <div className="flex-1 min-h-0 overflow-y-auto flex flex-col gap-2 pr-1 pb-16 saas-scrollbar">
+              {paginatedItems.map((item) => (
+                <QueueCard
+                  key={item.id}
+                  item={item}
+                  isSelected={selectedIds.has(item.id)}
+                  onToggleSelect={handleToggleSelect}
+                  onPlayVideo={handlePlayVideo}
+                  onUploadSingle={handleRequestUploadSingle}
+                  onRetry={handleRetry}
+                  onRemove={handleRequestRemoveItem}
+                  onCancelUpload={handleCancelUpload}
+                  isUploadingThis={currentUpload === item.id}
+                  uploadProgress={currentUpload === item.id ? currentProgress : 0}
+                />
+              ))}
             </div>
-            {totalPages > 1 ? (
-              <Pagination
-                currentPage={currentPage}
-                totalPages={totalPages}
-                onPageChange={setCurrentPage}
-                siblingCount={1}
-              />
-            ) : (
-              <span className="text-[11px] text-muted-foreground font-mono">Trang 1 / 1</span>
-            )}
+
+            {/* Mobile Pagination Footer */}
+            <MobilePaginationFooter
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+              startIndex={startIndex}
+              endIndex={endIndex}
+              totalItems={totalItems}
+              limit={limit}
+              onLimitChange={(val) => { setLimit(val); setCurrentPage(1); }}
+              limitOptions={[10, 20, 50]}
+            />
           </div>
-        </div>
+        </>
       )}
 
       {/* 10. STICKY FLOATING BULK ACTION BAR */}

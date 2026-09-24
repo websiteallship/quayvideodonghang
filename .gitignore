@@ -5,7 +5,7 @@
 *.pem
 *-service-account*.json
 quayvideo-*.json
-client_secret*.json
+*client_secret*.json
 credentials*.json
 *.token.json
 token.json

@@ -122,6 +122,11 @@ export interface BienBanListResponse {
     total: number;
     total_pages: number;
   };
+  counts?: {
+    all: number;
+    dong_goi: number;
+    khui_hang: number;
+  };
   total: number;
   page: number;
   limit: number;

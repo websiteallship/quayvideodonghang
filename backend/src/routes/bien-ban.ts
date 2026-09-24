@@ -140,72 +140,89 @@ bienBanRouter.get(
     const isAdmin = user?.vai_tro === 'admin';
 
     try {
-      let whereClause = 'WHERE 1=1';
-      const params: (string | number)[] = [];
+      let baseWhereClause = 'WHERE 1=1';
+      const baseParams: (string | number)[] = [];
 
       // 1. Phân quyền truy cập (Access Control)
       if (!isAdmin) {
-        whereClause += ' AND b.ma_nhan_vien = ?';
-        params.push(user.sub);
+        baseWhereClause += ' AND b.ma_nhan_vien = ?';
+        baseParams.push(user.sub);
       } else if (ma_nhan_vien) {
-        whereClause += ' AND b.ma_nhan_vien = ?';
-        params.push(ma_nhan_vien.toUpperCase());
+        baseWhereClause += ' AND b.ma_nhan_vien = ?';
+        baseParams.push(ma_nhan_vien.toUpperCase());
       }
 
       // 2. Lọc trạng thái (hỗ trợ cả status và trang_thai)
       const targetStatus = status || trang_thai;
       if (targetStatus) {
-        whereClause += ' AND b.trang_thai = ?';
-        params.push(targetStatus);
+        baseWhereClause += ' AND b.trang_thai = ?';
+        baseParams.push(targetStatus);
       }
 
       // 3. Tìm kiếm theo mã vận đơn (hỗ trợ search và ma_van_don)
       const searchCode = search || ma_van_don;
       if (searchCode) {
         const escapedSearch = searchCode.replace(/[%_\\]/g, '\\$&');
-        whereClause += " AND b.ma_van_don LIKE ? ESCAPE '\\'";
-        params.push(`%${escapedSearch}%`);
+        baseWhereClause += " AND b.ma_van_don LIKE ? ESCAPE '\\'";
+        baseParams.push(`%${escapedSearch}%`);
       }
 
       // 4. Lọc đơn vị vận chuyển
       if (don_vi_vc) {
-        whereClause += ' AND b.don_vi_vc = ?';
-        params.push(don_vi_vc);
+        baseWhereClause += ' AND b.don_vi_vc = ?';
+        baseParams.push(don_vi_vc);
       }
 
-      // 5. Lọc loại biên bản (dong_goi / khui_hang)
-      if (loai_bien_ban) {
-        whereClause += ' AND b.loai_bien_ban = ?';
-        params.push(loai_bien_ban);
-      }
-
-      // 6. Lọc khoảng ngày (theo chuẩn giờ Hồ Chí Minh UTC+7)
+      // 5. Lọc khoảng ngày (theo chuẩn giờ Hồ Chí Minh UTC+7)
       if (ngay_tu) {
-        whereClause += " AND DATE(b.thoi_gian_tao, '+7 hours') >= ?";
-        params.push(ngay_tu);
+        baseWhereClause += " AND DATE(b.thoi_gian_tao, '+7 hours') >= ?";
+        baseParams.push(ngay_tu);
       }
       if (ngay_den) {
-        whereClause += " AND DATE(b.thoi_gian_tao, '+7 hours') <= ?";
-        params.push(ngay_den);
+        baseWhereClause += " AND DATE(b.thoi_gian_tao, '+7 hours') <= ?";
+        baseParams.push(ngay_den);
       }
 
-      const countResult = await c.env.DB.prepare(
-        `SELECT COUNT(*) as total FROM bien_ban b ${whereClause}`
+      // Đếm tổng số lượng theo từng loại biên bản (all, dong_goi, khui_hang)
+      const countsResult = await c.env.DB.prepare(
+        `SELECT 
+           COUNT(*) as total_all,
+           COALESCE(SUM(CASE WHEN b.loai_bien_ban = 'dong_goi' THEN 1 ELSE 0 END), 0) as total_dong_goi,
+           COALESCE(SUM(CASE WHEN b.loai_bien_ban = 'khui_hang' THEN 1 ELSE 0 END), 0) as total_khui_hang
+         FROM bien_ban b ${baseWhereClause}`
       )
-        .bind(...params)
-        .first<{ total: number }>();
+        .bind(...baseParams)
+        .first<{ total_all: number; total_dong_goi: number; total_khui_hang: number }>();
 
-      const total = countResult?.total || 0;
+      const counts = {
+        all: countsResult?.total_all || 0,
+        dong_goi: countsResult?.total_dong_goi || 0,
+        khui_hang: countsResult?.total_khui_hang || 0
+      };
+
+      // 6. Lọc loại biên bản cho danh sách dữ liệu
+      let itemWhereClause = baseWhereClause;
+      const itemParams = [...baseParams];
+      if (loai_bien_ban) {
+        itemWhereClause += ' AND b.loai_bien_ban = ?';
+        itemParams.push(loai_bien_ban);
+      }
+
+      const total = loai_bien_ban === 'dong_goi'
+        ? counts.dong_goi
+        : loai_bien_ban === 'khui_hang'
+        ? counts.khui_hang
+        : counts.all;
 
       const items = await c.env.DB.prepare(
         `SELECT b.*, n.ten as ten_nhan_vien
          FROM bien_ban b
          LEFT JOIN nhan_vien n ON b.ma_nhan_vien = n.ma
-         ${whereClause}
+         ${itemWhereClause}
          ORDER BY b.thoi_gian_tao DESC
          LIMIT ? OFFSET ?`
       )
-        .bind(...params, limit, offset)
+        .bind(...itemParams, limit, offset)
         .all();
 
       return successResponse(c, {
@@ -216,6 +233,7 @@ bienBanRouter.get(
           total,
           total_pages: Math.ceil(total / limit)
         },
+        counts,
         total,
         page,
         limit,
