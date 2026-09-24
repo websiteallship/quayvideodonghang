@@ -259,7 +259,7 @@ export const UserSettingsPage: React.FC = () => {
   }, [selectedDeviceId, devices, facingMode]);
 
   return (
-    <div className="flex flex-col gap-4 lg:gap-6 w-full">
+    <div className="flex flex-col gap-4 lg:gap-6 w-full pb-12 sm:pb-16 lg:pb-20">
       {/* ─── Page Header (Desktop) ─── */}
       <div className="hidden lg:block">
         <h2 className="text-2xl font-bold tracking-tight text-foreground lg:text-3xl">
@@ -821,15 +821,15 @@ export const UserSettingsPage: React.FC = () => {
           </SettingsCard>
 
           {/* Logout Button */}
-          <Card className="rounded-3xl shadow-xs border-destructive/30 bg-destructive/5 mt-2">
-            <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4">
+          <Card className="rounded-3xl shadow-xs border-destructive/30 bg-destructive/5 mt-4 sm:mt-6 mb-4">
+            <CardContent className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 p-4 sm:p-5">
               <div className="text-xs text-muted-foreground">
                 Đăng xuất khỏi phiên làm việc hiện tại để bảo vệ dữ liệu trạm kho
               </div>
               <Button
                 variant="destructive"
                 size="default"
-                className="h-11 gap-2 rounded-2xl text-xs font-bold shrink-0 px-5"
+                className="h-11 gap-2 rounded-2xl text-xs font-bold shrink-0 px-5 cursor-pointer shadow-xs hover:bg-destructive/90 transition-colors"
                 onClick={logout}
               >
                 <LogOut className="size-4" aria-hidden="true" />
