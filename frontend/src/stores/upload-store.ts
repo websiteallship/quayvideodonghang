@@ -23,6 +23,7 @@ export interface UploadState {
   startSync: () => void;
   stopSync: () => void;
   notifyEnqueue: () => void;
+  updateWorkerToken: () => void;
   
   loadQueue: () => Promise<void>;
   addToQueue: (item: QueueItem) => Promise<void>;
@@ -146,6 +147,19 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     const { workerRef } = get();
     if (workerRef) {
       workerRef.postMessage({ type: 'ENQUEUE' } as WorkerMessage);
+    }
+  },
+
+  updateWorkerToken: () => {
+    const { workerRef } = get();
+    if (workerRef) {
+      const token = getStoredToken();
+      workerRef.postMessage({
+        type: 'UPDATE_TOKEN',
+        payload: { token }
+      } as WorkerMessage);
+      // Reload queue after a short delay to reflect reset items from worker
+      setTimeout(() => { get().loadQueue(); }, 500);
     }
   },
 

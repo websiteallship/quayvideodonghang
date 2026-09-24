@@ -94,13 +94,22 @@ async function authFetchJson<T>(url: string, options: RequestInit = {}): Promise
 
 async function queryByteOffset(uploadUrl: string, totalSize: number): Promise<number> {
   try {
-    const res = await fetch(uploadUrl, {
-      method: 'PUT',
-      headers: {
-        'Content-Length': '0',
-        'Content-Range': `bytes */${totalSize}`
-      }
-    });
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 15_000);
+
+    let res: Response;
+    try {
+      res = await fetch(uploadUrl, {
+        method: 'PUT',
+        headers: {
+          'Content-Length': '0',
+          'Content-Range': `bytes */${totalSize}`
+        },
+        signal: controller.signal
+      });
+    } finally {
+      clearTimeout(timeoutId);
+    }
 
     if (res.status === 308) {
       const range = res.headers.get('Range');
@@ -470,6 +479,26 @@ self.onmessage = (e: MessageEvent<WorkerMessage>) => {
     case 'UPDATE_TOKEN': {
       const payload = msg.payload as WorkerMessageUpdateTokenPayload;
       authToken = payload.token;
+      // Reset errored items so they can be retried with the new token
+      (async () => {
+        try {
+          const queue = await idbService.getQueue();
+          for (const item of queue) {
+            if (item.status === 'loi') {
+              await idbService.updateItem(item.id, {
+                status: 'cho_upload',
+                retry_count: 0,
+                last_error: undefined,
+                resumable_session_url: undefined
+              });
+            }
+          }
+        } catch {}
+        // Restart sync loop to pick up the reset items
+        if (!isSyncing && navigator.onLine) {
+          syncLoop();
+        }
+      })();
       break;
     }
     case 'ENQUEUE':

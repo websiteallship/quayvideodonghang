@@ -11,6 +11,7 @@ import { useUserSettingsStore } from './user-settings-store';
 import { useOnboardingStore } from './onboarding-store';
 import { useConfigStore } from './config-store';
 import { clearDashboardStatsCache } from '../services/dashboard-service';
+import { useUploadStore } from './upload-store';
 
 interface AuthState {
   token: string | null;
@@ -37,6 +38,8 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     setStoredToken(token);
     setStoredUser(user);
     set({ token, user, isAuthenticated: true });
+    // Sync token to upload worker & restart failed uploads
+    useUploadStore.getState().updateWorkerToken();
     if (user?.ma_nhan_vien) {
       useUserSettingsStore.getState().loadUserSettings(user.ma_nhan_vien);
       useOnboardingStore.getState().loadUserOnboarding(user.ma_nhan_vien);
