@@ -152,7 +152,22 @@ export const useUploadStore = create<UploadState>((set, get) => ({
   loadQueue: async () => {
     try {
       const items = await idbService.getAll();
-      set({ queue: items });
+      
+      // Auto-recover stuck 'dang_upload' items from previous crashed sessions
+      let needsReload = false;
+      for (const item of items) {
+        if (item.status === 'dang_upload') {
+          await idbService.updateItem(item.id, { status: 'loi', last_error: 'Đang tải lên thì bị gián đoạn' });
+          needsReload = true;
+        }
+      }
+
+      if (needsReload) {
+        const freshItems = await idbService.getAll();
+        set({ queue: freshItems });
+      } else {
+        set({ queue: items });
+      }
     } catch (err) {
       console.error('Failed to load upload queue from IDB:', err);
     }
@@ -203,7 +218,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
 
     await idbService.updateItem(id, {
       status: 'cho_upload',
-      retry_count: item.retry_count + 1,
+      retry_count: 0,
       last_error: undefined
     });
     await get().loadQueue();
