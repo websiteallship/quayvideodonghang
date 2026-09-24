@@ -532,31 +532,3 @@ bienBanRouter.get(
   }
 );
 
-// Xóa tất cả records lỗi/chờ upload (không có video trên Drive) - Chỉ admin
-bienBanRouter.delete(
-  '/cleanup/errors',
-  authMiddleware,
-  async (c) => {
-    const user = c.get('user');
-    if (user.vai_tro !== 'admin') {
-      return errorResponse(c, 'FORBIDDEN', 'Chỉ admin mới được thực hiện', 403);
-    }
-
-    try {
-      const result = await c.env.DB.prepare(
-        `DELETE FROM bien_ban WHERE trang_thai IN ('loi', 'cho_upload')`
-      ).run();
-
-      const deleted = result.meta.changes || 0;
-
-      await c.env.DB.prepare(
-        'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
-      ).bind('system', 'cleanup', `Admin ${user.sub} deleted ${deleted} error/pending records`).run();
-
-      return successResponse(c, { deleted_count: deleted });
-    } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'Database error';
-      return errorResponse(c, 'DATABASE_ERROR', message, 500);
-    }
-  }
-);
