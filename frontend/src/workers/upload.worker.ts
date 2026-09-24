@@ -177,7 +177,7 @@ async function uploadBlobWithResume(
         return '';
       }
     } else {
-      throw new Error(`Drive upload error (${response.status})`);
+      const txt = await response.text(); throw new Error(`Drive upload error (${response.status}): ${txt}`);
     }
   }
   return '';
