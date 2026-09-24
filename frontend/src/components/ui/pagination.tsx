@@ -68,7 +68,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           onClick={() => onPageChange(1)}
           disabled={currentPage === 1}
           title="Trang đầu tiên"
-          className="size-8 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
+          className="size-8 shrink-0 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
         >
           <ChevronsLeft size={14} />
         </button>
@@ -79,14 +79,14 @@ export const Pagination: React.FC<PaginationProps> = ({
         onClick={() => onPageChange(Math.max(currentPage - 1, 1))}
         disabled={currentPage === 1}
         title="Trang trước"
-        className="size-8 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
+        className="size-8 shrink-0 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
       >
         <ChevronLeft size={14} />
       </button>
 
       {pages.map((page, idx) =>
         page === '...' ? (
-          <span key={`ellipsis-${idx}`} className="px-1 text-muted-foreground text-[11px]">
+          <span key={`ellipsis-${idx}`} className="px-1 shrink-0 text-muted-foreground text-[11px]">
             ...
           </span>
         ) : (
@@ -95,7 +95,7 @@ export const Pagination: React.FC<PaginationProps> = ({
             type="button"
             onClick={() => onPageChange(page as number)}
             className={cn(
-              'size-8 rounded-lg font-bold text-xs flex items-center justify-center transition-all cursor-pointer',
+              'size-8 shrink-0 rounded-lg font-bold text-xs flex items-center justify-center transition-all cursor-pointer',
               currentPage === page
                 ? 'bg-blue-600 text-white shadow-xs'
                 : 'border border-border bg-card hover:bg-muted text-foreground'
@@ -111,7 +111,7 @@ export const Pagination: React.FC<PaginationProps> = ({
         onClick={() => onPageChange(Math.min(currentPage + 1, safeTotalPages))}
         disabled={currentPage >= safeTotalPages}
         title="Trang kế tiếp"
-        className="size-8 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
+        className="size-8 shrink-0 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
       >
         <ChevronRight size={14} />
       </button>
@@ -122,7 +122,7 @@ export const Pagination: React.FC<PaginationProps> = ({
           onClick={() => onPageChange(safeTotalPages)}
           disabled={currentPage >= safeTotalPages}
           title="Trang cuối cùng"
-          className="size-8 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
+          className="size-8 shrink-0 rounded-lg border border-border bg-card hover:bg-muted text-muted-foreground hover:text-foreground flex items-center justify-center disabled:opacity-35 disabled:pointer-events-none transition-all cursor-pointer shadow-2xs"
         >
           <ChevronsRight size={14} />
         </button>

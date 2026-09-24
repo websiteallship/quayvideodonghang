@@ -169,7 +169,7 @@ const QueueCard: React.FC<{
 
     return (
       <Card
-        className={`flex flex-col p-3.5 gap-3 relative cursor-pointer transition-colors overflow-hidden ${
+        className={`shrink-0 flex flex-col p-3.5 gap-3 relative cursor-pointer transition-colors overflow-hidden ${
           isSelected ? 'bg-primary/5 ring-1 ring-primary' : 'bg-card'
         } ${cardBorderClass}`}
         onClick={() => onPlayVideo(item)}
