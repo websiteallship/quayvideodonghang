@@ -44,7 +44,12 @@ async function retryWithBackoff<T>(
       if (signal?.aborted) throw err;
       lastError = err instanceof Error ? err : new Error(String(err));
 
-      if (attempt >= RETRY_CONFIG.maxRetries) break;
+      const isFatal = lastError.message.includes('SESSION_EXPIRED') ||
+                      lastError.message.includes('401') ||
+                      lastError.message.includes('403') ||
+                      lastError.message.includes('404') ||
+                      lastError.message.includes('410');
+      if (isFatal || attempt >= RETRY_CONFIG.maxRetries) break;
 
       onRetry?.(attempt + 1, lastError);
 
@@ -88,25 +93,32 @@ async function authFetchJson<T>(url: string, options: RequestInit = {}): Promise
 }
 
 async function queryByteOffset(uploadUrl: string, totalSize: number): Promise<number> {
-  const res = await fetch(uploadUrl, {
-    method: 'PUT',
-    headers: {
-      'Content-Length': '0',
-      'Content-Range': `bytes */${totalSize}`
-    }
-  });
+  try {
+    const res = await fetch(uploadUrl, {
+      method: 'PUT',
+      headers: {
+        'Content-Length': '0',
+        'Content-Range': `bytes */${totalSize}`
+      }
+    });
 
-  if (res.status === 308) {
-    const range = res.headers.get('Range');
-    if (range) {
-      const match = range.match(/bytes=0-(\d+)/);
-      return match ? parseInt(match[1], 10) + 1 : 0;
+    if (res.status === 308) {
+      const range = res.headers.get('Range');
+      if (range) {
+        const match = range.match(/bytes=0-(\d+)/);
+        return match ? parseInt(match[1], 10) + 1 : 0;
+      }
+      return 0;
+    }
+    if (res.ok) return totalSize;
+    if (res.status === 404 || res.status === 410 || res.status === 401) {
+      throw new Error('SESSION_EXPIRED');
     }
     return 0;
+  } catch (err) {
+    if (err instanceof Error && err.message === 'SESSION_EXPIRED') throw err;
+    return 0;
   }
-  if (res.ok) return totalSize;
-  if (res.status === 404) throw new Error('Resumable session expired');
-  return 0;
 }
 
 async function uploadBlobWithResume(
@@ -127,16 +139,30 @@ async function uploadBlobWithResume(
 
     const response = await retryWithBackoff(
       async () => {
-        const res = await fetch(uploadUrl, {
-          method: 'PUT',
-          headers: {
-            'Content-Length': `${chunk.size}`,
-            'Content-Range': `bytes ${offset}-${chunkEnd - 1}/${totalSize}`
-          },
-          body: chunk,
-          signal
-        });
+        const chunkAbortController = new AbortController();
+        const timeoutId = setTimeout(() => chunkAbortController.abort(), 45_000);
+        const handleAbort = () => chunkAbortController.abort();
+        signal?.addEventListener('abort', handleAbort);
 
+        let res: Response;
+        try {
+          res = await fetch(uploadUrl, {
+            method: 'PUT',
+            headers: {
+              'Content-Length': `${chunk.size}`,
+              'Content-Range': `bytes ${offset}-${chunkEnd - 1}/${totalSize}`
+            },
+            body: chunk,
+            signal: chunkAbortController.signal
+          });
+        } finally {
+          clearTimeout(timeoutId);
+          signal?.removeEventListener('abort', handleAbort);
+        }
+
+        if (res.status === 404 || res.status === 410 || res.status === 401) {
+          throw new Error(`SESSION_EXPIRED (${res.status})`);
+        }
         if (res.status >= 500) {
           throw new Error(`Drive server error (${res.status})`);
         }
@@ -177,7 +203,11 @@ async function uploadBlobWithResume(
         return '';
       }
     } else {
-      const txt = await response.text(); throw new Error(`Drive upload error (${response.status}): ${txt}`);
+      if (response.status === 404 || response.status === 410 || response.status === 401) {
+        throw new Error(`SESSION_EXPIRED (${response.status})`);
+      }
+      const txt = await response.text().catch(() => '');
+      throw new Error(`Drive upload error (${response.status}): ${txt}`);
     }
   }
   return '';
@@ -198,6 +228,35 @@ async function simulateProgress(
   }
 }
 
+async function initUploadSession(item: QueueItem, signal: AbortSignal): Promise<{ resumable_upload_url: string; target_file_name: string }> {
+  const initPayload = {
+    id: item.id,
+    ma_van_don: item.ma_van_don,
+    don_vi_vc: item.don_vi_vc,
+    loai_bien_ban: item.loai_bien_ban,
+    ma_nhan_vien: item.ma_nhan_vien,
+    thiet_bi: item.thiet_bi,
+    thoi_luong_video: Math.round(item.thoi_luong_video),
+    kich_thuoc_bytes: item.kich_thuoc_bytes || item.blob?.size || 1,
+    mime_type: item.mime_type || 'video/webm'
+  };
+
+  const initData = await authFetchJson<any>(`${apiBaseUrl}/upload/init`, {
+    method: 'POST',
+    body: JSON.stringify(initPayload),
+    signal
+  });
+
+  if (!initData.success || !initData.data) {
+    throw new Error('Khởi tạo phiên tải lên thất bại: ' + (initData.error?.message || 'Không có phản hồi từ máy chủ'));
+  }
+
+  return {
+    resumable_upload_url: initData.data.resumable_upload_url,
+    target_file_name: initData.data.target_file_name
+  };
+}
+
 async function processSingleItem(item: QueueItem, signal: AbortSignal) {
   const onProgress = (percent: number) => {
     postMainMessage({ type: 'PROGRESS', payload: { id: item.id, percent } });
@@ -210,30 +269,9 @@ async function processSingleItem(item: QueueItem, signal: AbortSignal) {
 
   // 1. Init session
   if (!resumable_upload_url || resumable_upload_url.includes('mock-drive-upload')) {
-    const initPayload = {
-      id: item.id,
-      ma_van_don: item.ma_van_don,
-      don_vi_vc: item.don_vi_vc,
-      loai_bien_ban: item.loai_bien_ban,
-      ma_nhan_vien: item.ma_nhan_vien,
-      thiet_bi: item.thiet_bi,
-      thoi_luong_video: Math.round(item.thoi_luong_video),
-      kich_thuoc_bytes: item.kich_thuoc_bytes || item.blob?.size || 1,
-      mime_type: item.mime_type || 'video/webm'
-    };
-
-    const initData = await authFetchJson<any>(`${apiBaseUrl}/upload/init`, {
-      method: 'POST',
-      body: JSON.stringify(initPayload),
-      signal
-    });
-
-    if (!initData.success || !initData.data) {
-      throw new Error('Khởi tạo phiên tải lên thất bại');
-    }
-
-    resumable_upload_url = initData.data.resumable_upload_url;
-    target_file_name = initData.data.target_file_name;
+    const session = await initUploadSession(item, signal);
+    resumable_upload_url = session.resumable_upload_url;
+    target_file_name = session.target_file_name;
   }
 
   onProgress(20);
@@ -245,11 +283,43 @@ async function processSingleItem(item: QueueItem, signal: AbortSignal) {
     } catch {}
   }
 
-  // 2. Upload chunked
+  // 2. Upload chunked with automatic session recovery
   let driveFileId = '';
   if (resumable_upload_url && !resumable_upload_url.includes('mock-drive-upload')) {
     if (item.blob) {
-      driveFileId = await uploadBlobWithResume(resumable_upload_url, item.blob, onProgress, signal);
+      try {
+        driveFileId = await uploadBlobWithResume(resumable_upload_url, item.blob, onProgress, signal);
+      } catch (err: unknown) {
+        if (signal.aborted) throw err;
+        const errMsg = err instanceof Error ? err.message : String(err);
+        const isSessionDead = errMsg.includes('SESSION_EXPIRED') ||
+                              errMsg.includes('404') ||
+                              errMsg.includes('410') ||
+                              errMsg.includes('401') ||
+                              errMsg.includes('Failed to fetch') ||
+                              errMsg.includes('Load failed');
+
+        if (isSessionDead) {
+          console.warn('[WORKER] Stale or expired resumable URL detected. Refreshing session...');
+          resumable_upload_url = '';
+          try {
+            await idbService.updateItem(item.id, { resumable_session_url: undefined });
+          } catch {}
+
+          const fresh = await initUploadSession(item, signal);
+          resumable_upload_url = fresh.resumable_upload_url;
+          target_file_name = fresh.target_file_name;
+
+          try {
+            await idbService.updateItem(item.id, { resumable_session_url: resumable_upload_url });
+          } catch {}
+
+          onProgress(20);
+          driveFileId = await uploadBlobWithResume(resumable_upload_url, item.blob, onProgress, signal);
+        } else {
+          throw err;
+        }
+      }
     }
   } else {
     await simulateProgress(onProgress, 20, 95, signal);
@@ -285,9 +355,13 @@ async function syncLoop() {
       if (!navigator.onLine) break;
 
       const queue = await idbService.getQueue();
-      let pendingItems = queue.filter(
-        (item) => item.status === 'cho_upload' || (item.status === 'loi' && item.retry_count < APP_CONFIG.MAX_RETRIES)
-      );
+      // Prioritize pending items ('cho_upload') first, then retry errored items ('loi')
+      let pendingItems = queue.filter((item) => item.status === 'cho_upload');
+      if (pendingItems.length === 0) {
+        pendingItems = queue.filter(
+          (item) => item.status === 'loi' && item.retry_count < APP_CONFIG.MAX_RETRIES
+        );
+      }
 
       if (pendingItems.length === 0) {
         postMainMessage({ type: 'QUEUE_EMPTY' });
@@ -331,7 +405,8 @@ async function syncLoop() {
             await idbService.updateItem(item.id, {
               status: 'loi',
               last_error: errorMessage,
-              retry_count: newRetryCount
+              retry_count: newRetryCount,
+              resumable_session_url: undefined
             });
           } catch {}
 
@@ -339,6 +414,9 @@ async function syncLoop() {
             type: 'ITEM_ERROR',
             payload: { id: item.id, message: errorMessage, retryCount: newRetryCount }
           });
+
+          // Short delay between failed items to avoid tight loop
+          await new Promise((r) => setTimeout(r, 1000));
         }
       } finally {
         currentItemId = null;

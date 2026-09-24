@@ -157,7 +157,11 @@ export const useUploadStore = create<UploadState>((set, get) => ({
       let needsReload = false;
       for (const item of items) {
         if (item.status === 'dang_upload') {
-          await idbService.updateItem(item.id, { status: 'loi', last_error: 'Đang tải lên thì bị gián đoạn' });
+          await idbService.updateItem(item.id, {
+            status: 'loi',
+            last_error: 'Đang tải lên thì bị gián đoạn',
+            resumable_session_url: undefined
+          });
           needsReload = true;
         }
       }
@@ -219,7 +223,8 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     await idbService.updateItem(id, {
       status: 'cho_upload',
       retry_count: 0,
-      last_error: undefined
+      last_error: undefined,
+      resumable_session_url: undefined
     });
     await get().loadQueue();
     get().notifyEnqueue(); // Trigger worker to pick it up

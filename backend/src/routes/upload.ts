@@ -66,7 +66,18 @@ uploadRouter.post('/init', authMiddleware, zValidator('json', UploadInitSchema),
     if (driveService.isConfigured() && c.env.DRIVE_FOLDER_ID) {
       // Production: real Google Drive resumable upload
       const folderId = await driveService.findOrCreateDateFolder(c.env.DRIVE_FOLDER_ID);
-      const clientOrigin = c.req.header('Origin') || '';
+      const originHeader = c.req.header('Origin');
+      const refererHeader = c.req.header('Referer');
+      let clientOrigin = originHeader || '';
+      if (!clientOrigin && refererHeader) {
+        try {
+          clientOrigin = new URL(refererHeader).origin;
+        } catch {}
+      }
+      if (!clientOrigin && c.env.ALLOWED_ORIGINS) {
+        clientOrigin = c.env.ALLOWED_ORIGINS.split(',')[0].trim();
+      }
+
       const session = await driveService.initResumableUpload(
         fileName,
         data.mime_type,
