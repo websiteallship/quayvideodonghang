@@ -90,6 +90,7 @@ export const HomePage: React.FC = () => {
 
   const recordDurationRef = useRef(0);
   const isTransitioningRef = useRef(false);
+  const isSavingRef = useRef(false);
 
   const videoRef = useRef<HTMLVideoElement | null>(null);
 
@@ -545,12 +546,16 @@ export const HomePage: React.FC = () => {
 
   // User confirms video preview: Save & continue
   const handleSaveAndContinue = async (blob: Blob, durationSeconds: number) => {
+    // Guard: chống double-click khi video nặng đang ghi vào IndexedDB
+    if (isSavingRef.current) return;
+    isSavingRef.current = true;
+
     const isContinuous = sessionCodes.length > 1;
     const currentCode = activeOverlayInfo?.maVanDon;
     const totalCodes = sessionCodes.length;
 
-    if (activeOverlayInfo) {
-      try {
+    try {
+      if (activeOverlayInfo) {
         await enqueue(blob, {
           ma_van_don: activeOverlayInfo.maVanDon,
           don_vi_vc: activeOverlayInfo.donViVc,
@@ -569,17 +574,19 @@ export const HomePage: React.FC = () => {
             `Đã lưu IndexedDB: ${activeOverlayInfo.maVanDon} (${formatDuration(durationSeconds)}). Sẵn sàng đồng bộ!`
           );
         }
-      } catch (err) {
-        console.error('Lỗi khi lưu video vào IndexedDB:', err);
-        toast.error(`Không thể lưu video đơn ${activeOverlayInfo.maVanDon}`);
       }
+      setTimeout(() => setRecordingMessage(null), 5000);
+      endSession();
+      discardRecording();
+      setRecordedBlob(null);
+      setActiveOverlayInfo(null);
+      setCurrentView('idle');
+    } catch (err) {
+      console.error('Lỗi khi lưu video vào IndexedDB:', err);
+      toast.error(`Không thể lưu video đơn ${activeOverlayInfo?.maVanDon}`);
+    } finally {
+      isSavingRef.current = false;
     }
-    setTimeout(() => setRecordingMessage(null), 5000);
-    endSession();
-    discardRecording();
-    setRecordedBlob(null);
-    setActiveOverlayInfo(null);
-    setCurrentView('idle');
   };
 
   // User discards video preview: Re-record or cancel final order in continuous session

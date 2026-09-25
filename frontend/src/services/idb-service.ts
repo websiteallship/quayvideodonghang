@@ -58,9 +58,33 @@ export const idbService = {
   },
 
   /**
-   * Save a newly recorded video blob and metadata into IndexedDB
+   * Save a newly recorded video blob and metadata into IndexedDB.
+   * 
+   * Dedup guard: If a video with the same (ma_van_don, loai_bien_ban, kich_thuoc_bytes)
+   * was saved within the last 60 seconds, returns the existing item to prevent
+   * duplicate records caused by double-tap, UI lag, or rapid re-renders.
    */
   async saveVideo(blob: Blob, metadata: BienBanMetadata): Promise<QueueItem> {
+    // --- Dedup guard: chống trùng khi double-tap hoặc UI lag ---
+    const DEDUP_WINDOW_MS = 60_000; // 60 seconds
+    const now = Date.now();
+    const existing = await this.findByMaVanDonAndLoaiBienBan(
+      metadata.ma_van_don,
+      metadata.loai_bien_ban
+    );
+    const duplicate = existing.find(
+      (item) =>
+        item.kich_thuoc_bytes === blob.size &&
+        (now - item.created_at) < DEDUP_WINDOW_MS
+    );
+    if (duplicate) {
+      console.warn(
+        `[IDB_DEDUP] Skipped duplicate save for ${metadata.ma_van_don} ` +
+        `(existing id: ${duplicate.id}, age: ${now - duplicate.created_at}ms)`
+      );
+      return duplicate;
+    }
+
     const id = metadata.id || generateUUID();
     const item: QueueItem = {
       id,

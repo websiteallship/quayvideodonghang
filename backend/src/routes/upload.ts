@@ -21,30 +21,59 @@ uploadRouter.post('/init', authMiddleware, zValidator('json', UploadInitSchema),
   const tacGia = data.ma_nhan_vien?.trim() || user.sub;
 
   try {
-    // Batch: INSERT bien_ban + upload_log in single D1 roundtrip (perf optimization)
-    await c.env.DB.batch([
-      c.env.DB.prepare(
-        `INSERT OR IGNORE INTO bien_ban (
-          id, ma_van_don, don_vi_vc, loai_bien_ban, ma_nhan_vien,
-          thiet_bi, user_agent, thoi_luong_video, kich_thuoc_bytes,
-          mime_type, trang_thai, thoi_gian_tao
-        ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'cho_upload', datetime('now'))`
-      ).bind(
-        data.id,
-        data.ma_van_don,
-        data.don_vi_vc,
-        data.loai_bien_ban,
-        tacGia,
-        data.thiet_bi,
-        userAgent,
-        data.thoi_luong_video,
-        data.kich_thuoc_bytes,
-        data.mime_type
-      ),
-      c.env.DB.prepare(
+    // --- Dedup guard: chống tạo bản ghi trùng cùng mã đơn trong window 2 phút ---
+    const DEDUP_WINDOW_MINUTES = 2;
+    const existingDup = await c.env.DB.prepare(
+      `SELECT id, trang_thai FROM bien_ban
+       WHERE ma_van_don = ? AND loai_bien_ban = ? AND ma_nhan_vien = ?
+         AND kich_thuoc_bytes = ?
+         AND datetime(thoi_gian_tao) >= datetime('now', '-${DEDUP_WINDOW_MINUTES} minutes')
+         AND trang_thai IN ('cho_upload', 'dang_upload', 'da_upload')
+       ORDER BY thoi_gian_tao DESC
+       LIMIT 1`
+    )
+      .bind(data.ma_van_don, data.loai_bien_ban, tacGia, data.kich_thuoc_bytes)
+      .first<{ id: string; trang_thai: string }>();
+
+    // Nếu đã có bản ghi trùng → dùng lại id cũ, không INSERT mới
+    const bienBanId = existingDup ? existingDup.id : data.id;
+    const isReused = !!existingDup;
+
+    if (!isReused) {
+      // Batch: INSERT bien_ban + upload_log in single D1 roundtrip (perf optimization)
+      await c.env.DB.batch([
+        c.env.DB.prepare(
+          `INSERT OR IGNORE INTO bien_ban (
+            id, ma_van_don, don_vi_vc, loai_bien_ban, ma_nhan_vien,
+            thiet_bi, user_agent, thoi_luong_video, kich_thuoc_bytes,
+            mime_type, trang_thai, thoi_gian_tao
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'cho_upload', datetime('now'))`
+        ).bind(
+          data.id,
+          data.ma_van_don,
+          data.don_vi_vc,
+          data.loai_bien_ban,
+          tacGia,
+          data.thiet_bi,
+          userAgent,
+          data.thoi_luong_video,
+          data.kich_thuoc_bytes,
+          data.mime_type
+        ),
+        c.env.DB.prepare(
+          'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
+        ).bind(data.id, 'init', `Size: ${data.kich_thuoc_bytes} bytes (Tac gia: ${tacGia}, Nguoi tai: ${user.sub})`)
+      ]);
+    } else {
+      // Ghi log dedup để debug
+      await c.env.DB.prepare(
         'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
-      ).bind(data.id, 'init', `Size: ${data.kich_thuoc_bytes} bytes (Tac gia: ${tacGia}, Nguoi tai: ${user.sub})`)
-    ]);
+      ).bind(
+        bienBanId,
+        'init',
+        `DEDUP: Reused existing id=${bienBanId} (new_id=${data.id}, status=${existingDup.trang_thai}). Tac gia: ${tacGia}`
+      ).run();
+    }
 
     const loaiPrefix = data.loai_bien_ban === 'dong_goi' ? 'DongGoi' : 'KhuiHang';
     const timestamp = new Date().toISOString().replace(/[-:T]/g, '').slice(0, 15);
@@ -90,15 +119,15 @@ uploadRouter.post('/init', authMiddleware, zValidator('json', UploadInitSchema),
       await c.env.DB.prepare(
         'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
       )
-        .bind(data.id, 'init', `Drive session: Folder ${folderId}, File ${fileName}`)
+        .bind(bienBanId, 'init', `Drive session: Folder ${folderId}, File ${fileName}${isReused ? ' (DEDUP reused)' : ''}`)
         .run();
     } else {
       // Dev fallback: mock URL
-      uploadUrl = `https://mock-drive-upload.googleapis.com/upload/${data.id}`;
+      uploadUrl = `https://mock-drive-upload.googleapis.com/upload/${bienBanId}`;
     }
 
     return successResponse(c, {
-      bien_ban_id: data.id,
+      bien_ban_id: bienBanId,
       resumable_upload_url: uploadUrl,
       target_file_name: fileName,
       chunk_size: parseInt(c.env.UPLOAD_CHUNK_SIZE || '5242880', 10)

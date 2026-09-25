@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import {
   Check,
   RotateCcw,
@@ -10,6 +10,7 @@ import {
   Play,
   Layers,
   Info,
+  Loader2,
 } from 'lucide-react';
 import type { OverlayInfo } from '../../hooks/use-media-recorder';
 import { formatBytes, formatDuration } from '../../utils/format';
@@ -24,7 +25,7 @@ interface VideoPreviewProps {
   /** Information of the parcel */
   overlayInfo: OverlayInfo;
   /** Called when user confirms and wants to queue the video */
-  onSaveAndContinue: (blob: Blob, duration: number) => void;
+  onSaveAndContinue: (blob: Blob, duration: number) => void | Promise<void>;
   /** Called when user discards the video and wants to re-record */
   onDiscardAndRetry: () => void;
   /** Danh sách các mã trong phiên quét liên tục (nếu có) */
@@ -43,6 +44,7 @@ export function VideoPreview({
   const codes = sessionCodes && sessionCodes.length > 0 ? sessionCodes : [overlayInfo.maVanDon];
   const isContinuous = codes.length > 1;
   const videoRef = useRef<HTMLVideoElement | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
   const [playbackMode, setPlaybackMode] = useState<'last5s' | 'full'>('last5s');
   const startLast5sTime = Math.max(0, duration - 5);
 
@@ -259,17 +261,33 @@ export function VideoPreview({
         <button
           type="button"
           className="btn-preview-save"
-          onClick={() => onSaveAndContinue(blob, duration)}
+          disabled={isSaving}
+          onClick={async () => {
+            if (isSaving) return;
+            setIsSaving(true);
+            try {
+              await onSaveAndContinue(blob, duration);
+            } finally {
+              setIsSaving(false);
+            }
+          }}
         >
-          <Check size={20} aria-hidden="true" />
+          {isSaving ? (
+            <Loader2 size={20} className="animate-spin" aria-hidden="true" />
+          ) : (
+            <Check size={20} aria-hidden="true" />
+          )}
           <span>
-            {isContinuous ? `Lưu đơn cuối & Kết thúc (${codes.length} đơn)` : 'Lưu & Tiếp tục'}
+            {isSaving
+              ? 'Đang lưu...'
+              : isContinuous ? `Lưu đơn cuối & Kết thúc (${codes.length} đơn)` : 'Lưu & Tiếp tục'}
           </span>
         </button>
 
         <button
           type="button"
           className="btn-preview-discard"
+          disabled={isSaving}
           onClick={onDiscardAndRetry}
         >
           <RotateCcw size={18} aria-hidden="true" />
