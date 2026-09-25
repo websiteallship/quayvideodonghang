@@ -35,7 +35,7 @@ import { CameraSelector } from '@/components/camera/CameraSelector';
 import { ScannerOverlay } from '@/components/scanner/ScannerOverlay';
 import { ScanResult } from '@/components/scanner/ScanResult';
 import { WorkModeModal } from '@/components/work-mode';
-import { RecordingView, VideoPreview } from '@/components/recording';
+import { RecordingView, VideoPreview, CameraSetupDialog } from '@/components/recording';
 import { useWorkModeStore } from '@/stores/work-mode-store';
 import { useAuthStore } from '@/stores/auth-store';
 import { useConfigStore } from '@/stores/config-store';
@@ -110,6 +110,17 @@ export const HomePage: React.FC = () => {
   const systemConfig = useConfigStore((s) => s.systemConfig);
   const targetBitrate = Math.round((systemConfig?.bitrate_mbps ?? 2.0) * 1_000_000);
   const effectiveFps = useUserSettingsStore((s) => s.isFpsOverridden ? s.videoFps : 30);
+  const videoOrientation = useUserSettingsStore((s) => s.videoOrientation);
+  const videoRotation = useUserSettingsStore((s) => s.videoRotation);
+
+  // Camera initial setup onboarding state
+  const [isCameraSetupOpen, setIsCameraSetupOpen] = useState(false);
+  const pendingRecordingDataRef = useRef<{
+    maVanDon: string;
+    donViVc: DonViVanChuyen;
+    loaiBienBan: LoaiBienBan;
+    overwrite?: boolean;
+  } | null>(null);
 
   // Sprint 2.1 — Video Recording Hook
   const {
@@ -125,6 +136,8 @@ export const HomePage: React.FC = () => {
     stream,
     bitrate: targetBitrate,
     fps: effectiveFps,
+    forceOrientation: videoOrientation,
+    rotation: videoRotation,
     overlayInfo: activeOverlayInfo ?? {
       maVanDon: '',
       donViVc: 'GHN',
@@ -211,6 +224,10 @@ export const HomePage: React.FC = () => {
   // Handle barcode detected (from camera, USB gun, or manual input)
   const handleBarcodeDetected = useCallback(
     async (result: BarcodeResult) => {
+      // Guard: Bỏ qua quét mã khi đang mở hộp thoại cấu hình camera ban đầu (BUG-03)
+      if (isCameraSetupOpen) {
+        return;
+      }
       feedbackSuccess();
 
       // Nếu bật Auto-scan, ta tạm thời LƯU KẾT QUẢ, nhưng CHƯA set activeBarcode để KHÔNG hiện popup
@@ -228,7 +245,7 @@ export const HomePage: React.FC = () => {
       // Check duplicate from backend API + local IndexedDB (filtered by loai_bien_ban)
       await checkCode(result.rawValue, workMode ?? 'dong_goi');
     },
-    [checkCode, workMode]
+    [checkCode, workMode, isCameraSetupOpen]
   );
 
 
@@ -249,6 +266,14 @@ export const HomePage: React.FC = () => {
     loaiBienBan: LoaiBienBan;
     overwrite?: boolean;
   }) => {
+    // Guard: Bắt buộc cấu hình camera trước khi quay lần đầu trên thiết bị này
+    const isConfigured = useUserSettingsStore.getState().isCameraConfigured;
+    if (!isConfigured) {
+      pendingRecordingDataRef.current = data;
+      setIsCameraSetupOpen(true);
+      return;
+    }
+
     // Bắt đầu phiên mới với mã đơn đầu tiên
     startSession(data.maVanDon);
 
@@ -295,6 +320,16 @@ export const HomePage: React.FC = () => {
     // khi stream + overlayInfo đã sẵn sàng trong React render cycle tiếp theo
     setCurrentView('recording');
   }, [user, warehouseName, stream, startCamera, stopScanning, requestLocation, loadQueue, startSession]);
+
+  // Hoàn tất cấu hình camera lần đầu -> tự động tiếp tục phiên quay bị hoãn nếu có
+  const handleCameraSetupComplete = useCallback(() => {
+    setIsCameraSetupOpen(false);
+    if (pendingRecordingDataRef.current) {
+      const pendingData = pendingRecordingDataRef.current;
+      pendingRecordingDataRef.current = null;
+      void handleStartRecording(pendingData);
+    }
+  }, [handleStartRecording]);
 
   // Fix Bug 1 & 2: useEffect gọi startRecording() chỉ khi tất cả state đã sẵn sàng
   // (stream có giá trị, overlayInfo đã set, view là recording, và chưa đang quay)
@@ -1163,6 +1198,13 @@ export const HomePage: React.FC = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Onboarding Dialog: Bắt buộc cấu hình camera lần đầu */}
+      <CameraSetupDialog
+        isOpen={isCameraSetupOpen}
+        onComplete={handleCameraSetupComplete}
+        sourceStream={stream}
+      />
     </div>
   );
 };

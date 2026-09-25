@@ -6,6 +6,7 @@
 
 import { useState, useRef, useCallback, useEffect } from 'react';
 import type { DonViVanChuyen, LoaiBienBan } from '../types';
+import type { VideoOrientation, VideoRotation } from '../stores/user-settings-store';
 import { useWakeLock } from './use-wake-lock';
 import { formatDuration } from '../utils/format';
 
@@ -26,6 +27,8 @@ export interface UseMediaRecorderOptions {
   targetHeight?: number; // default 720
   fps?: number;          // default 30
   bitrate?: number;      // default 2_000_000 (2 Mbps)
+  forceOrientation?: VideoOrientation; // default 'auto'
+  rotation?: VideoRotation;            // default 0
 }
 
 export interface UseMediaRecorderReturn {
@@ -79,8 +82,144 @@ const dateFormatter = typeof Intl !== 'undefined'
   ? new Intl.DateTimeFormat('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })
   : null;
 
+// Cached timestamp state to avoid 30x/sec Intl.DateTimeFormat allocations (PERF-01)
+let cachedSecond = -1;
+let cachedTimeStr = '';
+let cachedDateStr = '';
+
+function getFormattedDateTime(now: Date): { timeStr: string; dateStr: string } {
+  const currentSec = now.getSeconds();
+  if (currentSec !== cachedSecond || !cachedTimeStr) {
+    cachedSecond = currentSec;
+    cachedTimeStr = timeFormatter ? timeFormatter.format(now) : now.toLocaleTimeString('vi-VN');
+    cachedDateStr = dateFormatter ? dateFormatter.format(now) : now.toLocaleDateString('vi-VN');
+  }
+  return { timeStr: cachedTimeStr, dateStr: cachedDateStr };
+}
+
+function sanitizeOverlayText(text: string, maxLen = 40): string {
+  if (!text) return '';
+  // Strip control chars and zero-width spaces (SEC-02)
+  const cleaned = text.replace(/[\u0000-\u001F\u007F-\u009F\u200B-\u200D\uFEFF]/g, '').trim();
+  return cleaned.length > maxLen ? cleaned.slice(0, maxLen) + '…' : cleaned;
+}
+
 /**
- * Draw on canvas: camera frame + high-contrast watermark overlay
+ * Resolve target canvas dimensions based on target width/height, forceOrientation, and stream/device fallback.
+ */
+export function resolveCanvasSize(
+  targetWidth: number,
+  targetHeight: number,
+  forceOrientation: VideoOrientation = 'auto',
+  isPortraitStreamOrDevice: boolean = false
+): { canvasWidth: number; canvasHeight: number } {
+  const landscape = Math.max(targetWidth, targetHeight);
+  const portrait = Math.min(targetWidth, targetHeight);
+
+  switch (forceOrientation) {
+    case 'landscape':
+      return { canvasWidth: landscape, canvasHeight: portrait };
+    case 'portrait':
+      return { canvasWidth: portrait, canvasHeight: landscape };
+    case 'auto':
+    default:
+      return {
+        canvasWidth: isPortraitStreamOrDevice ? portrait : landscape,
+        canvasHeight: isPortraitStreamOrDevice ? landscape : portrait,
+      };
+  }
+}
+
+/**
+ * Draw video element with aspect-ratio preserving crop (object-fit: cover) into destination rectangle.
+ */
+export function drawObjectFitCover(
+  ctx: CanvasRenderingContext2D,
+  video: HTMLVideoElement,
+  dx: number,
+  dy: number,
+  dWidth: number,
+  dHeight: number
+): void {
+  const vWidth = video.videoWidth;
+  const vHeight = video.videoHeight;
+  if (!vWidth || !vHeight || dWidth <= 0 || dHeight <= 0) {
+    if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && dWidth > 0 && dHeight > 0) {
+      ctx.drawImage(video, dx, dy, dWidth, dHeight);
+    }
+    return;
+  }
+
+  const videoRatio = vWidth / vHeight;
+  const destRatio = dWidth / dHeight;
+
+  if (isNaN(videoRatio) || isNaN(destRatio)) {
+    ctx.drawImage(video, dx, dy, dWidth, dHeight);
+    return;
+  }
+
+  let sx = 0;
+  let sy = 0;
+  let sWidth = vWidth;
+  let sHeight = vHeight;
+
+  if (videoRatio > destRatio) {
+    // Video rộng hơn canvas -> crop 2 bên trái/phải để giữ đúng tỉ lệ không bị kéo dẹt
+    sWidth = vHeight * destRatio;
+    sx = (vWidth - sWidth) / 2;
+  } else {
+    // Video cao hơn canvas -> crop trên/dưới
+    sHeight = vWidth / destRatio;
+    sy = (vHeight - sHeight) / 2;
+  }
+
+  ctx.drawImage(video, sx, sy, sWidth, sHeight, dx, dy, dWidth, dHeight);
+}
+
+/**
+ * Draw camera video frame onto canvas with rotation transform (0, 90, 180, 270 deg).
+ * When rotating 90° or 270°, canvas destination width and height are swapped for camera content.
+ */
+export function drawRotatedCameraFrame(
+  ctx: CanvasRenderingContext2D,
+  video: HTMLVideoElement,
+  canvasWidth: number,
+  canvasHeight: number,
+  rotation: VideoRotation = 0
+): void {
+  // Ensure no shadow filter applies to video blit (PERF-02)
+  ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
+
+  if (video.readyState < HTMLMediaElement.HAVE_CURRENT_DATA) {
+    ctx.fillStyle = '#000000';
+    ctx.fillRect(0, 0, canvasWidth, canvasHeight);
+    return;
+  }
+
+  if (rotation === 0) {
+    drawObjectFitCover(ctx, video, 0, 0, canvasWidth, canvasHeight);
+    return;
+  }
+
+  ctx.save();
+  if (rotation === 180) {
+    ctx.translate(canvasWidth / 2, canvasHeight / 2);
+    ctx.rotate(Math.PI);
+    ctx.translate(-canvasWidth / 2, -canvasHeight / 2);
+    drawObjectFitCover(ctx, video, 0, 0, canvasWidth, canvasHeight);
+  } else {
+    // 90° hoặc 270° -> xoay từ tâm canvas và vẽ với chiều rộng/cao đảo ngược
+    ctx.translate(canvasWidth / 2, canvasHeight / 2);
+    ctx.rotate((rotation * Math.PI) / 180);
+    ctx.translate(-canvasHeight / 2, -canvasWidth / 2);
+    drawObjectFitCover(ctx, video, 0, 0, canvasHeight, canvasWidth);
+  }
+  ctx.restore();
+}
+
+/**
+ * Draw on canvas: camera frame (with rotation) + high-contrast watermark overlay
  */
 export function drawCanvasOverlay(
   ctx: CanvasRenderingContext2D,
@@ -89,39 +228,13 @@ export function drawCanvasOverlay(
   height: number,
   overlay: OverlayInfo,
   now: Date,
-  duration: number = 0
+  duration: number = 0,
+  rotation: VideoRotation = 0
 ): void {
-  // 1. Draw camera video frame scaled to canvas preserving aspect ratio (object-fit: cover)
-  if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA && video.videoWidth && video.videoHeight) {
-    const vWidth = video.videoWidth;
-    const vHeight = video.videoHeight;
-    const videoRatio = vWidth / vHeight;
-    const canvasRatio = width / height;
+  // 1. Draw camera video frame with rotation transform (shadow disabled)
+  drawRotatedCameraFrame(ctx, video, width, height, rotation);
 
-    let sx = 0;
-    let sy = 0;
-    let sWidth = vWidth;
-    let sHeight = vHeight;
-
-    if (videoRatio > canvasRatio) {
-      // Video rộng hơn canvas -> crop 2 bên trái/phải để giữ đúng tỉ lệ không bị kéo dẹt
-      sWidth = vHeight * canvasRatio;
-      sx = (vWidth - sWidth) / 2;
-    } else {
-      // Video cao hơn canvas -> crop trên/dưới
-      sHeight = vWidth / canvasRatio;
-      sy = (vHeight - sHeight) / 2;
-    }
-
-    ctx.drawImage(video, sx, sy, sWidth, sHeight, 0, 0, width, height);
-  } else if (video.readyState >= HTMLMediaElement.HAVE_CURRENT_DATA) {
-    ctx.drawImage(video, 0, 0, width, height);
-  } else {
-    ctx.fillStyle = '#000000';
-    ctx.fillRect(0, 0, width, height);
-  }
-
-  // 2. Watermark Overlay
+  // 2. Watermark Overlay (enable shadow only for text badges)
   ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
   ctx.shadowBlur = 4;
   ctx.shadowOffsetX = 1;
@@ -160,8 +273,13 @@ export function drawCanvasOverlay(
 
   // 2B. Bottom Left Information Overlay
   const isDongGoi = overlay.loaiBienBan === 'dong_goi';
-  const line1 = `[${isDongGoi ? 'ĐÓNG GÓI' : 'KHUI HÀNG'}] ${overlay.maVanDon}`;
-  const line2 = `NV: ${overlay.maNhanVien} | ĐVVC: ${overlay.donViVc}`;
+  const cleanCode = sanitizeOverlayText(overlay.maVanDon, 36);
+  const cleanNv = sanitizeOverlayText(overlay.maNhanVien, 20);
+  const cleanDvc = sanitizeOverlayText(overlay.donViVc, 20);
+  const cleanKho = sanitizeOverlayText(overlay.warehouseName || 'Chưa cấu hình (Vào Cài đặt)', 45);
+
+  const line1 = `[${isDongGoi ? 'ĐÓNG GÓI' : 'KHUI HÀNG'}] ${cleanCode}`;
+  const line2 = `NV: ${cleanNv} | ĐVVC: ${cleanDvc}`;
 
   let line3 = 'GPS: N/A (Đang tìm hoặc từ chối)';
   if (overlay.gpsCoords) {
@@ -171,9 +289,8 @@ export function drawCanvasOverlay(
       : `GPS: ${coordsText}`;
   }
 
-  const line4 = `Kho: ${overlay.warehouseName || 'Chưa cấu hình (Vào Cài đặt)'}`;
-  const timeStr = timeFormatter ? timeFormatter.format(now) : now.toLocaleTimeString('vi-VN');
-  const dateStr = dateFormatter ? dateFormatter.format(now) : now.toLocaleDateString('vi-VN');
+  const line4 = `Kho: ${cleanKho}`;
+  const { timeStr, dateStr } = getFormattedDateTime(now);
   const line5 = `${timeStr} ${dateStr} · REC ${durationStr}`;
 
   const startX = isPortrait ? 16 : 20;
@@ -222,8 +339,9 @@ export function drawCanvasOverlay(
   ctx.textAlign = 'right';
   ctx.fillText('QuayVideo Kho - by Allship', width - (isPortrait ? 16 : 20), height - (isPortrait ? 16 : 20));
 
-  // Clear shadow before exit
+  // Reset shadow completely to prevent leaking into next frame
   ctx.shadowColor = 'transparent';
+  ctx.shadowBlur = 0;
 }
 
 export function useMediaRecorder({
@@ -233,6 +351,8 @@ export function useMediaRecorder({
   targetHeight = 720,
   fps = 30,
   bitrate = 2_000_000,
+  forceOrientation = 'auto',
+  rotation = 0,
 }: UseMediaRecorderOptions): UseMediaRecorderReturn {
   const [isRecording, setIsRecording] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
@@ -255,6 +375,16 @@ export function useMediaRecorder({
   useEffect(() => {
     overlayInfoRef.current = overlayInfo;
   }, [overlayInfo]);
+
+  const forceOrientationRef = useRef<VideoOrientation>(forceOrientation);
+  useEffect(() => {
+    forceOrientationRef.current = forceOrientation;
+  }, [forceOrientation]);
+
+  const rotationRef = useRef<VideoRotation>(rotation);
+  useEffect(() => {
+    rotationRef.current = rotation;
+  }, [rotation]);
 
   // H2: Use ref for previewUrl to avoid closure/dependency issues in cleanup
   const previewUrlRef = useRef<string | null>(null);
@@ -366,9 +496,13 @@ export function useMediaRecorder({
       // Ưu tiên: nếu là thiết bị di động đang cầm dọc HOẶC camera stream có chiều cao > chiều rộng
       const isPortrait = (isMobile && isDevicePortrait) || (vHeight > 0 && vWidth > 0 && vHeight > vWidth);
 
-      // Giữ nguyên tỉ lệ quay: dọc (720x1280 / 1080x1920) hoặc ngang (1280x720 / 1920x1080)
-      const canvasWidth = isPortrait ? Math.min(targetWidth, targetHeight) : Math.max(targetWidth, targetHeight);
-      const canvasHeight = isPortrait ? Math.max(targetWidth, targetHeight) : Math.min(targetWidth, targetHeight);
+      // Giữ nguyên tỉ lệ quay: dọc (720x1280 / 1080x1920) hoặc ngang (1280x720 / 1920x1080) theo setting
+      const { canvasWidth, canvasHeight } = resolveCanvasSize(
+        targetWidth,
+        targetHeight,
+        forceOrientationRef.current,
+        isPortrait
+      );
 
       // Create offscreen canvas for rendering overlay
       const canvas = document.createElement('canvas');
@@ -397,7 +531,16 @@ export function useMediaRecorder({
             try {
               const elapsedSec = Math.max(0, Math.floor((Date.now() - recordingStartTimeRef.current) / 1000));
               // H1: Read overlayInfo from ref — always latest value, no stale closure
-              drawCanvasOverlay(ctx, activeVideo, canvasWidth, canvasHeight, overlayInfoRef.current, new Date(), elapsedSec);
+              drawCanvasOverlay(
+                ctx,
+                activeVideo,
+                canvasWidth,
+                canvasHeight,
+                overlayInfoRef.current,
+                new Date(),
+                elapsedSec,
+                rotationRef.current
+              );
             } catch {
               // Ignore frame render errors
             }

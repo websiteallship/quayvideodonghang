@@ -12,11 +12,34 @@ import {
   ExternalLink,
   Star,
   Target,
+  SlidersHorizontal,
+  RotateCw,
+  RotateCcw,
+  Monitor,
+  Smartphone,
+  Video,
+  Eye,
+  EyeOff,
 } from 'lucide-react';
 import { useCameraStore } from '@/stores/camera-store';
 import { useConfigStore } from '@/stores/config-store';
 import { useAuthStore } from '@/stores/auth-store';
-import { useUserSettingsStore } from '@/stores/user-settings-store';
+import {
+  useUserSettingsStore,
+  type VideoOrientation,
+  type VideoRotation,
+} from '@/stores/user-settings-store';
+import { CameraPreviewPanel } from '@/components/settings/CameraPreviewPanel';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { useGeolocation } from '@/hooks/use-geolocation';
 import { APP_CONFIG } from '@/config/constants';
 import { Card, CardContent } from '@/components/ui/card';
@@ -155,6 +178,46 @@ function InfoRow({
 }
 
 // ---------------------------------------------------------------------------
+// Camera Orientation & Rotation Options
+// ---------------------------------------------------------------------------
+const ORIENTATION_OPTIONS: Array<{
+  value: VideoOrientation;
+  label: string;
+  sublabel: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
+  {
+    value: 'auto',
+    label: 'Tự động',
+    sublabel: 'Nhận diện theo máy',
+    icon: RotateCw,
+  },
+  {
+    value: 'landscape',
+    label: 'Ngang (16:9)',
+    sublabel: 'Giá đỡ bàn / Overhead',
+    icon: Monitor,
+  },
+  {
+    value: 'portrait',
+    label: 'Dọc (9:16)',
+    sublabel: 'Cầm tay / Đứng',
+    icon: Smartphone,
+  },
+];
+
+const ROTATION_OPTIONS: Array<{
+  value: VideoRotation;
+  label: string;
+  description: string;
+}> = [
+  { value: 0, label: '0°', description: 'Gốc (0°)' },
+  { value: 90, label: '90°', description: 'Phải (90°)' },
+  { value: 180, label: '180°', description: 'Lật (180°)' },
+  { value: 270, label: '270°', description: 'Trái (270°)' },
+];
+
+// ---------------------------------------------------------------------------
 // Main Page: UserSettingsPage
 // ---------------------------------------------------------------------------
 export const UserSettingsPage: React.FC = () => {
@@ -183,6 +246,13 @@ export const UserSettingsPage: React.FC = () => {
     setVideoFps,
     isFpsOverridden,
     resetFpsToSystem,
+    videoOrientation,
+    videoRotation,
+    isCameraConfigured,
+    setVideoOrientation,
+    setVideoRotation,
+    setCameraConfigured,
+    resetCameraConfiguration,
     autoRecordAfterScan,
     setAutoRecordAfterScan,
     soundBeepEnabled,
@@ -190,6 +260,34 @@ export const UserSettingsPage: React.FC = () => {
     shiftTarget,
     setShiftTarget,
   } = useUserSettingsStore();
+
+  const [localOrientation, setLocalOrientation] = useState<VideoOrientation>(videoOrientation);
+  const [localRotation, setLocalRotation] = useState<VideoRotation>(videoRotation);
+  const [isPreviewOpen, setIsPreviewOpen] = useState(false);
+  const [isResetDialogOpen, setIsResetDialogOpen] = useState(false);
+
+  useEffect(() => {
+    setLocalOrientation(videoOrientation);
+  }, [videoOrientation]);
+
+  useEffect(() => {
+    setLocalRotation(videoRotation);
+  }, [videoRotation]);
+
+  const handleSaveCameraSettings = useCallback(() => {
+    setVideoOrientation(localOrientation);
+    setVideoRotation(localRotation);
+    setCameraConfigured(true);
+    showToast.success('Đã lưu cấu hình camera trạm thành công');
+  }, [localOrientation, localRotation, setVideoOrientation, setVideoRotation, setCameraConfigured]);
+
+  const handleResetCameraSettings = useCallback(() => {
+    resetCameraConfiguration();
+    setLocalOrientation('auto');
+    setLocalRotation(0);
+    setIsResetDialogOpen(false);
+    showToast.info('Đã hoàn tác', 'Đã đặt lại cấu hình camera về mặc định (Tự động, 0°)');
+  }, [resetCameraConfiguration]);
 
   const sysDefaultRes = systemConfig?.do_phan_giai === '1920x1080' ? '1080p' : '720p';
   const effectiveRes = isResolutionOverridden ? videoResolution : sysDefaultRes;
@@ -329,243 +427,440 @@ export const UserSettingsPage: React.FC = () => {
         </div>
 
         {/* ═══ Tab 1: Camera & Microphone ═══ */}
-        <TabsContent value="camera" className="mt-0 focus-visible:outline-none">
+        <TabsContent value="camera" className="mt-0 focus-visible:outline-none flex flex-col gap-4">
+          {/* 1.1 Webcam Selection */}
           <SettingsCard
             icon={Camera}
             iconColor="text-primary"
-            title="Thiết bị Ghi hình & Âm thanh"
+            title="Webcam & Thiết bị Ghi hình"
           >
-          <div className="flex flex-col gap-4 text-xs">
-            {/* Camera Select */}
-            <div>
-              <label
-                htmlFor="settings-camera-select"
-                className="mb-1.5 block text-xs font-semibold text-muted-foreground"
-              >
-                Webcam quay đóng gói
-              </label>
-              <select
-                id="settings-camera-select"
-                value={selectedDeviceId ?? ''}
-                onChange={(e) => {
-                  if (e.target.value) {
-                    setDevice(e.target.value);
-                    const found = devices.find((d) => d.deviceId === e.target.value);
-                    showToast.success('Đã lưu cài đặt', `Đã chọn: ${found?.label || 'Camera ' + e.target.value.slice(0, 8)}`);
-                  } else {
-                    toggleFacing();
-                    showToast.success('Đã lưu cài đặt', 'Đã chuyển hướng camera');
-                  }
-                }}
-                className="h-11 w-full rounded-xl border border-border bg-muted/40 px-3 text-xs font-medium text-foreground focus:outline-none"
-              >
-                {devices.length > 0 ? (
-                  devices.map((d) => (
-                    <option key={d.deviceId} value={d.deviceId}>
-                      {d.label || `Camera ${d.deviceId.slice(0, 8)}...`}
+            <div className="flex flex-col gap-4 text-xs">
+              <div>
+                <label
+                  htmlFor="settings-camera-select"
+                  className="mb-1.5 block text-xs font-semibold text-muted-foreground"
+                >
+                  Webcam quay đóng gói
+                </label>
+                <select
+                  id="settings-camera-select"
+                  value={selectedDeviceId ?? ''}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setDevice(e.target.value);
+                      const found = devices.find((d) => d.deviceId === e.target.value);
+                      showToast.success('Đã lưu cài đặt', `Đã chọn: ${found?.label || 'Camera ' + e.target.value.slice(0, 8)}`);
+                    } else {
+                      toggleFacing();
+                      showToast.success('Đã lưu cài đặt', 'Đã chuyển hướng camera');
+                    }
+                  }}
+                  className="h-11 w-full rounded-xl border border-border bg-muted/40 px-3 text-xs font-medium text-foreground focus:outline-none"
+                >
+                  {devices.length > 0 ? (
+                    devices.map((d) => (
+                      <option key={d.deviceId} value={d.deviceId}>
+                        {d.label || `Camera ${d.deviceId.slice(0, 8)}...`}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">
+                      {selectedCameraLabel}
                     </option>
-                  ))
-                ) : (
-                  <option value="">
-                    {selectedCameraLabel}
-                  </option>
+                  )}
+                </select>
+              </div>
+
+              {/* Camera facing info */}
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-2xl border border-border/60 bg-muted/30 p-3.5 text-xs">
+                <span className="text-muted-foreground">Chuyển hướng camera (Trước / Sau)</span>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => {
+                    toggleFacing();
+                    const nextFacing = facingMode === 'environment' ? 'Camera trước' : 'Camera sau';
+                    showToast.success('Đã lưu cài đặt', `Đã chuyển sang: ${nextFacing}`);
+                  }}
+                  className="gap-1.5 h-9 rounded-xl w-full sm:w-auto shrink-0 font-medium"
+                >
+                  <RefreshCw className="size-3.5" aria-hidden="true" />
+                  {facingMode === 'environment' ? 'Camera sau (Mặc định)' : 'Camera trước'}
+                </Button>
+              </div>
+            </div>
+          </SettingsCard>
+
+          {/* 1.2 Khung hình & Góc xoay camera (NEW Section) */}
+          <SettingsCard
+            icon={SlidersHorizontal}
+            iconColor="text-primary"
+            title="Khung hình & Góc xoay camera"
+            badge={
+              <Badge
+                variant="outline"
+                className={cn(
+                  'font-mono text-[11px] font-semibold',
+                  isCameraConfigured
+                    ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-600'
+                    : 'border-amber-500/30 bg-amber-500/10 text-amber-600'
                 )}
-              </select>
-            </div>
-
-            {/* Resolution Toggle (User Override & System Default Sync) */}
-            <div className="flex flex-col gap-2">
-              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+              >
+                {localOrientation === 'auto'
+                  ? 'Tự động'
+                  : localOrientation === 'landscape'
+                  ? 'Ngang (16:9)'
+                  : 'Dọc (9:16)'}{' '}
+                • {localRotation}°
+              </Badge>
+            }
+          >
+            <div className="flex flex-col gap-4 text-xs">
+              <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                 <div>
-                  <label className="block text-xs font-semibold text-muted-foreground">
-                    Độ phân giải video ghi hình
-                  </label>
-                  <span className="text-[11px] text-muted-foreground/80">
-                    {isResolutionOverridden
-                      ? 'Đang áp dụng cấu hình tùy chỉnh riêng trên máy này'
-                      : `Tự động đồng bộ theo hệ thống (mặc định: ${sysDefaultRes})`}
-                  </span>
+                  <div className="text-xs font-semibold text-foreground">
+                    Cấu hình góc máy &amp; giá đỡ overhead
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Tùy chỉnh khung hình và bù góc xoay khi thiết bị gắn nghiêng hoặc úp trên giá đỡ
+                  </p>
                 </div>
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline" className="w-fit font-mono text-[11px] font-semibold border-border">
-                    {isResolutionOverridden ? (
-                      <span className="text-amber-500 font-medium">Tùy chỉnh: {effectiveRes}</span>
-                    ) : (
-                      <span className="text-primary font-medium">Hệ thống: {effectiveRes}</span>
-                    )}
-                  </Badge>
-                  {isResolutionOverridden && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                      onClick={() => {
-                        resetResolutionToSystem();
-                        showToast.info('Đã hoàn tác', `Độ phân giải quay lại mặc định hệ thống (${sysDefaultRes})`);
-                      }}
-                    >
-                      Đặt lại mặc định
-                    </Button>
+                <Button
+                  type="button"
+                  variant={isPreviewOpen ? 'secondary' : 'outline'}
+                  size="sm"
+                  className="h-9 px-3 text-xs font-medium rounded-xl gap-1.5 shrink-0"
+                  onClick={() => setIsPreviewOpen((prev) => !prev)}
+                >
+                  {isPreviewOpen ? (
+                    <>
+                      <EyeOff className="size-3.5" aria-hidden="true" />
+                      <span>Đóng xem trước</span>
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="size-3.5" aria-hidden="true" />
+                      <span>Mở xem trước camera</span>
+                    </>
                   )}
+                </Button>
+              </div>
+
+              {/* Inline Live Camera Preview */}
+              {isPreviewOpen && (
+                <div className="overflow-hidden rounded-2xl border border-border/80 bg-background/50 p-2 sm:p-3">
+                  <CameraPreviewPanel
+                    orientation={localOrientation}
+                    rotation={localRotation}
+                    resolution={effectiveRes}
+                    isOpen={isPreviewOpen}
+                    onClose={() => setIsPreviewOpen(false)}
+                  />
+                </div>
+              )}
+
+              {/* Khung hình selector */}
+              <div className="flex flex-col gap-2">
+                <label className="text-xs font-semibold text-muted-foreground">
+                  Khung hình ghi hình
+                </label>
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                  {ORIENTATION_OPTIONS.map((opt) => {
+                    const Icon = opt.icon;
+                    const isSelected = localOrientation === opt.value;
+                    return (
+                      <Button
+                        key={opt.value}
+                        type="button"
+                        variant={isSelected ? 'default' : 'outline'}
+                        className={cn(
+                          'h-auto min-h-[52px] flex-col items-start justify-center p-3 rounded-2xl text-left transition-all',
+                          isSelected && 'shadow-xs border-primary'
+                        )}
+                        onClick={() => setLocalOrientation(opt.value)}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-2">
+                            <Icon className="size-4 shrink-0" aria-hidden="true" />
+                            <span className="text-xs font-bold">{opt.label}</span>
+                          </div>
+                          {isSelected && <Check className="size-3.5 shrink-0" />}
+                        </div>
+                        <span
+                          className={cn(
+                            'text-[11px] font-normal mt-1',
+                            isSelected
+                              ? 'text-primary-foreground/80'
+                              : 'text-muted-foreground'
+                          )}
+                        >
+                          {opt.sublabel}
+                        </span>
+                      </Button>
+                    );
+                  })}
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              {/* Góc xoay selector */}
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-xs font-semibold text-muted-foreground">
+                    Góc xoay cảm biến camera
+                  </label>
+                  {localOrientation === 'auto' && (
+                    <span className="text-[10px] text-muted-foreground italic">
+                      (Chế độ tự động sẽ bỏ qua bù góc xoay thủ công)
+                    </span>
+                  )}
+                </div>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {ROTATION_OPTIONS.map((opt) => {
+                    const isSelected = localRotation === opt.value;
+                    return (
+                      <Button
+                        key={opt.value}
+                        type="button"
+                        disabled={localOrientation === 'auto'}
+                        variant={isSelected && localOrientation !== 'auto' ? 'default' : 'outline'}
+                        className={cn(
+                          'h-auto min-h-[48px] flex-col items-start justify-center p-2.5 rounded-2xl text-left transition-all',
+                          isSelected && localOrientation !== 'auto' && 'shadow-xs border-primary',
+                          localOrientation === 'auto' && 'opacity-60 cursor-not-allowed'
+                        )}
+                        onClick={() => setLocalRotation(opt.value)}
+                      >
+                        <div className="flex items-center justify-between w-full">
+                          <div className="flex items-center gap-1.5">
+                            <RotateCw className="size-3.5 shrink-0" aria-hidden="true" />
+                            <span className="text-xs font-bold">{opt.label}</span>
+                          </div>
+                          {isSelected && localOrientation !== 'auto' && (
+                            <Check className="size-3.5 shrink-0" />
+                          )}
+                        </div>
+                        <span
+                          className={cn(
+                            'text-[10px] font-normal mt-0.5',
+                            isSelected && localOrientation !== 'auto'
+                              ? 'text-primary-foreground/80'
+                              : 'text-muted-foreground'
+                          )}
+                        >
+                          {opt.description}
+                        </span>
+                      </Button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-end gap-2.5 pt-2 border-t border-border/50">
                 <Button
                   type="button"
-                  variant={effectiveRes === '1080p' ? 'default' : 'outline'}
-                  className={cn(
-                    'h-auto min-h-[52px] flex-col items-start justify-center p-3 rounded-2xl text-left transition-all',
-                    effectiveRes === '1080p' && 'shadow-xs border-primary'
-                  )}
-                  onClick={() => {
-                    setVideoResolution('1080p');
-                    showToast.success('Đã lưu cài đặt', 'Độ phân giải video: 1080p (Full HD)');
-                  }}
+                  variant="outline"
+                  className="h-11 rounded-2xl px-4 text-xs font-semibold gap-1.5 text-muted-foreground hover:text-foreground"
+                  onClick={() => setIsResetDialogOpen(true)}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-xs font-bold">1080p (Full HD)</span>
-                    {effectiveRes === '1080p' && <Check className="size-3.5 shrink-0" />}
-                  </div>
-                  <span
-                    className={cn(
-                      'text-[11px] font-normal mt-0.5',
-                      effectiveRes === '1080p'
-                        ? 'text-primary-foreground/80'
-                        : 'text-muted-foreground'
-                    )}
-                  >
-                    Khuyên dùng • Hình ảnh nét
-                  </span>
+                  <RotateCcw className="size-3.5" aria-hidden="true" />
+                  <span>Đặt lại về mặc định</span>
                 </Button>
 
                 <Button
                   type="button"
-                  variant={effectiveRes === '720p' ? 'default' : 'outline'}
-                  className={cn(
-                    'h-auto min-h-[52px] flex-col items-start justify-center p-3 rounded-2xl text-left transition-all',
-                    effectiveRes === '720p' && 'shadow-xs border-primary'
-                  )}
-                  onClick={() => {
-                    setVideoResolution('720p');
-                    showToast.success('Đã lưu cài đặt', 'Độ phân giải video: 720p (HD)');
-                  }}
+                  className="h-11 rounded-2xl px-5 text-xs font-bold gap-1.5 shadow-xs"
+                  onClick={handleSaveCameraSettings}
                 >
-                  <div className="flex items-center justify-between w-full">
-                    <span className="text-xs font-bold">720p (HD)</span>
-                    {effectiveRes === '720p' && <Check className="size-3.5 shrink-0" />}
-                  </div>
-                  <span
-                    className={cn(
-                      'text-[11px] font-normal mt-0.5',
-                      effectiveRes === '720p'
-                        ? 'text-primary-foreground/80'
-                        : 'text-muted-foreground'
-                    )}
-                  >
-                    Tiết kiệm dung lượng bộ nhớ
-                  </span>
+                  <Check className="size-4" aria-hidden="true" />
+                  <span>Lưu cài đặt camera</span>
                 </Button>
               </div>
             </div>
+          </SettingsCard>
 
-            {/* FPS Selector */}
-            <div className="flex flex-col gap-2.5">
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <span className="text-xs font-semibold text-foreground">Tốc độ khung hình (FPS)</span>
-                  <Badge
-                    variant="outline"
-                    className={cn(
-                      'text-[10px] font-bold',
-                      isFpsOverridden
-                        ? 'bg-amber-500/10 text-amber-600 border-transparent'
-                        : 'text-muted-foreground'
+          {/* 1.3 Resolution & FPS */}
+          <SettingsCard
+            icon={Video}
+            iconColor="text-primary"
+            title="Độ phân giải & Tốc độ khung hình (FPS)"
+          >
+            <div className="flex flex-col gap-4 text-xs">
+              {/* Resolution Toggle (User Override & System Default Sync) */}
+              <div className="flex flex-col gap-2">
+                <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-1">
+                  <div>
+                    <label className="block text-xs font-semibold text-muted-foreground">
+                      Độ phân giải video ghi hình
+                    </label>
+                    <span className="text-[11px] text-muted-foreground/80">
+                      {isResolutionOverridden
+                        ? 'Đang áp dụng cấu hình tùy chỉnh riêng trên máy này'
+                        : `Tự động đồng bộ theo hệ thống (mặc định: ${sysDefaultRes})`}
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="w-fit font-mono text-[11px] font-semibold border-border">
+                      {isResolutionOverridden ? (
+                        <span className="text-amber-500 font-medium">Tùy chỉnh: {effectiveRes}</span>
+                      ) : (
+                        <span className="text-primary font-medium">Hệ thống: {effectiveRes}</span>
+                      )}
+                    </Badge>
+                    {isResolutionOverridden && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          resetResolutionToSystem();
+                          showToast.info('Đã hoàn tác', `Độ phân giải quay lại mặc định hệ thống (${sysDefaultRes})`);
+                        }}
+                      >
+                        Đặt lại mặc định
+                      </Button>
                     )}
-                  >
-                    {isFpsOverridden ? (
-                      <>{effectiveFps}fps (Tùy chỉnh)</>
-                    ) : (
-                      <>30fps (Mặc định)</>
-                    )}
-                  </Badge>
-                  {isFpsOverridden && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
-                      onClick={() => {
-                        resetFpsToSystem();
-                        showToast.info('Đã hoàn tác', 'FPS quay lại mặc định (30fps)');
-                      }}
-                    >
-                      Đặt lại mặc định
-                    </Button>
-                  )}
+                  </div>
                 </div>
-              </div>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                {([
-                  { fps: 15 as const, label: '15 fps', desc: 'Siêu tiết kiệm', note: 'Camera cố định' },
-                  { fps: 20 as const, label: '20 fps', desc: 'Tiết kiệm', note: 'Đóng gói chậm' },
-                  { fps: 24 as const, label: '24 fps', desc: 'Chuẩn phim', note: 'Cân bằng tốt' },
-                  { fps: 30 as const, label: '30 fps', desc: 'Mặc định', note: 'Khuyên dùng' },
-                  { fps: 48 as const, label: '48 fps', desc: 'Mượt cao', note: 'Thao tác nhanh' },
-                  { fps: 60 as const, label: '60 fps', desc: 'Siêu mượt', note: 'Tốn dung lượng' },
-                ]).map((opt) => (
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
                   <Button
-                    key={opt.fps}
                     type="button"
-                    variant={effectiveFps === opt.fps ? 'default' : 'outline'}
+                    variant={effectiveRes === '1080p' ? 'default' : 'outline'}
                     className={cn(
-                      'h-auto min-h-[48px] flex-col items-start justify-center p-2.5 rounded-2xl text-left transition-all',
-                      effectiveFps === opt.fps && 'shadow-xs border-primary'
+                      'h-auto min-h-[52px] flex-col items-start justify-center p-3 rounded-2xl text-left transition-all',
+                      effectiveRes === '1080p' && 'shadow-xs border-primary'
                     )}
                     onClick={() => {
-                      setVideoFps(opt.fps);
-                      showToast.success('Đã lưu cài đặt', `Tốc độ khung hình: ${opt.label}`);
+                      setVideoResolution('1080p');
+                      showToast.success('Đã lưu cài đặt', 'Độ phân giải video: 1080p (Full HD)');
                     }}
                   >
                     <div className="flex items-center justify-between w-full">
-                      <span className="text-xs font-bold">{opt.label}</span>
-                      {effectiveFps === opt.fps && <Check className="size-3.5 shrink-0" />}
+                      <span className="text-xs font-bold">1080p (Full HD)</span>
+                      {effectiveRes === '1080p' && <Check className="size-3.5 shrink-0" />}
                     </div>
                     <span
                       className={cn(
-                        'text-[10px] font-normal mt-0.5',
-                        effectiveFps === opt.fps
+                        'text-[11px] font-normal mt-0.5',
+                        effectiveRes === '1080p'
                           ? 'text-primary-foreground/80'
                           : 'text-muted-foreground'
                       )}
                     >
-                      {opt.desc} • {opt.note}
+                      Khuyên dùng • Hình ảnh nét
                     </span>
                   </Button>
-                ))}
+
+                  <Button
+                    type="button"
+                    variant={effectiveRes === '720p' ? 'default' : 'outline'}
+                    className={cn(
+                      'h-auto min-h-[52px] flex-col items-start justify-center p-3 rounded-2xl text-left transition-all',
+                      effectiveRes === '720p' && 'shadow-xs border-primary'
+                    )}
+                    onClick={() => {
+                      setVideoResolution('720p');
+                      showToast.success('Đã lưu cài đặt', 'Độ phân giải video: 720p (HD)');
+                    }}
+                  >
+                    <div className="flex items-center justify-between w-full">
+                      <span className="text-xs font-bold">720p (HD)</span>
+                      {effectiveRes === '720p' && <Check className="size-3.5 shrink-0" />}
+                    </div>
+                    <span
+                      className={cn(
+                        'text-[11px] font-normal mt-0.5',
+                        effectiveRes === '720p'
+                          ? 'text-primary-foreground/80'
+                          : 'text-muted-foreground'
+                      )}
+                    >
+                      Tiết kiệm dung lượng bộ nhớ
+                    </span>
+                  </Button>
+                </div>
+              </div>
+
+              {/* FPS Selector */}
+              <div className="flex flex-col gap-2.5">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-semibold text-foreground">Tốc độ khung hình (FPS)</span>
+                    <Badge
+                      variant="outline"
+                      className={cn(
+                        'text-[10px] font-bold',
+                        isFpsOverridden
+                          ? 'bg-amber-500/10 text-amber-600 border-transparent'
+                          : 'text-muted-foreground'
+                      )}
+                    >
+                      {isFpsOverridden ? (
+                        <>{effectiveFps}fps (Tùy chỉnh)</>
+                      ) : (
+                        <>30fps (Mặc định)</>
+                      )}
+                    </Badge>
+                    {isFpsOverridden && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 px-2 text-[11px] text-muted-foreground hover:text-foreground"
+                        onClick={() => {
+                          resetFpsToSystem();
+                          showToast.info('Đã hoàn tác', 'FPS quay lại mặc định (30fps)');
+                        }}
+                      >
+                        Đặt lại mặc định
+                      </Button>
+                    )}
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {([
+                    { fps: 15 as const, label: '15 fps', desc: 'Siêu tiết kiệm', note: 'Camera cố định' },
+                    { fps: 20 as const, label: '20 fps', desc: 'Tiết kiệm', note: 'Đóng gói chậm' },
+                    { fps: 24 as const, label: '24 fps', desc: 'Chuẩn phim', note: 'Cân bằng tốt' },
+                    { fps: 30 as const, label: '30 fps', desc: 'Mặc định', note: 'Khuyên dùng' },
+                    { fps: 48 as const, label: '48 fps', desc: 'Mượt cao', note: 'Thao tác nhanh' },
+                    { fps: 60 as const, label: '60 fps', desc: 'Siêu mượt', note: 'Tốn dung lượng' },
+                  ]).map((opt) => (
+                    <Button
+                      key={opt.fps}
+                      type="button"
+                      variant={effectiveFps === opt.fps ? 'default' : 'outline'}
+                      className={cn(
+                        'h-auto min-h-[48px] flex-col items-start justify-center p-2.5 rounded-2xl text-left transition-all',
+                        effectiveFps === opt.fps && 'shadow-xs border-primary'
+                      )}
+                      onClick={() => {
+                        setVideoFps(opt.fps);
+                        showToast.success('Đã lưu cài đặt', `Tốc độ khung hình: ${opt.label}`);
+                      }}
+                    >
+                      <div className="flex items-center justify-between w-full">
+                        <span className="text-xs font-bold">{opt.label}</span>
+                        {effectiveFps === opt.fps && <Check className="size-3.5 shrink-0" />}
+                      </div>
+                      <span
+                        className={cn(
+                          'text-[10px] font-normal mt-0.5',
+                          effectiveFps === opt.fps
+                            ? 'text-primary-foreground/80'
+                            : 'text-muted-foreground'
+                        )}
+                      >
+                        {opt.desc} • {opt.note}
+                      </span>
+                    </Button>
+                  ))}
+                </div>
               </div>
             </div>
-
-            {/* Camera facing info */}
-            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2.5 rounded-2xl border border-border/60 bg-muted/30 p-3.5 text-xs">
-              <span className="text-muted-foreground">Chuyển hướng camera (Trước / Sau)</span>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => {
-                  toggleFacing();
-                  const nextFacing = facingMode === 'environment' ? 'Camera trước' : 'Camera sau';
-                  showToast.success('Đã lưu cài đặt', `Đã chuyển sang: ${nextFacing}`);
-                }}
-                className="gap-1.5 h-9 rounded-xl w-full sm:w-auto shrink-0 font-medium"
-              >
-                <RefreshCw className="size-3.5" aria-hidden="true" />
-                {facingMode === 'environment' ? 'Camera sau (Mặc định)' : 'Camera trước'}
-              </Button>
-            </div>
-          </div>
           </SettingsCard>
         </TabsContent>
 
@@ -839,6 +1134,34 @@ export const UserSettingsPage: React.FC = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Alert Dialog: Confirm Camera Reset */}
+      <AlertDialog open={isResetDialogOpen} onOpenChange={setIsResetDialogOpen}>
+        <AlertDialogContent className="rounded-3xl border-border bg-card p-5 sm:p-6 shadow-xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-foreground">
+              Đặt lại cấu hình camera?
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              Hệ thống sẽ hoàn tác khung hình về <strong>Tự động</strong> và góc xoay về <strong>0°</strong>. Ở phiên quay tiếp theo, hộp thoại hướng dẫn cấu hình camera trạm sẽ xuất hiện lại.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-4 gap-2">
+            <AlertDialogCancel
+              className="h-10 rounded-xl text-xs font-medium"
+              onClick={() => setIsResetDialogOpen(false)}
+            >
+              Hủy bỏ
+            </AlertDialogCancel>
+            <AlertDialogAction
+              className="h-10 rounded-xl text-xs font-bold bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleResetCameraSettings}
+            >
+              Đặt lại về mặc định
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

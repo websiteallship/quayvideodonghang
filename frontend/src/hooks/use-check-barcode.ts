@@ -32,7 +32,7 @@ export interface UseCheckBarcodeReturn {
   /** Lỗi kiểm tra nếu có */
   error: string | null;
   /** Thực hiện kiểm tra mã vận đơn (cùng loại biên bản) */
-  checkCode: (code: string, loaiBienBan: LoaiBienBan) => Promise<CheckMaVanDonResult | null>;
+  checkCode: (code: string, loaiBienBan?: LoaiBienBan) => Promise<CheckMaVanDonResult | null>;
   /** Reset trạng thái về ban đầu */
   reset: () => void;
 }
@@ -65,7 +65,7 @@ export function useCheckBarcode(): UseCheckBarcodeReturn {
     setError(null);
   }, []);
 
-  const checkCode = useCallback(async (code: string, loaiBienBan: LoaiBienBan): Promise<CheckMaVanDonResult | null> => {
+  const checkCode = useCallback(async (code: string, loaiBienBan: LoaiBienBan = 'dong_goi'): Promise<CheckMaVanDonResult | null> => {
     // 1. Hủy request trước nếu đang chạy dở (chống race condition khi quét nhanh)
     if (abortControllerRef.current) {
       abortControllerRef.current.abort();

@@ -241,7 +241,7 @@ export const useUploadStore = create<UploadState>((set, get) => ({
 
     await idbService.updateItem(id, {
       status: 'cho_upload',
-      retry_count: 0,
+      retry_count: (item.retry_count ?? 0) + 1,
       last_error: undefined,
       resumable_session_url: undefined
     });

@@ -95,4 +95,62 @@ describe('UserSettingsPage Component', () => {
 
     expect(mockLogout).toHaveBeenCalledTimes(1);
   });
+
+  it('allows user to change video orientation and rotation and save camera settings', () => {
+    renderWithRouter(<UserSettingsPage />);
+
+    expect(screen.getByText('Khung hình & Góc xoay camera')).toBeTruthy();
+
+    const landscapeBtn = screen.getByRole('button', { name: /Ngang \(16:9\)/ });
+    fireEvent.click(landscapeBtn);
+
+    const rot90Btn = screen.getByRole('button', { name: /90°/ });
+    fireEvent.click(rot90Btn);
+
+    const saveCameraBtn = screen.getByRole('button', { name: /Lưu cài đặt camera/ });
+    fireEvent.click(saveCameraBtn);
+
+    const storeState = useUserSettingsStore.getState();
+    expect(storeState.videoOrientation).toBe('landscape');
+    expect(storeState.videoRotation).toBe(90);
+    expect(storeState.isCameraConfigured).toBe(true);
+  });
+
+  it('allows user to reset camera configuration via AlertDialog confirmation', async () => {
+    useUserSettingsStore.setState({
+      videoOrientation: 'portrait',
+      videoRotation: 180,
+      isCameraConfigured: true,
+    });
+
+    renderWithRouter(<UserSettingsPage />);
+
+    const resetBtn = screen.getByRole('button', { name: /Đặt lại về mặc định/ });
+    fireEvent.click(resetBtn);
+
+    expect(await screen.findByText('Đặt lại cấu hình camera?')).toBeTruthy();
+
+    const confirmResetBtn = screen.getByRole('button', { name: 'Đặt lại về mặc định' });
+    fireEvent.click(confirmResetBtn);
+
+    const storeState = useUserSettingsStore.getState();
+    expect(storeState.videoOrientation).toBe('auto');
+    expect(storeState.videoRotation).toBe(0);
+    expect(storeState.isCameraConfigured).toBe(false);
+  });
+
+  it('toggles live preview panel when clicking preview button', () => {
+    renderWithRouter(<UserSettingsPage />);
+
+    const openPreviewBtn = screen.getByRole('button', { name: /Mở xem trước camera/ });
+    expect(openPreviewBtn).toBeTruthy();
+
+    fireEvent.click(openPreviewBtn);
+    const closeBtns = screen.getAllByRole('button', { name: /Đóng xem trước/ });
+    expect(closeBtns.length).toBeGreaterThanOrEqual(1);
+
+    fireEvent.click(closeBtns[0]);
+    expect(screen.getByRole('button', { name: /Mở xem trước camera/ })).toBeTruthy();
+  });
 });
+

@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest';
 import { renderHook, act } from '@testing-library/react';
-import { useCamera } from '../src/hooks/use-camera';
+import { useCamera, getResolutionChain } from '../src/hooks/use-camera';
 import { useCameraStore } from '../src/stores/camera-store';
 import { useUserSettingsStore } from '../src/stores/user-settings-store';
 
@@ -374,6 +374,32 @@ describe('useCamera', () => {
       unmount();
 
       expect(mockTrackStop).toHaveBeenCalled();
+    });
+  });
+
+  describe('getResolutionChain with forceOrientation', () => {
+    it('returns landscape dimensions when forceOrientation is landscape', () => {
+      const chain720 = getResolutionChain('720p', 30, 'landscape');
+      expect(chain720[0].width.ideal).toBe(1280);
+      expect(chain720[0].height.ideal).toBe(720);
+      expect(chain720[0].frameRate.ideal).toBe(30);
+
+      const chain1080 = getResolutionChain('1080p', 60, 'landscape');
+      expect(chain1080[0].width.ideal).toBe(1920);
+      expect(chain1080[0].height.ideal).toBe(1080);
+      expect(chain1080[0].frameRate.ideal).toBe(60);
+    });
+
+    it('returns inverted portrait dimensions when forceOrientation is portrait', () => {
+      const chain720 = getResolutionChain('720p', 30, 'portrait');
+      expect(chain720[0].width.ideal).toBe(720);
+      expect(chain720[0].height.ideal).toBe(1280);
+      expect(chain720[0].frameRate.ideal).toBe(30);
+
+      const chain1080 = getResolutionChain('1080p', 24, 'portrait');
+      expect(chain1080[0].width.ideal).toBe(1080);
+      expect(chain1080[0].height.ideal).toBe(1920);
+      expect(chain1080[0].frameRate.ideal).toBe(24);
     });
   });
 });

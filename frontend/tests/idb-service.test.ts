@@ -1,11 +1,6 @@
-import 'fake-indexeddb/auto';
-import { Blob as NodeBlob } from 'node:buffer';
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
 import { idbService } from '../src/services/idb-service';
 import { BienBanMetadata } from '../src/types';
-
-(window as any).Blob = NodeBlob;
-(globalThis as any).Blob = NodeBlob;
 
 describe('idbService (IndexedDB Queue & Offline Storage)', () => {
   beforeEach(async () => {
@@ -22,7 +17,7 @@ describe('idbService (IndexedDB Queue & Offline Storage)', () => {
   });
 
   it('saveVideo should persist video blob and metadata into upload_queue', async () => {
-    const blob = new NodeBlob(['sample-video-bytes'], { type: 'video/webm' }) as unknown as Blob;
+    const blob = new Blob(['sample-video-bytes'], { type: 'video/webm' });
     const metadata: BienBanMetadata = {
       ma_van_don: 'GHN123456789',
       don_vi_vc: 'GHN',
@@ -48,7 +43,7 @@ describe('idbService (IndexedDB Queue & Offline Storage)', () => {
   });
 
   it('getVideoBlob should retrieve stored video blob', async () => {
-    const blob = new NodeBlob(['video-test-content'], { type: 'video/mp4' }) as unknown as Blob;
+    const blob = new Blob(['video-test-content'], { type: 'video/mp4' });
     const saved = await idbService.saveVideo(blob, {
       ma_van_don: 'SPX999888',
       don_vi_vc: 'ShopeeXpress',
@@ -67,7 +62,7 @@ describe('idbService (IndexedDB Queue & Offline Storage)', () => {
   });
 
   it('getQueue should only return items with status cho_upload or loi', async () => {
-    const blob = new NodeBlob(['test'], { type: 'video/webm' }) as unknown as Blob;
+    const blob = new Blob(['test'], { type: 'video/webm' });
     const item1 = await idbService.saveVideo(blob, {
       ma_van_don: 'ORDER1',
       don_vi_vc: 'GHN',
@@ -98,7 +93,7 @@ describe('idbService (IndexedDB Queue & Offline Storage)', () => {
   });
 
   it('deleteVideo / deleteItem should remove item from store', async () => {
-    const blob = new NodeBlob(['test'], { type: 'video/webm' }) as unknown as Blob;
+    const blob = new Blob(['test'], { type: 'video/webm' });
     const saved = await idbService.saveVideo(blob, {
       ma_van_don: 'VT12345',
       don_vi_vc: 'ViettelPost',

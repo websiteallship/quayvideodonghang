@@ -37,6 +37,8 @@ Mọi quyết định thiết kế và lập trình phải tuân thủ nghiêm n
 - [`15-huong-dan-trien-khai-deploy.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/15-huong-dan-trien-khai-deploy.md): Quy trình triển khai Production Cloudflare Pages, Workers, D1 và checklist vận hành.
 - [`16-tich-hop-dong-bo-don-hang-vietful.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/16-tich-hop-dong-bo-don-hang-vietful.md): Đặc tả tích hợp VietFul API, đồng bộ đơn hàng đóng/khui hàng, schema D1 và luồng quét barcode.
 - [`17-huong-dan-su-dung-va-onboarding-nhan-vien.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/17-huong-dan-su-dung-va-onboarding-nhan-vien.md): Đặc tả hướng dẫn sử dụng cho nhân viên, onboarding popup lần đầu, tích hợp menu hướng dẫn trên PC & Mobile.
+- [`18-video-orientation-rotation.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/18-video-orientation-rotation.md): Đặc tả kỹ thuật cấu hình khung hình (ngang/dọc) và góc xoay camera (0°/90°/180°/270°) cho giá đỡ overhead.
+- [`19-roadmap-trien-khai-video-orientation-rotation.md`](file:///d:/TOOL%20AI/TOOL_QUAYVIDEO/docs/19-roadmap-trien-khai-video-orientation-rotation.md): Lộ trình triển khai chi tiết tính năng xoay khung hình, tuân thủ strict rules và tích hợp skills cho từng bước.
 
 ---
 

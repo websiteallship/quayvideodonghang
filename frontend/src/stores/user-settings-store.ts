@@ -4,6 +4,8 @@ import { useConfigStore } from './config-store';
 
 export type VideoResolution = '1080p' | '720p';
 export type VideoFps = 15 | 20 | 24 | 30 | 48 | 60;
+export type VideoOrientation = 'auto' | 'landscape' | 'portrait';
+export type VideoRotation = 0 | 90 | 180 | 270;
 
 export interface UserSettingsState {
   /** Local video resolution ('1080p' or '720p') */
@@ -14,6 +16,12 @@ export interface UserSettingsState {
   videoFps: VideoFps;
   /** Whether user explicitly chose a local FPS on this device */
   isFpsOverridden: boolean;
+  /** Video frame orientation: 'auto' (detect), 'landscape' (16:9), 'portrait' (9:16) */
+  videoOrientation: VideoOrientation;
+  /** Camera sensor rotation offset: 0, 90, 180, 270 degrees */
+  videoRotation: VideoRotation;
+  /** Flag marking whether the camera has completed initial onboarding setup */
+  isCameraConfigured: boolean;
   /** Automatically trigger recording 1s after a valid scan */
   autoRecordAfterScan: boolean;
   /** Play sound beep on barcode scan or warning */
@@ -31,6 +39,10 @@ export interface UserSettingsActions {
   resetResolutionToSystem: () => void;
   setVideoFps: (fps: VideoFps, isOverride?: boolean) => void;
   resetFpsToSystem: () => void;
+  setVideoOrientation: (orientation: VideoOrientation) => void;
+  setVideoRotation: (rotation: VideoRotation) => void;
+  setCameraConfigured: (configured: boolean) => void;
+  resetCameraConfiguration: () => void;
   setAutoRecordAfterScan: (enabled: boolean) => void;
   setSoundBeepEnabled: (enabled: boolean) => void;
   setShiftTarget: (target: number) => void;
@@ -44,6 +56,9 @@ export const DEFAULT_USER_SETTINGS: Omit<UserSettingsState, 'activeUser'> = {
   isResolutionOverridden: false,
   videoFps: 30,
   isFpsOverridden: false,
+  videoOrientation: 'auto',
+  videoRotation: 0,
+  isCameraConfigured: false,
   autoRecordAfterScan: true,
   soundBeepEnabled: true,
   shiftTarget: 300,
@@ -61,13 +76,58 @@ function getInitialUser(): string | null {
   return null;
 }
 
+function sanitizeSettings(data: unknown): Partial<UserSettingsState> {
+  if (!data || typeof data !== 'object') return {};
+  const record = data as Record<string, unknown>;
+  const clean: Partial<UserSettingsState> = {};
+
+  if (record.videoResolution === '720p' || record.videoResolution === '1080p') {
+    clean.videoResolution = record.videoResolution;
+  }
+  if (typeof record.isResolutionOverridden === 'boolean') {
+    clean.isResolutionOverridden = record.isResolutionOverridden;
+  }
+  if (typeof record.videoFps === 'number' && [15, 20, 24, 30, 48, 60].includes(record.videoFps)) {
+    clean.videoFps = record.videoFps as VideoFps;
+  }
+  if (typeof record.isFpsOverridden === 'boolean') {
+    clean.isFpsOverridden = record.isFpsOverridden;
+  }
+  if (record.videoOrientation === 'auto' || record.videoOrientation === 'landscape' || record.videoOrientation === 'portrait') {
+    clean.videoOrientation = record.videoOrientation;
+  }
+  if (record.videoRotation === 0 || record.videoRotation === 90 || record.videoRotation === 180 || record.videoRotation === 270) {
+    clean.videoRotation = record.videoRotation;
+  }
+  if (typeof record.isCameraConfigured === 'boolean') {
+    clean.isCameraConfigured = record.isCameraConfigured;
+  }
+  if (typeof record.autoRecordAfterScan === 'boolean') {
+    clean.autoRecordAfterScan = record.autoRecordAfterScan;
+  }
+  if (typeof record.soundBeepEnabled === 'boolean') {
+    clean.soundBeepEnabled = record.soundBeepEnabled;
+  }
+  if (typeof record.shiftTarget === 'number' && Number.isFinite(record.shiftTarget) && record.shiftTarget > 0 && record.shiftTarget <= 10000) {
+    clean.shiftTarget = Math.floor(record.shiftTarget);
+  }
+
+  return clean;
+}
+
+function getSafeStorageKey(user: string | null): string {
+  if (!user) return 'user_settings';
+  const clean = user.replace(/[^A-Za-z0-9_-]/g, '');
+  return clean ? `user_settings_${clean}` : 'user_settings';
+}
+
 function readFromStorage(user: string | null): Partial<UserSettingsState> {
   if (typeof window === 'undefined') return {};
   try {
-    const key = user ? `user_settings_${user}` : 'user_settings';
+    const key = getSafeStorageKey(user);
     const raw = localStorage.getItem(key) || (!user ? null : localStorage.getItem('user_settings'));
     if (raw) {
-      return JSON.parse(raw);
+      return sanitizeSettings(JSON.parse(raw));
     }
   } catch {}
   return {};
@@ -80,11 +140,14 @@ function saveToStorage(user: string | null, state: UserSettingsState): void {
     isResolutionOverridden: state.isResolutionOverridden,
     videoFps: state.videoFps,
     isFpsOverridden: state.isFpsOverridden,
+    videoOrientation: state.videoOrientation,
+    videoRotation: state.videoRotation,
+    isCameraConfigured: state.isCameraConfigured,
     autoRecordAfterScan: state.autoRecordAfterScan,
     soundBeepEnabled: state.soundBeepEnabled,
     shiftTarget: state.shiftTarget,
   };
-  const key = user ? `user_settings_${user}` : 'user_settings';
+  const key = getSafeStorageKey(user);
   try {
     localStorage.setItem(key, JSON.stringify(dataToSave));
   } catch {}
@@ -162,6 +225,39 @@ export const useUserSettingsStore = create<UserSettingsStore>()(
         return next;
       }),
 
+    setVideoOrientation: (videoOrientation) =>
+      set((state) => {
+        const next = { ...state, videoOrientation };
+        saveToStorage(state.activeUser, next);
+        return next;
+      }),
+
+    setVideoRotation: (videoRotation) =>
+      set((state) => {
+        const next = { ...state, videoRotation };
+        saveToStorage(state.activeUser, next);
+        return next;
+      }),
+
+    setCameraConfigured: (isCameraConfigured) =>
+      set((state) => {
+        const next = { ...state, isCameraConfigured };
+        saveToStorage(state.activeUser, next);
+        return next;
+      }),
+
+    resetCameraConfiguration: () =>
+      set((state) => {
+        const next = {
+          ...state,
+          videoOrientation: 'auto' as VideoOrientation,
+          videoRotation: 0 as VideoRotation,
+          isCameraConfigured: false,
+        };
+        saveToStorage(state.activeUser, next);
+        return next;
+      }),
+
     setAutoRecordAfterScan: (autoRecordAfterScan) =>
       set((state) => {
         const next = { ...state, autoRecordAfterScan };
@@ -178,7 +274,8 @@ export const useUserSettingsStore = create<UserSettingsStore>()(
 
     setShiftTarget: (shiftTarget) =>
       set((state) => {
-        const next = { ...state, shiftTarget };
+        const clamped = Math.min(10000, Math.max(1, Math.floor(shiftTarget) || 300));
+        const next = { ...state, shiftTarget: clamped };
         saveToStorage(state.activeUser, next);
         return next;
       }),

@@ -36,7 +36,7 @@ interface UseCameraReturn {
   toggleFacing: () => Promise<void>;
 }
 
-import { getEffectiveResolution } from '../stores/user-settings-store';
+import { getEffectiveResolution, useUserSettingsStore, type VideoOrientation } from '../stores/user-settings-store';
 
 // ---------------------------------------------------------------------------
 // Resolution Fallback Chain: 1080p / 720p → 480p → any
@@ -63,13 +63,26 @@ export const RESOLUTION_CHAIN_720P: ResolutionConstraint[] = [
 
 /**
  * Build resolution chain with dynamic FPS and orientation awareness.
- * When in portrait on mobile, inverts ideal width/height (e.g. 720x1280) so camera streams native vertical.
+ * When in portrait on mobile or forceOrientation === 'portrait', inverts ideal width/height (e.g. 720x1280).
+ * When forceOrientation === 'landscape', keeps width >= height (e.g. 1280x720).
  */
-export function getResolutionChain(resolution: '1080p' | '720p', fps: number = 30): ResolutionConstraint[] {
-  const isPortrait = typeof window !== 'undefined' && (
-    window.innerHeight > window.innerWidth ||
-    window.matchMedia?.('(orientation: portrait)').matches
-  );
+export function getResolutionChain(
+  resolution: '1080p' | '720p',
+  fps: number = 30,
+  forceOrientation?: VideoOrientation
+): ResolutionConstraint[] {
+  let isPortrait: boolean;
+
+  if (forceOrientation === 'landscape') {
+    isPortrait = false;
+  } else if (forceOrientation === 'portrait') {
+    isPortrait = true;
+  } else {
+    isPortrait = typeof window !== 'undefined' && (
+      window.innerHeight > window.innerWidth ||
+      window.matchMedia?.('(orientation: portrait)').matches
+    );
+  }
 
   const base = resolution === '1080p' ? RESOLUTION_CHAIN_1080P : RESOLUTION_CHAIN_720P;
   return base.map((c) => {
@@ -251,7 +264,9 @@ export function useCamera(): UseCameraReturn {
 
       // Thử resolution chain (ưu tiên user override, fallback cấu hình hệ thống)
       const currentResPref = getEffectiveResolution();
-      const resolutionChain = getResolutionChain(currentResPref);
+      const userSettings = useUserSettingsStore.getState();
+      const currentFps = userSettings.isFpsOverridden ? userSettings.videoFps : 30;
+      const resolutionChain = getResolutionChain(currentResPref, currentFps, userSettings.videoOrientation);
 
       for (let i = 0; i < resolutionChain.length; i++) {
         try {
