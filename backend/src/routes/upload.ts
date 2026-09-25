@@ -40,14 +40,23 @@ uploadRouter.post('/init', authMiddleware, zValidator('json', UploadInitSchema),
     const isReused = !!existingDup;
 
     if (!isReused) {
+      // Resolve kho_hang_id: client gửi lên hoặc fallback kho mặc định
+      let khoHangId = data.kho_hang_id || null;
+      if (!khoHangId) {
+        const defaultKho = await c.env.DB.prepare(
+          "SELECT id FROM kho_hang WHERE la_mac_dinh = 1 AND trang_thai = 'hoat_dong' LIMIT 1"
+        ).first<{ id: string }>();
+        khoHangId = defaultKho?.id || null;
+      }
+
       // Batch: INSERT bien_ban + upload_log in single D1 roundtrip (perf optimization)
       await c.env.DB.batch([
         c.env.DB.prepare(
           `INSERT OR IGNORE INTO bien_ban (
             id, ma_van_don, don_vi_vc, loai_bien_ban, ma_nhan_vien,
             thiet_bi, user_agent, thoi_luong_video, kich_thuoc_bytes,
-            mime_type, trang_thai, thoi_gian_tao
-          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'cho_upload', datetime('now'))`
+            mime_type, trang_thai, kho_hang_id, thoi_gian_tao
+          ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'cho_upload', ?, datetime('now'))`
         ).bind(
           data.id,
           data.ma_van_don,
@@ -58,11 +67,12 @@ uploadRouter.post('/init', authMiddleware, zValidator('json', UploadInitSchema),
           userAgent,
           data.thoi_luong_video,
           data.kich_thuoc_bytes,
-          data.mime_type
+          data.mime_type,
+          khoHangId
         ),
         c.env.DB.prepare(
           'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
-        ).bind(data.id, 'init', `Size: ${data.kich_thuoc_bytes} bytes (Tac gia: ${tacGia}, Nguoi tai: ${user.sub})`)
+        ).bind(data.id, 'init', `Size: ${data.kich_thuoc_bytes} bytes (Tac gia: ${tacGia}, Nguoi tai: ${user.sub}, Kho: ${khoHangId || 'N/A'})`)
       ]);
     } else {
       // Ghi log dedup để debug

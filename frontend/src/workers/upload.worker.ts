@@ -247,7 +247,8 @@ async function initUploadSession(item: QueueItem, signal: AbortSignal): Promise<
     thiet_bi: item.thiet_bi,
     thoi_luong_video: Math.round(item.thoi_luong_video),
     kich_thuoc_bytes: item.kich_thuoc_bytes || item.blob?.size || 1,
-    mime_type: item.mime_type || 'video/webm'
+    mime_type: item.mime_type || 'video/webm',
+    kho_hang_id: item.kho_hang_id || undefined
   };
 
   const initData = await authFetchJson<any>(`${apiBaseUrl}/upload/init`, {

@@ -216,9 +216,13 @@ bienBanRouter.get(
         : counts.all;
 
       const items = await c.env.DB.prepare(
-        `SELECT b.*, n.ten as ten_nhan_vien
+        `SELECT b.*, n.ten as ten_nhan_vien, 
+                COALESCE(kh.ten, def_kh.ten) as ten_kho_hang, 
+                COALESCE(kh.dia_chi, def_kh.dia_chi) as dia_chi_kho_hang
          FROM bien_ban b
          LEFT JOIN nhan_vien n ON b.ma_nhan_vien = n.ma
+         LEFT JOIN kho_hang kh ON b.kho_hang_id = kh.id
+         LEFT JOIN (SELECT ten, dia_chi FROM kho_hang WHERE la_mac_dinh = 1 AND trang_thai = 'hoat_dong' LIMIT 1) def_kh ON 1=1
          ${itemWhereClause}
          ORDER BY b.thoi_gian_tao DESC
          LIMIT ? OFFSET ?`
@@ -267,9 +271,13 @@ bienBanRouter.get(
 
     try {
       const record = await c.env.DB.prepare(
-        `SELECT b.*, n.ten as ten_nhan_vien
+        `SELECT b.*, n.ten as ten_nhan_vien, 
+                COALESCE(kh.ten, def_kh.ten) as ten_kho_hang, 
+                COALESCE(kh.dia_chi, def_kh.dia_chi) as dia_chi_kho_hang
          FROM bien_ban b
          LEFT JOIN nhan_vien n ON b.ma_nhan_vien = n.ma
+         LEFT JOIN kho_hang kh ON b.kho_hang_id = kh.id
+         LEFT JOIN (SELECT ten, dia_chi FROM kho_hang WHERE la_mac_dinh = 1 AND trang_thai = 'hoat_dong' LIMIT 1) def_kh ON 1=1
          WHERE b.id = ?`
       )
         .bind(id)

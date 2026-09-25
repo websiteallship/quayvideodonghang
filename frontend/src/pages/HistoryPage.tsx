@@ -19,6 +19,7 @@ import {
   Archive,
   Trash2,
   FileText,
+  MapPin,
 } from 'lucide-react';
 import { Pagination, PaginationInfo, PaginationLimitSelect, MobilePaginationFooter } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
@@ -152,7 +153,7 @@ function getStatusBadge(trangThai: string) {
 // ---------------------------------------------------------------------------
 
 
-type BienBanItem = BienBan & { ten_nhan_vien?: string };
+type BienBanItem = BienBan & { ten_nhan_vien?: string; ten_kho_hang?: string; dia_chi_kho_hang?: string };
 
 // ---------------------------------------------------------------------------
 // HistoryPage
@@ -828,6 +829,7 @@ export const HistoryPage: React.FC = () => {
                     <th className="py-3 px-4 bg-card">Mã vận đơn</th>
                     <th className="py-3 px-3 bg-card">Loại</th>
                     <th className="py-3 px-3 bg-card">Người tạo</th>
+                    <th className="py-3 px-3 bg-card">Kho hàng</th>
                     <th className="py-3 px-3 bg-card">Thời gian</th>
                     <th className="py-3 px-3 bg-card">File</th>
                     <th className="py-3 px-3 bg-card">Trạng thái</th>
@@ -894,6 +896,14 @@ export const HistoryPage: React.FC = () => {
                             <span className="truncate max-w-[120px]">
                               {item.ten_nhan_vien || item.ma_nhan_vien}
                             </span>
+                          </div>
+                        </td>
+
+                        {/* Kho hàng */}
+                        <td className="py-3 px-3 text-muted-foreground font-medium text-[11px]">
+                          <div className="flex items-center gap-1.5 max-w-[140px]" title={item.dia_chi_kho_hang || item.ten_kho_hang || 'Không xác định'}>
+                            <MapPin size={12} className="shrink-0" />
+                            <span className="truncate">{item.ten_kho_hang || '—'}</span>
                           </div>
                         </td>
 
@@ -1061,6 +1071,10 @@ export const HistoryPage: React.FC = () => {
                       <div className="flex items-center gap-1.5">
                         <HardDrive size={14} className="text-muted-foreground shrink-0" />
                         <span>{formatBytes(item.kich_thuoc_bytes)}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5 col-span-2 truncate">
+                        <MapPin size={14} className="text-muted-foreground shrink-0" />
+                        <span className="truncate">{item.ten_kho_hang || '—'}</span>
                       </div>
                     </div>
 

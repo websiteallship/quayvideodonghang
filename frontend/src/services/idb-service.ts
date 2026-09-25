@@ -99,7 +99,8 @@ export const idbService = {
       blob,
       status: 'cho_upload',
       retry_count: 0,
-      created_at: Date.now()
+      created_at: Date.now(),
+      kho_hang_id: metadata.kho_hang_id
     };
     await this.saveItem(item);
     return item;

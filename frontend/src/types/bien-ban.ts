@@ -25,6 +25,7 @@ export interface BienBan {
   drive_file_id?: string | null;
   drive_file_name?: string | null;
   loi_message?: string | null;
+  kho_hang_id?: string | null;
   thoi_gian_tao: string;
   thoi_gian_upload?: string | null;
   ngay_cap_nhat?: string;
@@ -47,6 +48,7 @@ export interface QueueItem {
   created_at: number;              // Timestamp ms
   uploaded_bytes?: number;
   resumable_session_url?: string;
+  kho_hang_id?: string;
 }
 
 export interface BienBanMetadata {
@@ -58,5 +60,6 @@ export interface BienBanMetadata {
   thiet_bi?: ThietBiType;
   thoi_luong_video: number;
   mime_type?: string;
+  kho_hang_id?: string;
 }
 

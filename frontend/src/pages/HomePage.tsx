@@ -52,7 +52,7 @@ export const HomePage: React.FC = () => {
   const navigate = useNavigate();
 
   const { user } = useAuthStore();
-  const { warehouseName } = useConfigStore();
+  const { warehouseName, warehouseId } = useConfigStore();
 
   const [currentView, setCurrentView] = useState<'idle' | 'scanner' | 'recording' | 'preview'>('idle');
   const [activeBarcode, setActiveBarcode] = useState<BarcodeResult | null>(null);
@@ -329,6 +329,7 @@ export const HomePage: React.FC = () => {
             ma_nhan_vien: activeOverlayInfo.maNhanVien,
             thiet_bi: 'pc_webcam',
             thoi_luong_video: durationRecorded,
+            kho_hang_id: warehouseId || undefined,
           });
           toast.success(
             `Đã lưu đơn ${activeOverlayInfo.maVanDon} (${formatDuration(durationRecorded)}). Bắt đầu đơn ${data.maVanDon}!`,
@@ -563,6 +564,7 @@ export const HomePage: React.FC = () => {
           ma_nhan_vien: activeOverlayInfo.maNhanVien,
           thiet_bi: 'pc_webcam',
           thoi_luong_video: durationSeconds,
+          kho_hang_id: warehouseId || undefined,
         });
 
         if (isContinuous) {
