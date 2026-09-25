@@ -16,6 +16,9 @@ import {
   Scan,
   FileVideo,
   SlidersHorizontal,
+  Archive,
+  Trash2,
+  FileText,
 } from 'lucide-react';
 import { Pagination, PaginationInfo, PaginationLimitSelect, MobilePaginationFooter } from '@/components/ui/pagination';
 import { Button } from '@/components/ui/button';
@@ -29,6 +32,16 @@ import {
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth-store';
@@ -42,6 +55,8 @@ import { DateRange } from 'react-day-picker';
 import { subDays, format } from 'date-fns';
 import {
   fetchBienBanList,
+  archiveBienBan,
+  deleteBienBan,
   type BienBanFilterParams,
 } from '@/services/bien-ban-service';
 import { apiClient, API_BASE } from '@/services/api-client';
@@ -49,6 +64,7 @@ import { formatDateTimeVN, formatDuration, formatBytes } from '@/utils/format';
 import { feedbackSuccess } from '@/utils/barcode-feedback';
 import { getCarrierLabel as getCarrierLabelUtil } from '@/utils/detect-carrier';
 import { useConfigStore } from '@/stores/config-store';
+import { showToast } from '@/stores/toast-store';
 import type { BienBan, BarcodeResult } from '@/types';
 
 // ---------------------------------------------------------------------------
@@ -94,6 +110,18 @@ function getStatusBadge(trangThai: string) {
       return (
         <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/25 dark:text-emerald-400 hover:bg-emerald-500/15 text-[10px] font-bold uppercase tracking-wider rounded-full shadow-none">
           ĐÃ LƯU
+        </Badge>
+      );
+    case 'da_luu_tru':
+      return (
+        <Badge className="bg-purple-500/10 text-purple-600 border-purple-500/25 dark:text-purple-400 hover:bg-purple-500/15 text-[10px] font-bold uppercase tracking-wider rounded-full shadow-none">
+          ĐÃ LƯU TRỮ
+        </Badge>
+      );
+    case 'da_xoa':
+      return (
+        <Badge className="bg-zinc-500/10 text-zinc-500 border-zinc-500/25 dark:text-zinc-400 hover:bg-zinc-500/15 text-[10px] font-bold uppercase tracking-wider rounded-full shadow-none">
+          ĐÃ XOÁ
         </Badge>
       );
     case 'cho_upload':
@@ -185,6 +213,43 @@ export const HistoryPage: React.FC = () => {
 
   // 4. Copy state
   const [copiedId, setCopiedId] = useState<string | null>(null);
+
+  // 5. Admin Actions (Archive / Delete)
+  const [actionTarget, setActionTarget] = useState<{
+    id: string;
+    ma_van_don: string;
+    action: 'archive' | 'delete';
+  } | null>(null);
+  const [isSubmittingAction, setIsSubmittingAction] = useState(false);
+
+  const handleConfirmAction = async () => {
+    if (!actionTarget) return;
+    setIsSubmittingAction(true);
+    try {
+      if (actionTarget.action === 'archive') {
+        const res = await archiveBienBan(actionTarget.id);
+        if (!res.success) {
+          showToast.error('Lỗi lưu trữ', res.error?.message || 'Không thể lưu trữ biên bản');
+        } else {
+          showToast.success('Thành công', `Đã chuyển biên bản ${actionTarget.ma_van_don} sang trạng thái lưu trữ`);
+          void loadData();
+        }
+      } else {
+        const res = await deleteBienBan(actionTarget.id);
+        if (!res.success) {
+          showToast.error('Lỗi xoá video', res.error?.message || 'Không thể xoá video biên bản');
+        } else {
+          showToast.success('Thành công', `Đã xoá vĩnh viễn video của đơn ${actionTarget.ma_van_don}`);
+          void loadData();
+        }
+      }
+    } catch {
+      showToast.error('Lỗi', 'Đã xảy ra lỗi khi thực hiện thao tác');
+    } finally {
+      setIsSubmittingAction(false);
+      setActionTarget(null);
+    }
+  };
 
 
 
@@ -607,7 +672,17 @@ export const HistoryPage: React.FC = () => {
 
           {trangThai !== 'all' && (
             <span className="inline-flex items-center gap-1 px-2 lg:px-2.5 py-0.5 lg:py-1 rounded-lg bg-emerald-500/10 text-emerald-600 border border-emerald-500/20 shrink-0 font-medium">
-              {trangThai === 'da_upload' ? 'Đã lưu' : trangThai === 'cho_upload' ? 'Chờ tải' : trangThai === 'dang_upload' ? 'Đang tải' : 'Lỗi'}
+              {trangThai === 'da_upload'
+                ? 'Đã lưu'
+                : trangThai === 'da_luu_tru'
+                ? 'Đã lưu trữ'
+                : trangThai === 'da_xoa'
+                ? 'Đã xoá'
+                : trangThai === 'cho_upload'
+                ? 'Chờ tải'
+                : trangThai === 'dang_upload'
+                ? 'Đang tải'
+                : 'Lỗi'}
               <button type="button" onClick={() => { setTrangThai('all'); setPage(1); }} className="hover:opacity-70 cursor-pointer">
                 <X size={12} />
               </button>
@@ -845,14 +920,54 @@ export const HistoryPage: React.FC = () => {
 
                         {/* Thao tác */}
                         <td className="py-3 px-4 text-right">
-                          <button
-                            type="button"
-                            onClick={() => void handleOpenVideo(item)}
-                            className="h-8 px-4 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm shadow-orange-500/20 hover:scale-[1.02] transition-transform cursor-pointer"
-                          >
-                            <Play size={12} className="fill-current" />
-                            <span>Xem</span>
-                          </button>
+                          <div className="flex items-center justify-end gap-1.5">
+                            {item.trang_thai !== 'da_xoa' ? (
+                              <button
+                                type="button"
+                                onClick={() => void handleOpenVideo(item)}
+                                className="h-8 px-3 rounded-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs inline-flex items-center gap-1.5 shadow-sm shadow-orange-500/20 hover:scale-[1.02] transition-transform cursor-pointer"
+                              >
+                                <Play size={12} className="fill-current" />
+                                <span>Xem</span>
+                              </button>
+                            ) : (
+                              <button
+                                type="button"
+                                onClick={() => void handleOpenVideo(item)}
+                                className="h-8 px-3 rounded-full bg-muted text-muted-foreground hover:bg-muted/80 font-medium text-xs inline-flex items-center gap-1.5 cursor-pointer"
+                                title="Xem chi tiết biên bản (file đã xoá)"
+                              >
+                                <FileText size={12} />
+                                <span>Chi tiết</span>
+                              </button>
+                            )}
+
+                            {isAdmin && (
+                              <>
+                                {item.trang_thai === 'da_upload' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setActionTarget({ id: item.id, ma_van_don: item.ma_van_don, action: 'archive' })}
+                                    className="size-8 rounded-full border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/50 inline-flex items-center justify-center cursor-pointer transition-colors"
+                                    title="Lưu trữ video (giữ file Drive, đánh dấu đã lưu trữ)"
+                                  >
+                                    <Archive size={13} />
+                                  </button>
+                                )}
+
+                                {item.trang_thai !== 'da_xoa' && (
+                                  <button
+                                    type="button"
+                                    onClick={() => setActionTarget({ id: item.id, ma_van_don: item.ma_van_don, action: 'delete' })}
+                                    className="size-8 rounded-full border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 inline-flex items-center justify-center cursor-pointer transition-colors"
+                                    title="Xoá vĩnh viễn video khỏi Google Drive"
+                                  >
+                                    <Trash2 size={13} />
+                                  </button>
+                                )}
+                              </>
+                            )}
+                          </div>
                         </td>
                       </tr>
                     );
@@ -949,15 +1064,54 @@ export const HistoryPage: React.FC = () => {
                       </div>
                     </div>
 
-                    {/* CTA Button */}
-                    <button
-                      type="button"
-                      onClick={() => void handleOpenVideo(item)}
-                      className="w-full h-10 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-orange-500/20 active:scale-[0.98] transition-transform cursor-pointer shrink-0"
-                    >
-                      <Play size={14} className="fill-current" />
-                      <span>Xem video biên bản</span>
-                    </button>
+                    {/* CTA Actions */}
+                    <div className="flex items-center gap-2">
+                      {item.trang_thai !== 'da_xoa' ? (
+                        <button
+                          type="button"
+                          onClick={() => void handleOpenVideo(item)}
+                          className="flex-1 h-10 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-bold text-xs flex items-center justify-center gap-2 shadow-sm shadow-orange-500/20 active:scale-[0.98] transition-transform cursor-pointer shrink-0"
+                        >
+                          <Play size={14} className="fill-current" />
+                          <span>Xem video biên bản</span>
+                        </button>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => void handleOpenVideo(item)}
+                          className="flex-1 h-10 rounded-xl bg-muted text-muted-foreground font-semibold text-xs flex items-center justify-center gap-2 active:scale-[0.98] transition-transform cursor-pointer shrink-0"
+                        >
+                          <FileText size={14} />
+                          <span>Xem chi tiết (Đã xoá video)</span>
+                        </button>
+                      )}
+
+                      {isAdmin && (
+                        <>
+                          {item.trang_thai === 'da_upload' && (
+                            <button
+                              type="button"
+                              onClick={() => setActionTarget({ id: item.id, ma_van_don: item.ma_van_don, action: 'archive' })}
+                              className="size-10 rounded-xl border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/50 flex items-center justify-center shrink-0 cursor-pointer"
+                              title="Lưu trữ video"
+                            >
+                              <Archive size={16} />
+                            </button>
+                          )}
+
+                          {item.trang_thai !== 'da_xoa' && (
+                            <button
+                              type="button"
+                              onClick={() => setActionTarget({ id: item.id, ma_van_don: item.ma_van_don, action: 'delete' })}
+                              className="size-10 rounded-xl border border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 flex items-center justify-center shrink-0 cursor-pointer"
+                              title="Xoá vĩnh viễn"
+                            >
+                              <Trash2 size={16} />
+                            </button>
+                          )}
+                        </>
+                      )}
+                    </div>
                   </div>
                 );
               })}
@@ -1037,6 +1191,49 @@ export const HistoryPage: React.FC = () => {
           </div>
         </DialogContent>
       </Dialog>
+      {/* ================================================================== */}
+      {/* Confirmation Dialog for Archive & Delete (Admin) */}
+      {/* ================================================================== */}
+      <AlertDialog open={!!actionTarget} onOpenChange={(open) => { if (!open) setActionTarget(null); }}>
+        <AlertDialogContent className="rounded-2xl border-border bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-foreground">
+              {actionTarget?.action === 'archive' ? 'Xác nhận lưu trữ biên bản' : 'Xác nhận xoá vĩnh viễn video'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              {actionTarget?.action === 'archive'
+                ? `Biên bản đơn [${actionTarget?.ma_van_don}] sẽ chuyển sang trạng thái "Đã lưu trữ". Tệp video trên Google Drive vẫn được giữ nguyên.`
+                : `CẢNH BÁO: Tệp video của đơn [${actionTarget?.ma_van_don}] sẽ bị XOÁ VĨNH VIỄN khỏi Google Drive và hệ thống cập nhật Google Sheet. Hành động này không thể hoàn tác!`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0 mt-3">
+            <AlertDialogCancel disabled={isSubmittingAction} className="rounded-xl h-9 text-xs cursor-pointer">
+              Huỷ
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isSubmittingAction}
+              onClick={(e) => { e.preventDefault(); void handleConfirmAction(); }}
+              className={cn(
+                "rounded-xl h-9 text-xs font-bold text-white cursor-pointer",
+                actionTarget?.action === 'archive'
+                  ? "bg-purple-600 hover:bg-purple-700"
+                  : "bg-rose-600 hover:bg-rose-700"
+              )}
+            >
+              {isSubmittingAction ? (
+                <div className="flex items-center gap-1.5">
+                  <RefreshCw size={13} className="animate-spin" />
+                  <span>Đang xử lý...</span>
+                </div>
+              ) : actionTarget?.action === 'archive' ? (
+                'Lưu trữ ngay'
+              ) : (
+                'Xoá vĩnh viễn'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

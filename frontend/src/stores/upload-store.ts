@@ -104,6 +104,9 @@ export const useUploadStore = create<UploadState>((set, get) => ({
           break;
         case 'ITEM_ERROR':
           set((s) => ({
+            currentUpload: s.currentUpload === msg.payload.id ? null : s.currentUpload,
+            currentUploadId: s.currentUploadId === msg.payload.id ? null : s.currentUploadId,
+            progress: s.currentUpload === msg.payload.id ? 0 : s.progress,
             queue: s.queue.map(q => 
               q.id === msg.payload.id 
                 ? { ...q, status: 'loi' as const, last_error: msg.payload.message, retry_count: msg.payload.retryCount } 
@@ -168,9 +171,11 @@ export const useUploadStore = create<UploadState>((set, get) => ({
       const items = await idbService.getAll();
       
       // Auto-recover stuck 'dang_upload' items from previous crashed sessions
+      // IMPORTANT: Skip items the Worker is currently uploading
+      const { currentUpload, currentUploadId } = get();
       let needsReload = false;
       for (const item of items) {
-        if (item.status === 'dang_upload') {
+        if (item.status === 'dang_upload' && item.id !== currentUpload && item.id !== currentUploadId) {
           await idbService.updateItem(item.id, {
             status: 'loi',
             last_error: 'Đang tải lên thì bị gián đoạn',

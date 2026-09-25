@@ -126,7 +126,7 @@ export async function getRetentionStatus(env: Env): Promise<RetentionStatus> {
 /**
  * Khởi tạo Google Drive và Sheet Services dựa vào env và cau_hinh
  */
-async function getDriveAndSheetServices(env: Env): Promise<{
+export async function getDriveAndSheetServices(env: Env): Promise<{
   driveService: DriveService | null;
   sheetService: SheetService | null;
 }> {

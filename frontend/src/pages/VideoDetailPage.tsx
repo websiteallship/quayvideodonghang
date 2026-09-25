@@ -6,10 +6,27 @@ import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { CustomVideoPlayer } from '@/components/video/CustomVideoPlayer';
+import { useAuthStore } from '@/stores/auth-store';
 import { showToast } from '@/stores/toast-store';
 import { formatDuration, formatBytes, formatDateTimeVN } from '@/utils/format';
 import { getCarrierLabel } from '@/utils/detect-carrier';
-import { fetchBienBanDetail, fetchBienBanViewUrl, fetchStreamToken } from '@/services/bien-ban-service';
+import {
+  fetchBienBanDetail,
+  fetchBienBanViewUrl,
+  fetchStreamToken,
+  archiveBienBan,
+  deleteBienBan,
+} from '@/services/bien-ban-service';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import type { BienBan } from '@/types';
 import {
   PlayCircle,
@@ -37,6 +54,8 @@ import {
   Loader2,
   ArrowLeft,
   ChevronRight,
+  Archive,
+  Trash2,
 } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
@@ -108,6 +127,52 @@ function calculateSyncDuration(created?: string | null, uploaded?: string | null
   return `${mins} phút ${secs > 0 ? `${secs}s` : ''}`;
 }
 
+function getDetailStatusBadge(trangThai: string) {
+  switch (trangThai) {
+    case 'da_upload':
+      return (
+        <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/25 font-bold uppercase">
+          <CloudCheck size={11} className="mr-1 inline" />
+          ĐÃ LƯU DRIVE
+        </Badge>
+      );
+    case 'da_luu_tru':
+      return (
+        <Badge variant="outline" className="text-[10px] bg-purple-500/10 text-purple-600 border-purple-500/25 font-bold uppercase">
+          <Archive size={11} className="mr-1 inline" />
+          ĐÃ LƯU TRỮ
+        </Badge>
+      );
+    case 'da_xoa':
+      return (
+        <Badge variant="outline" className="text-[10px] bg-zinc-500/10 text-zinc-500 border-zinc-500/25 font-bold uppercase">
+          <Trash2 size={11} className="mr-1 inline" />
+          ĐÃ XOÁ VĨNH VIỄN
+        </Badge>
+      );
+    case 'cho_upload':
+      return (
+        <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/25 font-bold uppercase">
+          CHỜ TẢI LÊN
+        </Badge>
+      );
+    case 'dang_upload':
+      return (
+        <Badge variant="outline" className="text-[10px] bg-sky-500/10 text-sky-600 border-sky-500/25 font-bold uppercase">
+          ĐANG TẢI LÊN
+        </Badge>
+      );
+    case 'loi':
+      return (
+        <Badge variant="outline" className="text-[10px] bg-rose-500/10 text-rose-600 border-rose-500/25 font-bold uppercase">
+          LỖI TẢI
+        </Badge>
+      );
+    default:
+      return null;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // VideoDetailPage
 // ---------------------------------------------------------------------------
@@ -115,11 +180,17 @@ function calculateSyncDuration(created?: string | null, uploaded?: string | null
 export const VideoDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
+  const { user } = useAuthStore();
+  const isAdmin = user?.vai_tro === 'admin';
 
   // Data states
   const [item, setItem] = useState<BienBanItem | null>(null);
   const [isDetailLoading, setIsDetailLoading] = useState(true);
   const [detailError, setDetailError] = useState<string | null>(null);
+
+  // Admin action states
+  const [adminAction, setAdminAction] = useState<'archive' | 'delete' | null>(null);
+  const [isSubmittingAdmin, setIsSubmittingAdmin] = useState(false);
 
   // Video states
   const [viewUrl, setViewUrl] = useState<string | null>(null);
@@ -164,6 +235,10 @@ export const VideoDetailPage: React.FC = () => {
 
   const loadVideoUrls = useCallback(async () => {
     if (!id) return;
+    if (item?.trang_thai === 'da_xoa') {
+      setIsVideoLoading(false);
+      return;
+    }
     setIsVideoLoading(true);
     setVideoError(null);
     setViewUrl(null);
@@ -189,12 +264,48 @@ export const VideoDetailPage: React.FC = () => {
     }
 
     setIsVideoLoading(false);
-  }, [id]);
+  }, [id, item?.trang_thai]);
 
   useEffect(() => {
     void loadDetail();
-    void loadVideoUrls();
-  }, [loadDetail, loadVideoUrls]);
+  }, [loadDetail]);
+
+  useEffect(() => {
+    if (item && item.trang_thai !== 'da_xoa') {
+      void loadVideoUrls();
+    } else if (item && item.trang_thai === 'da_xoa') {
+      setIsVideoLoading(false);
+    }
+  }, [item, loadVideoUrls]);
+
+  const handleConfirmAdminAction = async () => {
+    if (!adminAction || !id) return;
+    setIsSubmittingAdmin(true);
+    try {
+      if (adminAction === 'archive') {
+        const res = await archiveBienBan(id);
+        if (!res.success) {
+          showToast.error('Lỗi lưu trữ', res.error?.message || 'Không thể lưu trữ biên bản');
+        } else {
+          showToast.success('Thành công', 'Đã chuyển biên bản sang trạng thái lưu trữ');
+          void loadDetail();
+        }
+      } else {
+        const res = await deleteBienBan(id);
+        if (!res.success) {
+          showToast.error('Lỗi xoá video', res.error?.message || 'Không thể xoá video biên bản');
+        } else {
+          showToast.success('Thành công', 'Đã xoá vĩnh viễn video khỏi Google Drive');
+          void loadDetail();
+        }
+      }
+    } catch {
+      showToast.error('Lỗi', 'Đã xảy ra lỗi khi thực hiện thao tác');
+    } finally {
+      setIsSubmittingAdmin(false);
+      setAdminAction(null);
+    }
+  };
 
   // -----------------------------------------------------------------------
   // Actions
@@ -494,61 +605,87 @@ export const VideoDetailPage: React.FC = () => {
               ? "max-w-md mx-auto aspect-[9/16] max-h-[75vh] min-h-[420px]"
               : "aspect-[4/3] sm:aspect-video min-h-[300px] sm:min-h-[360px]"
           )}>
-            {isVideoLoading && (
-              <div className="flex flex-col items-center gap-3 text-center p-4">
-                <RefreshCw size={28} className="text-amber-500 animate-spin" />
-                <p className="text-white/80 text-xs font-medium">Đang tải video bảo mật từ Google Drive...</p>
-              </div>
-            )}
-
-            {videoError && (
-              <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
-                <AlertCircle size={32} className="text-rose-400" />
-                <p className="text-white/80 text-xs sm:text-sm font-medium max-w-xs">{videoError}</p>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={handleRetry}
-                    className="h-8 text-xs bg-white/10 text-white hover:bg-white/20 border-white/20 cursor-pointer"
-                  >
-                    <RefreshCw size={13} className="mr-1.5" />
-                    Thử lại
-                  </Button>
-                  {driveDirectLink && (
-                    <a
-                      href={driveDirectLink}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="h-8 px-3 rounded-lg inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold"
-                    >
-                      <ExternalLink size={13} />
-                      Mở Drive
-                    </a>
-                  )}
+            {item.trang_thai === 'da_xoa' ? (
+              <div className="flex flex-col items-center justify-center gap-3.5 p-6 text-center">
+                <div className="size-14 rounded-2xl bg-zinc-800/80 border border-zinc-700/60 text-zinc-400 flex items-center justify-center">
+                  <Trash2 size={26} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-white font-bold text-sm">Video đã bị xoá vĩnh viễn</p>
+                  <p className="text-zinc-400 text-xs max-w-sm leading-relaxed">
+                    Tệp video trên Google Drive đã bị xoá theo chính sách lưu trữ hoặc bởi Quản trị viên. Thông tin đối soát và biên bản vẫn được bảo lưu.
+                  </p>
                 </div>
               </div>
-            )}
-
-            {!isVideoLoading && !videoError && streamUrl && (
+            ) : (
               <>
-                {videoMode === 'native' ? (
-                  <CustomVideoPlayer
-                    src={streamUrl}
-                    expectedDuration={item.thoi_luong_video}
-                    title={`${item.ma_van_don} | ${formatDateTimeVN(item.thoi_gian_tao)}`}
-                    onOrientationChange={setIsPortraitVideo}
-                    onError={() => {
-                      // Auto-fallback to iframe when native player fails
-                      if (viewUrl) {
-                        showToast.error('Trình phát gốc gặp sự cố định dạng trên iOS, tự động chuyển sang Google Drive Viewer');
-                        setVideoMode('iframe');
-                      } else {
-                        setVideoError('Không thể phát video. Vui lòng thử lại sau.');
-                      }
-                    }}
-                  />
-                ) : viewUrl ? (
+                {isVideoLoading && (
+                  <div className="flex flex-col items-center gap-3 text-center p-4">
+                    <RefreshCw size={28} className="text-amber-500 animate-spin" />
+                    <p className="text-white/80 text-xs font-medium">Đang tải video bảo mật từ Google Drive...</p>
+                  </div>
+                )}
+
+                {videoError && (
+                  <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
+                    <AlertCircle size={32} className="text-rose-400" />
+                    <p className="text-white/80 text-xs sm:text-sm font-medium max-w-xs">{videoError}</p>
+                    <div className="flex items-center gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={handleRetry}
+                        className="h-8 text-xs bg-white/10 text-white hover:bg-white/20 border-white/20 cursor-pointer"
+                      >
+                        <RefreshCw size={13} className="mr-1.5" />
+                        Thử lại
+                      </Button>
+                      {driveDirectLink && (
+                        <a
+                          href={driveDirectLink}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="h-8 px-3 rounded-lg inline-flex items-center gap-1.5 bg-amber-500 hover:bg-amber-600 text-white text-xs font-semibold"
+                        >
+                          <ExternalLink size={13} />
+                          Mở Drive
+                        </a>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {!isVideoLoading && !videoError && streamUrl && (
+                  <>
+                    {videoMode === 'native' ? (
+                      <CustomVideoPlayer
+                        src={streamUrl}
+                        expectedDuration={item.thoi_luong_video}
+                        title={`${item.ma_van_don} | ${formatDateTimeVN(item.thoi_gian_tao)}`}
+                        onOrientationChange={setIsPortraitVideo}
+                        onError={() => {
+                          // Auto-fallback to iframe when native player fails
+                          if (viewUrl) {
+                            showToast.error('Trình phát gốc gặp sự cố định dạng trên iOS, tự động chuyển sang Google Drive Viewer');
+                            setVideoMode('iframe');
+                          } else {
+                            setVideoError('Không thể phát video. Vui lòng thử lại sau.');
+                          }
+                        }}
+                      />
+                    ) : viewUrl ? (
+                      <iframe
+                        src={viewUrl}
+                        className="absolute inset-0 w-full h-full border-0"
+                        allow="autoplay; encrypted-media; fullscreen"
+                        allowFullScreen
+                        title={`Video xem lại ${item.ma_van_don}`}
+                      />
+                    ) : null}
+                  </>
+                )}
+
+                {!isVideoLoading && !videoError && !streamUrl && viewUrl && (
                   <iframe
                     src={viewUrl}
                     className="absolute inset-0 w-full h-full border-0"
@@ -556,119 +693,147 @@ export const VideoDetailPage: React.FC = () => {
                     allowFullScreen
                     title={`Video xem lại ${item.ma_van_don}`}
                   />
-                ) : null}
+                )}
               </>
             )}
-
-            {!isVideoLoading && !videoError && !streamUrl && viewUrl && (
-              <iframe
-                src={viewUrl}
-                className="absolute inset-0 w-full h-full border-0"
-                allow="autoplay; encrypted-media; fullscreen"
-                allowFullScreen
-                title={`Video xem lại ${item.ma_van_don}`}
-              />
-            )}
           </div>
 
-          {/* Video Mode Tabs & Quick Player Switch */}
-          <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
-            <Tabs
-              value={videoMode}
-              onValueChange={(val) => setVideoMode(val as 'native' | 'iframe')}
-              className="w-auto"
-            >
-              <TabsList className="h-8 bg-muted/60 p-0.5 rounded-lg border border-border">
-                <TabsTrigger
-                  value="native"
-                  className="h-7 px-3 text-xs font-medium cursor-pointer data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs"
-                >
-                  <PlayCircle size={13} className="mr-1.5 text-amber-500" />
-                  Trình phát gốc
-                </TabsTrigger>
-                <TabsTrigger
-                  value="iframe"
-                  disabled={!viewUrl}
-                  className="h-7 px-3 text-xs font-medium cursor-pointer data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs disabled:opacity-50"
-                >
-                  <Globe size={13} className="mr-1.5 text-blue-500" />
-                  Google Drive Viewer
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <div className="flex items-center gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setIsPortraitVideo((prev) => !prev)}
-                className="h-8 px-2.5 text-xs font-medium cursor-pointer"
-                title="Chuyển đổi tỉ lệ khung nhìn ngang / dọc"
+          {/* Video Mode Tabs & Quick Player Switch (Only if video not deleted) */}
+          {item.trang_thai !== 'da_xoa' && (
+            <div className="flex items-center justify-between flex-wrap gap-2 text-xs">
+              <Tabs
+                value={videoMode}
+                onValueChange={(val) => setVideoMode(val as 'native' | 'iframe')}
+                className="w-auto"
               >
-                {isPortraitVideo ? 'Khung dọc 9:16' : 'Khung ngang 16:9'}
-              </Button>
+                <TabsList className="h-8 bg-muted/60 p-0.5 rounded-lg border border-border">
+                  <TabsTrigger
+                    value="native"
+                    className="h-7 px-3 text-xs font-medium cursor-pointer data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs"
+                  >
+                    <PlayCircle size={13} className="mr-1.5 text-amber-500" />
+                    Trình phát gốc
+                  </TabsTrigger>
+                  <TabsTrigger
+                    value="iframe"
+                    disabled={!viewUrl}
+                    className="h-7 px-3 text-xs font-medium cursor-pointer data-[state=active]:bg-background data-[state=active]:text-foreground data-[state=active]:shadow-xs disabled:opacity-50"
+                  >
+                    <Globe size={13} className="mr-1.5 text-blue-500" />
+                    Google Drive Viewer
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-              {item.drive_file_id && (
-                <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[180px] hidden sm:inline" title={item.drive_file_id}>
-                  Drive ID: {item.drive_file_id.slice(0, 10)}...
-                </span>
-              )}
+              <div className="flex items-center gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setIsPortraitVideo((prev) => !prev)}
+                  className="h-8 px-2.5 text-xs font-medium cursor-pointer"
+                  title="Chuyển đổi tỉ lệ khung nhìn ngang / dọc"
+                >
+                  {isPortraitVideo ? 'Khung dọc 9:16' : 'Khung ngang 16:9'}
+                </Button>
+
+                {item.drive_file_id && (
+                  <span className="text-[11px] text-muted-foreground font-mono truncate max-w-[180px] hidden sm:inline" title={item.drive_file_id}>
+                    Drive ID: {item.drive_file_id.slice(0, 10)}...
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
+          )}
 
           {/* Tip hướng dẫn khi xem qua Google Drive Viewer */}
-          {videoMode === 'iframe' && (
+          {item.trang_thai !== 'da_xoa' && videoMode === 'iframe' && (
             <p className="text-[11px] text-muted-foreground/80 italic pl-1">
               * Giao diện Google Drive tự động ẩn các phím điều khiển sau vài giây khi video đang phát. Bấm &quot;Mở trên Drive&quot; bên dưới để xem toàn màn hình.
             </p>
           )}
 
           {/* Action Buttons Bar */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => void handleDownloadVideo()}
-              disabled={isDownloading}
-              className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs cursor-pointer inline-flex items-center justify-center gap-2"
-            >
-              {isDownloading ? (
-                <>
-                  <Loader2 size={15} className="animate-spin" />
-                  <span>Đang tải...</span>
-                </>
-              ) : (
-                <>
-                  <Download size={15} />
-                  <span>Tải video về</span>
-                </>
-              )}
-            </Button>
+          {item.trang_thai !== 'da_xoa' ? (
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 pt-1">
+              <Button
+                variant="default"
+                size="sm"
+                onClick={() => void handleDownloadVideo()}
+                disabled={isDownloading}
+                className="h-10 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-bold text-xs shadow-xs cursor-pointer inline-flex items-center justify-center gap-2"
+              >
+                {isDownloading ? (
+                  <>
+                    <Loader2 size={15} className="animate-spin" />
+                    <span>Đang tải...</span>
+                  </>
+                ) : (
+                  <>
+                    <Download size={15} />
+                    <span>Tải video về</span>
+                  </>
+                )}
+              </Button>
 
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => void handleCopyVideoLink()}
-              className="h-10 rounded-xl border-border bg-card hover:bg-muted text-foreground font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-2"
-            >
-              {copiedLink ? <Check size={15} className="text-emerald-500" /> : <Copy size={15} />}
-              <span>{copiedLink ? 'Đã sao chép link' : 'Sao chép link'}</span>
-            </Button>
-
-            {driveDirectLink && (
               <Button
                 variant="outline"
                 size="sm"
-                asChild
+                onClick={() => void handleCopyVideoLink()}
                 className="h-10 rounded-xl border-border bg-card hover:bg-muted text-foreground font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-2"
               >
-                <a href={driveDirectLink} target="_blank" rel="noopener noreferrer">
-                  <ExternalLink size={15} />
-                  <span>Mở trên Drive</span>
-                </a>
+                {copiedLink ? <Check size={15} className="text-emerald-500" /> : <Copy size={15} />}
+                <span>{copiedLink ? 'Đã sao chép link' : 'Sao chép link'}</span>
               </Button>
-            )}
-          </div>
+
+              {driveDirectLink && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  asChild
+                  className="h-10 rounded-xl border-border bg-card hover:bg-muted text-foreground font-semibold text-xs cursor-pointer inline-flex items-center justify-center gap-2"
+                >
+                  <a href={driveDirectLink} target="_blank" rel="noopener noreferrer">
+                    <ExternalLink size={15} />
+                    <span>Mở trên Drive</span>
+                  </a>
+                </Button>
+              )}
+            </div>
+          ) : (
+            <div className="p-3.5 rounded-xl bg-muted/40 border border-border/60 text-xs text-muted-foreground flex items-center gap-2.5">
+              <Trash2 size={16} className="text-zinc-400 shrink-0" />
+              <span>Tệp video đã được xoá vĩnh viễn khỏi Google Drive. Không thể tải xuống hoặc phát lại.</span>
+            </div>
+          )}
+
+          {/* Admin Action Buttons */}
+          {isAdmin && (
+            <div className="flex items-center gap-2 pt-2 border-t border-border/60 flex-wrap">
+              <span className="text-[11px] font-bold text-muted-foreground mr-1">Thao tác Admin:</span>
+              {item.trang_thai === 'da_upload' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAdminAction('archive')}
+                  className="h-8 px-3 rounded-xl border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-950/50 text-xs font-semibold cursor-pointer gap-1.5"
+                >
+                  <Archive size={13} />
+                  <span>Lưu trữ video</span>
+                </Button>
+              )}
+              {item.trang_thai !== 'da_xoa' && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAdminAction('delete')}
+                  className="h-8 px-3 rounded-xl border-rose-200 dark:border-rose-900 text-rose-600 dark:text-rose-400 hover:bg-rose-50 dark:hover:bg-rose-950/50 text-xs font-semibold cursor-pointer gap-1.5"
+                >
+                  <Trash2 size={13} />
+                  <span>Xoá vĩnh viễn</span>
+                </Button>
+              )}
+            </div>
+          )}
         </div>
 
         {/* Right Column: Detailed Info & Metadata (5 cols) */}
@@ -680,10 +845,7 @@ export const VideoDetailPage: React.FC = () => {
                 <Tag size={14} className="text-amber-500" />
                 <span>Thông tin đơn hàng</span>
               </div>
-              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/25">
-                <CloudCheck size={11} className="mr-1 inline" />
-                ĐÃ LƯU DRIVE
-              </Badge>
+              {getDetailStatusBadge(item.trang_thai)}
             </div>
 
             <div className="space-y-2 text-xs">
@@ -855,6 +1017,48 @@ export const VideoDetailPage: React.FC = () => {
           </div>
         </div>
       </div>
+
+      {/* Admin Action Confirmation Dialog */}
+      <AlertDialog open={!!adminAction} onOpenChange={(open) => { if (!open) setAdminAction(null); }}>
+        <AlertDialogContent className="rounded-2xl border-border bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold text-foreground">
+              {adminAction === 'archive' ? 'Xác nhận lưu trữ biên bản' : 'Xác nhận xoá vĩnh viễn video'}
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-xs text-muted-foreground leading-relaxed">
+              {adminAction === 'archive'
+                ? `Biên bản đơn [${item.ma_van_don}] sẽ chuyển sang trạng thái "Đã lưu trữ". Tệp video trên Google Drive vẫn được giữ nguyên.`
+                : `CẢNH BÁO: Tệp video của đơn [${item.ma_van_don}] sẽ bị XOÁ VĨNH VIỄN khỏi Google Drive và hệ thống cập nhật Google Sheet. Hành động này không thể hoàn tác!`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-2 sm:gap-0 mt-3">
+            <AlertDialogCancel disabled={isSubmittingAdmin} className="rounded-xl h-9 text-xs cursor-pointer">
+              Huỷ
+            </AlertDialogCancel>
+            <AlertDialogAction
+              disabled={isSubmittingAdmin}
+              onClick={(e) => { e.preventDefault(); void handleConfirmAdminAction(); }}
+              className={cn(
+                "rounded-xl h-9 text-xs font-bold text-white cursor-pointer",
+                adminAction === 'archive'
+                  ? "bg-purple-600 hover:bg-purple-700"
+                  : "bg-rose-600 hover:bg-rose-700"
+              )}
+            >
+              {isSubmittingAdmin ? (
+                <div className="flex items-center gap-1.5">
+                  <RefreshCw size={13} className="animate-spin" />
+                  <span>Đang xử lý...</span>
+                </div>
+              ) : adminAction === 'archive' ? (
+                'Lưu trữ ngay'
+              ) : (
+                'Xoá vĩnh viễn'
+              )}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };

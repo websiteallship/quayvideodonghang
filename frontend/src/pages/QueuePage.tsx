@@ -940,7 +940,7 @@ export const QueuePage: React.FC = () => {
           </div>
           <div className="min-w-0">
             <div className="hidden lg:block text-[11px] text-muted-foreground font-medium uppercase tracking-wider">Chờ tải</div>
-            <div className="text-sm lg:text-xl font-bold text-foreground leading-none lg:mt-0.5">{pendingCount + errorCount} <span className="hidden lg:inline text-sm font-normal text-muted-foreground">video</span></div>
+            <div className="text-sm lg:text-xl font-bold text-foreground leading-none lg:mt-0.5">{pendingCount} <span className="hidden lg:inline text-sm font-normal text-muted-foreground">video</span></div>
             <div className="lg:hidden text-[9px] text-muted-foreground font-medium uppercase tracking-tighter mt-1 truncate">Chờ tải</div>
           </div>
         </div>
@@ -1195,8 +1195,8 @@ export const QueuePage: React.FC = () => {
                     const isDongGoi = item.loai_bien_ban === 'dong_goi';
                     const isError = item.status === 'loi';
                     const isPending = item.status === 'cho_upload';
-                    const isUploadingThis = currentUpload === item.id;
-                    const isUploading = item.status === 'dang_upload' || isUploadingThis;
+                    const isUploading = item.status === 'dang_upload';
+                    const isUploadingThis = currentUpload === item.id && isUploading;
                     const uploadProgress = isUploadingThis ? currentProgress : 0;
                     const isSelected = selectedIds.has(item.id);
 

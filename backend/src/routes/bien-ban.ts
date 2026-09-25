@@ -2,8 +2,9 @@ import { Hono } from 'hono';
 import { zValidator } from '@hono/zod-validator';
 import { Env, JwtPayload } from '../types/env';
 import { successResponse, errorResponse } from '../utils/response';
-import { authMiddleware } from '../middleware/auth';
+import { authMiddleware, requireAdminMiddleware } from '../middleware/auth';
 import { DriveService } from '../services/drive-service';
+import { getDriveAndSheetServices } from '../services/retention-service';
 import {
   CheckMaVanDonParamSchema,
   CheckMaVanDonQuerySchema,
@@ -531,4 +532,152 @@ bienBanRouter.get(
     }
   }
 );
+
+// Lưu trữ thủ công biên bản (Admin only)
+bienBanRouter.patch(
+  '/:id/archive',
+  authMiddleware,
+  requireAdminMiddleware,
+  zValidator('param', BienBanIdParamSchema, (result, c) => {
+    if (!result.success) {
+      return errorResponse(
+        c,
+        'INVALID_ID',
+        result.error.errors[0]?.message || 'ID biên bản không hợp lệ',
+        400
+      );
+    }
+  }),
+  async (c) => {
+    const { id } = c.req.valid('param');
+
+    try {
+      const record = await c.env.DB.prepare(
+        'SELECT id, ma_van_don, trang_thai FROM bien_ban WHERE id = ?'
+      )
+        .bind(id)
+        .first<{ id: string; ma_van_don: string; trang_thai: string }>();
+
+      if (!record) {
+        return errorResponse(c, 'NOT_FOUND', 'Không tìm thấy biên bản', 404);
+      }
+
+      if (record.trang_thai === 'da_xoa') {
+        return errorResponse(c, 'RECORD_DELETED', 'Không thể lưu trữ biên bản đã xoá', 400);
+      }
+
+      if (record.trang_thai === 'da_luu_tru') {
+        return successResponse(c, { id: record.id, trang_thai: 'da_luu_tru' });
+      }
+
+      await c.env.DB.prepare(
+        `UPDATE bien_ban
+         SET trang_thai = 'da_luu_tru',
+             ngay_cap_nhat = datetime('now')
+         WHERE id = ?`
+      )
+        .bind(id)
+        .run();
+
+      await c.env.DB.prepare(
+        'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
+      )
+        .bind(id, 'complete', 'Admin thủ công: Lưu trữ video')
+        .run();
+
+      // Cập nhật Google Sheet nếu có
+      const { sheetService } = await getDriveAndSheetServices(c.env);
+      if (sheetService) {
+        try {
+          await sheetService.updateRetentionStatuses([{ bienBanId: id, action: 'archive' }]);
+        } catch (sheetErr) {
+          console.warn('[BIEN_BAN_ARCHIVE] Lỗi cập nhật Sheet:', sheetErr);
+        }
+      }
+
+      return successResponse(c, { id, trang_thai: 'da_luu_tru' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Lỗi hệ thống';
+      return errorResponse(c, 'ARCHIVE_ERROR', message, 500);
+    }
+  }
+);
+
+// Xoá vĩnh viễn video biên bản (Admin only)
+bienBanRouter.delete(
+  '/:id',
+  authMiddleware,
+  requireAdminMiddleware,
+  zValidator('param', BienBanIdParamSchema, (result, c) => {
+    if (!result.success) {
+      return errorResponse(
+        c,
+        'INVALID_ID',
+        result.error.errors[0]?.message || 'ID biên bản không hợp lệ',
+        400
+      );
+    }
+  }),
+  async (c) => {
+    const { id } = c.req.valid('param');
+
+    try {
+      const record = await c.env.DB.prepare(
+        'SELECT id, ma_van_don, drive_file_id, trang_thai FROM bien_ban WHERE id = ?'
+      )
+        .bind(id)
+        .first<{ id: string; ma_van_don: string; drive_file_id: string | null; trang_thai: string }>();
+
+      if (!record) {
+        return errorResponse(c, 'NOT_FOUND', 'Không tìm thấy biên bản', 404);
+      }
+
+      if (record.trang_thai === 'da_xoa') {
+        return successResponse(c, { id: record.id, trang_thai: 'da_xoa' });
+      }
+
+      const { driveService, sheetService } = await getDriveAndSheetServices(c.env);
+
+      // Xoá file trên Google Drive nếu có
+      if (record.drive_file_id && driveService) {
+        try {
+          await driveService.deleteFile(record.drive_file_id);
+        } catch (driveErr) {
+          console.warn(`[BIEN_BAN_DELETE] Lỗi xoá file Drive ${record.drive_file_id}:`, driveErr);
+        }
+      }
+
+      await c.env.DB.prepare(
+        `UPDATE bien_ban
+         SET trang_thai = 'da_xoa',
+             drive_file_id = NULL,
+             ngay_cap_nhat = datetime('now')
+         WHERE id = ?`
+      )
+        .bind(id)
+        .run();
+
+      await c.env.DB.prepare(
+        'INSERT INTO upload_log (bien_ban_id, hanh_dong, chi_tiet) VALUES (?, ?, ?)'
+      )
+        .bind(id, 'complete', 'Admin thủ công: Xoá vĩnh viễn video')
+        .run();
+
+      // Cập nhật Google Sheet nếu có
+      if (sheetService) {
+        try {
+          await sheetService.updateRetentionStatuses([{ bienBanId: id, action: 'delete' }]);
+        } catch (sheetErr) {
+          console.warn('[BIEN_BAN_DELETE] Lỗi cập nhật Sheet:', sheetErr);
+        }
+      }
+
+      return successResponse(c, { id, trang_thai: 'da_xoa' });
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'Lỗi hệ thống';
+      return errorResponse(c, 'DELETE_ERROR', message, 500);
+    }
+  }
+);
+
 

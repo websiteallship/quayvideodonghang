@@ -309,3 +309,72 @@ export async function fetchBienBanViewUrl(
     };
   }
 }
+
+/**
+ * Lưu trữ thủ công biên bản (Admin only)
+ */
+export async function archiveBienBan(
+  id: string
+): Promise<ApiResponse<{ id: string; trang_thai: string }>> {
+  try {
+    const res = await apiClient.patch(`${API_BASE}/bien-ban/${encodeURIComponent(id)}/archive`, {
+      throwHttpErrors: false
+    });
+
+    const body = await res.json().catch(() => null) as ApiResponse<{ id: string; trang_thai: string }> | null;
+    if (!res.ok) {
+      return body ?? {
+        success: false,
+        error: {
+          code: 'ARCHIVE_ERROR',
+          message: `Lỗi lưu trữ biên bản (HTTP ${res.status})`
+        }
+      };
+    }
+
+    return body ?? { success: true, data: { id, trang_thai: 'da_luu_tru' } };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: {
+        code: 'NETWORK_ERROR',
+        message: err instanceof Error ? err.message : 'Không thể kết nối đến máy chủ'
+      }
+    };
+  }
+}
+
+/**
+ * Xoá vĩnh viễn video biên bản (Admin only)
+ */
+export async function deleteBienBan(
+  id: string
+): Promise<ApiResponse<{ id: string; trang_thai: string }>> {
+  try {
+    const res = await apiClient.delete(`${API_BASE}/bien-ban/${encodeURIComponent(id)}`, {
+      throwHttpErrors: false
+    });
+
+    const body = await res.json().catch(() => null) as ApiResponse<{ id: string; trang_thai: string }> | null;
+    if (!res.ok) {
+      return body ?? {
+        success: false,
+        error: {
+          code: 'DELETE_ERROR',
+          message: `Lỗi xoá biên bản (HTTP ${res.status})`
+        }
+      };
+    }
+
+    return body ?? { success: true, data: { id, trang_thai: 'da_xoa' } };
+  } catch (err: unknown) {
+    return {
+      success: false,
+      error: {
+        code: 'NETWORK_ERROR',
+        message: err instanceof Error ? err.message : 'Không thể kết nối đến máy chủ'
+      }
+    };
+  }
+}
+

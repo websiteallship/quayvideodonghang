@@ -39,7 +39,7 @@ export function useUploadQueue(options: UseUploadQueueOptions = {}) {
   const notifyEnqueue = useUploadStore((s) => s.notifyEnqueue);
 
   const pendingCount = queue.filter(
-    (item) => item.status === 'cho_upload' || item.status === 'dang_upload'
+    (item) => item.status === 'cho_upload'
   ).length;
   const errorCount = queue.filter((item) => item.status === 'loi').length;
   const completedCount = queue.filter((item) => item.status === 'da_upload').length;

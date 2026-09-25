@@ -40,6 +40,8 @@ const CARRIERS = [
 const STATUS_LIST = [
   { label: 'Tất cả trạng thái', value: 'all', colorDot: 'bg-muted-foreground/40' },
   { label: 'Đã lưu (Drive)', value: 'da_upload', colorDot: 'bg-emerald-500' },
+  { label: 'Đã lưu trữ', value: 'da_luu_tru', colorDot: 'bg-purple-500' },
+  { label: 'Đã xoá', value: 'da_xoa', colorDot: 'bg-zinc-500' },
   { label: 'Chờ tải lên', value: 'cho_upload', colorDot: 'bg-amber-500' },
   { label: 'Đang tải lên', value: 'dang_upload', colorDot: 'bg-sky-500' },
   { label: 'Lỗi tải lên', value: 'loi', colorDot: 'bg-rose-500' }

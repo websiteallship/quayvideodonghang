@@ -13,6 +13,8 @@ export const API_ENDPOINTS = {
     VIEW_URL: (id: string) => `${BASE_URL}/api/bien-ban/${id}/view-url`,
     STREAM: (id: string) => `${BASE_URL}/api/bien-ban/${id}/stream`,
     STREAM_TOKEN: (id: string) => `${BASE_URL}/api/bien-ban/${id}/stream-token`,
+    ARCHIVE: (id: string) => `${BASE_URL}/api/bien-ban/${id}/archive`,
+    DELETE: (id: string) => `${BASE_URL}/api/bien-ban/${id}`,
   },
   UPLOAD: {
     INIT: `${BASE_URL}/api/upload/init`,
