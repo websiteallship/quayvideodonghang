@@ -199,6 +199,11 @@ export const useUploadStore = create<UploadState>((set, get) => ({
       if (needsReload) {
         const freshItems = await idbService.getAll();
         set({ queue: freshItems });
+        // Wake up worker to process the newly reset items
+        // (fixes race condition: worker may have finished syncLoop before items were reset)
+        if (navigator.onLine) {
+          get().notifyEnqueue();
+        }
       } else {
         set({ queue: items });
       }
