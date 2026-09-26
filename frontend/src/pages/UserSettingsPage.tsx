@@ -12,6 +12,7 @@ import {
   ExternalLink,
   Star,
   Target,
+  Eraser,
 } from 'lucide-react';
 import { useCameraStore } from '@/stores/camera-store';
 import { useConfigStore } from '@/stores/config-store';
@@ -248,6 +249,26 @@ export const UserSettingsPage: React.FC = () => {
   const userRole = user?.vai_tro === 'admin' ? 'Quản trị viên' : 'Nhân viên';
   const userCode = user?.ma_nhan_vien ?? '---';
   const userInitials = useMemo(() => getInitials(userName), [userName]);
+
+  const handleClearPWACache = useCallback(async () => {
+    try {
+      if ('caches' in window) {
+        const keys = await caches.keys();
+        await Promise.all(keys.map((k) => caches.delete(k)));
+      }
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        await Promise.all(registrations.map((r) => r.unregister()));
+      }
+      showToast.success('Đã xóa bộ nhớ đệm', 'Ứng dụng sẽ khởi động lại...');
+      setTimeout(() => {
+        window.location.reload();
+      }, 1500);
+    } catch (error) {
+      console.error('Lỗi khi xóa bộ nhớ đệm:', error);
+      showToast.error('Lỗi', 'Không thể xóa bộ nhớ đệm');
+    }
+  }, []);
 
   // Selected camera label
   const selectedCameraLabel = useMemo(() => {
@@ -815,8 +836,24 @@ export const UserSettingsPage: React.FC = () => {
                 label="Phiên bản ứng dụng PWA"
                 value={`v${APP_CONFIG.VERSION} (Offline-Ready)`}
                 mono
-                showBorder={false}
               />
+              <div className="flex items-center justify-between py-2 border-none">
+                <div className="min-w-0 flex-1 pr-3">
+                  <span className="text-xs text-muted-foreground">Khôi phục ứng dụng</span>
+                  <div className="mt-0.5 text-[11px] text-muted-foreground">
+                    Xóa cache PWA và cập nhật phiên bản mới nhất
+                  </div>
+                </div>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleClearPWACache}
+                  className="shrink-0 gap-1.5 h-9 rounded-xl border-amber-500/30 text-amber-600 hover:bg-amber-500/10 hover:text-amber-700"
+                >
+                  <Eraser className="size-3.5" aria-hidden="true" />
+                  Xóa Cache
+                </Button>
+              </div>
             </div>
           </SettingsCard>
 
