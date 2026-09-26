@@ -170,15 +170,26 @@ export const useUploadStore = create<UploadState>((set, get) => ({
     try {
       const items = await idbService.getAll();
       
-      // Auto-recover stuck 'dang_upload' items from previous crashed sessions
+      // Auto-recover stuck 'dang_upload' AND stale 'loi' items from previous sessions
       // IMPORTANT: Skip items the Worker is currently uploading
       const { currentUpload, currentUploadId } = get();
       let needsReload = false;
       for (const item of items) {
         if (item.status === 'dang_upload' && item.id !== currentUpload && item.id !== currentUploadId) {
+          // Stuck upload from crashed session → reset to retry
           await idbService.updateItem(item.id, {
-            status: 'loi',
-            last_error: 'Đang tải lên thì bị gián đoạn',
+            status: 'cho_upload',
+            retry_count: 0,
+            last_error: undefined,
+            resumable_session_url: undefined
+          });
+          needsReload = true;
+        } else if (item.status === 'loi') {
+          // Failed items from previous session → auto-reset for retry
+          await idbService.updateItem(item.id, {
+            status: 'cho_upload',
+            retry_count: 0,
+            last_error: undefined,
             resumable_session_url: undefined
           });
           needsReload = true;

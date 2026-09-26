@@ -140,16 +140,27 @@ export function useUploadQueue(options: UseUploadQueueOptions = {}) {
   const uploadSelected = useCallback(
     async (ids: string[]) => {
       if (!ids.length) return;
+      // Reset all selected error items so sync loop picks them up
+      for (const id of ids) {
+        const item = queue.find((q) => q.id === id);
+        if (item && item.status === 'loi') {
+          await retryItem(id);
+        }
+      }
       startSync();
     },
-    [startSync]
+    [queue, retryItem, startSync]
   );
 
   const uploadSingle = useCallback(
-    async (_id: string) => {
+    async (id: string) => {
+      const item = queue.find((q) => q.id === id);
+      if (item && item.status === 'loi') {
+        await retryItem(id);
+      }
       startSync();
     },
-    [startSync]
+    [queue, retryItem, startSync]
   );
 
   const retryOne = useCallback(
