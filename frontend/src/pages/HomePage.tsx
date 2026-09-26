@@ -782,6 +782,8 @@ export const HomePage: React.FC = () => {
           {currentView === 'recording' && (
             <RecordingView
               stream={stream}
+              orientation={videoOrientation}
+              rotation={videoRotation}
               overlayInfo={
                 activeOverlayInfo ?? {
                   maVanDon: '',

@@ -88,4 +88,37 @@ describe('RecordingView Component', () => {
 
     expect(screen.getByText('Lỗi mất tín hiệu camera')).toBeTruthy();
   });
+
+  it('renders landscape framing badge when orientation is landscape', () => {
+    render(
+      <RecordingView
+        stream={mockStream}
+        overlayInfo={mockOverlay}
+        duration={5}
+        isRecording={true}
+        orientation="landscape"
+        rotation={90}
+        onStopRecording={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('16:9 Ngang')).toBeTruthy();
+    expect(screen.getByText('· 90°')).toBeTruthy();
+  });
+
+  it('renders portrait framing badge when orientation is portrait', () => {
+    render(
+      <RecordingView
+        stream={mockStream}
+        overlayInfo={mockOverlay}
+        duration={5}
+        isRecording={true}
+        orientation="portrait"
+        rotation={0}
+        onStopRecording={vi.fn()}
+      />
+    );
+
+    expect(screen.getByText('9:16 Dọc')).toBeTruthy();
+  });
 });

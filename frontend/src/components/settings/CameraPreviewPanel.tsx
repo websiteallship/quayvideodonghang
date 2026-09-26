@@ -304,20 +304,32 @@ export const CameraPreviewPanel: React.FC<CameraPreviewPanelProps> = ({
             </AlertDescription>
           </Alert>
         ) : (
-          <div className="relative flex aspect-video w-full items-center justify-center overflow-hidden rounded-2xl bg-black shadow-inner">
-            <canvas
-              ref={canvasRef}
-              className="max-h-full max-w-full object-contain"
+          <div className="relative flex w-full items-center justify-center overflow-hidden rounded-2xl bg-slate-950/90 p-2 sm:p-3 border border-border/50 shadow-inner min-h-[220px]">
+            <div
+              className={cn(
+                'relative flex items-center justify-center overflow-hidden rounded-xl shadow-lg transition-all duration-300',
+                isLandscape
+                  ? 'w-full aspect-video max-h-[300px]'
+                  : 'h-[280px] sm:h-[340px] aspect-[9/16] max-w-full border border-white/10'
+              )}
               style={{
                 aspectRatio: `${canvasWidth} / ${canvasHeight}`,
               }}
-            />
-            {streamResolution.width === 0 && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/80 text-muted-foreground">
-                <RefreshCw className="size-5 animate-spin text-primary" aria-hidden="true" />
-                <span className="text-xs font-medium">Đang khởi tạo camera...</span>
-              </div>
-            )}
+            >
+              <canvas
+                ref={canvasRef}
+                className="h-full w-full object-contain block"
+                style={{
+                  aspectRatio: `${canvasWidth} / ${canvasHeight}`,
+                }}
+              />
+              {streamResolution.width === 0 && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-slate-950/80 text-muted-foreground">
+                  <RefreshCw className="size-5 animate-spin text-primary" aria-hidden="true" />
+                  <span className="text-xs font-medium">Đang khởi tạo camera...</span>
+                </div>
+              )}
+            </div>
           </div>
         )}
 
