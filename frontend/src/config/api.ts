@@ -1,4 +1,4 @@
-const BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || 'https://quayvideo-api.zapati-2025.workers.dev').replace(/\/+$/, '');
+const BASE_URL = (import.meta.env.VITE_API_URL || import.meta.env.VITE_API_BASE_URL || '').replace(/\/+$/, '');
 
 export const API_ENDPOINTS = {
   AUTH: {

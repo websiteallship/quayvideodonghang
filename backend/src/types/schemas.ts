@@ -19,7 +19,7 @@ export const UploadInitSchema = z.object({
   thoi_luong_video: z.number().int().nonnegative('Thời lượng video không được âm'),
   kich_thuoc_bytes: z.number().int().positive('Kích thước bytes phải lớn hơn 0'),
   mime_type: z.string().default('video/webm'),
-  kho_hang_id: z.string().uuid('kho_hang_id phải là UUID').optional()
+  kho_hang_id: z.string().optional()
 });
 
 export const UploadCompleteSchema = z.object({
