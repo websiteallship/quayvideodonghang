@@ -89,6 +89,7 @@ interface MockAudioInstance {
   src: string;
   currentTime: number;
   play: ReturnType<typeof vi.fn>;
+  pause: ReturnType<typeof vi.fn>;
   load: ReturnType<typeof vi.fn>;
 }
 
@@ -101,6 +102,7 @@ function setupMockAudio(shouldFail = false) {
     src: string;
     currentTime = 0;
     load = vi.fn();
+    pause = vi.fn();
     play = vi.fn().mockImplementation(() => {
       if (shouldFail) {
         return Promise.reject(new Error('Autoplay blocked'));
@@ -171,6 +173,16 @@ describe('barcode-feedback', () => {
       const warningAudio = mockAudioInstances.find((a) => a.src === SOUND_PATHS.warning);
       expect(warningAudio).toBeDefined();
       expect(warningAudio?.play).toHaveBeenCalled();
+    });
+
+    it('immediately stops success audio when warning beep is triggered', () => {
+      playSuccessBeep();
+      const successAudio = mockAudioInstances.find((a) => a.src === SOUND_PATHS.success);
+      expect(successAudio?.play).toHaveBeenCalled();
+
+      playWarningBeep();
+      expect(successAudio?.pause).toHaveBeenCalled();
+      expect(successAudio?.currentTime).toBe(0);
     });
   });
 

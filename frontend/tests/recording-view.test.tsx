@@ -121,4 +121,55 @@ describe('RecordingView Component', () => {
 
     expect(screen.getByText('9:16 Dọc')).toBeTruthy();
   });
+
+  it('allows cycling camera rotation via HUD rotate button', () => {
+    render(
+      <RecordingView
+        stream={mockStream}
+        overlayInfo={mockOverlay}
+        duration={5}
+        isRecording={true}
+        orientation="landscape"
+        rotation={0}
+        onStopRecording={vi.fn()}
+      />
+    );
+
+    const rotateButton = screen.getByRole('button', { name: /đổi góc xoay camera/i });
+    expect(rotateButton).toBeTruthy();
+    expect(screen.getByText(/Xoay cam/)).toBeTruthy();
+
+    fireEvent.click(rotateButton);
+    // Verified button interaction doesn't throw
+  });
+
+  it('toggles mobile landscape fullscreen orientation mode', () => {
+    // Force viewport to be portrait
+    window.innerHeight = 800;
+    window.innerWidth = 400;
+
+    render(
+      <RecordingView
+        stream={mockStream}
+        overlayInfo={mockOverlay}
+        duration={5}
+        isRecording={true}
+        orientation="landscape"
+        rotation={0}
+        onStopRecording={vi.fn()}
+      />
+    );
+
+    const toggleButton = screen.getByRole('button', { name: /cầm ngang full/i });
+    expect(toggleButton).toBeTruthy();
+    expect(screen.getByText('Cầm ngang full')).toBeTruthy();
+
+    // Clicking toggles to Khung đứng
+    fireEvent.click(toggleButton);
+    expect(screen.getByText('Khung đứng')).toBeTruthy();
+
+    // Clicking again toggles back to Cầm ngang full
+    fireEvent.click(toggleButton);
+    expect(screen.getByText('Cầm ngang full')).toBeTruthy();
+  });
 });

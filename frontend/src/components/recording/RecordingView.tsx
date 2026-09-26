@@ -5,9 +5,9 @@
 // ---------------------------------------------------------------------------
 
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { Square, AlertCircle, ScanLine, Layers, RotateCw } from 'lucide-react';
+import { Square, AlertCircle, ScanLine, Layers, RotateCw, Maximize2 } from 'lucide-react';
 import type { OverlayInfo } from '../../hooks/use-media-recorder';
-import type { VideoOrientation, VideoRotation } from '../../stores/user-settings-store';
+import { useUserSettingsStore, type VideoOrientation, type VideoRotation } from '../../stores/user-settings-store';
 import { RecordTimer } from './RecordTimer';
 import { formatDuration } from '../../utils/format';
 import { cn } from '../../lib/utils';
@@ -151,9 +151,14 @@ export function RecordingView({
   const isLandscape = effectiveOrientation === 'landscape';
 
   // When setting is landscape on a mobile device whose viewport is portrait:
-  // Automatically rotate 90deg so holding the phone horizontally displays full-screen landscape
-  const [isLandscapeRotated, setIsLandscapeRotated] = useState(true);
+  // Default to false so portrait hold stays upright with 16:9 framing, and user can tap button to expand to fullscreen rotated
+  const [isLandscapeRotated, setIsLandscapeRotated] = useState(false);
   const shouldRotateForLandscape = isLandscape && isViewportPortrait && isLandscapeRotated;
+
+  const handleCycleCameraRotation = () => {
+    const nextRot = ((rotation + 90) % 360) as VideoRotation;
+    useUserSettingsStore.getState().setVideoRotation(nextRot);
+  };
 
   const containerStyle = useMemo<React.CSSProperties>(() => {
     if (shouldRotateForLandscape) {
@@ -184,22 +189,6 @@ export function RecordingView({
   // Apply rotation and aspect-ratio preservation to match canvas recording exactly
   const isRotated90or270 = rotation === 90 || rotation === 270;
   const videoStyle = useMemo<React.CSSProperties>(() => {
-    if (shouldRotateForLandscape) {
-      if (rotation !== 0) {
-        return {
-          width: '100%',
-          height: '100%',
-          transform: `rotate(${rotation}deg)`,
-          objectFit: 'cover',
-        };
-      }
-      return {
-        width: '100%',
-        height: '100%',
-        objectFit: 'cover',
-      };
-    }
-
     if (isRotated90or270) {
       const w = frameDimensions.height > 0 ? `${frameDimensions.height}px` : '100%';
       const h = frameDimensions.width > 0 ? `${frameDimensions.width}px` : '100%';
@@ -226,7 +215,7 @@ export function RecordingView({
       height: '100%',
       objectFit: 'cover',
     };
-  }, [shouldRotateForLandscape, isRotated90or270, rotation, frameDimensions]);
+  }, [isRotated90or270, rotation, frameDimensions]);
 
   const isDongGoi = overlayInfo.loaiBienBan === 'dong_goi';
 
@@ -250,15 +239,30 @@ export function RecordingView({
             <span>{isLandscape ? '16:9 Ngang' : '9:16 Dọc'}</span>
             {rotation !== 0 && <span className="text-amber-400 font-bold">· {rotation}°</span>}
           </div>
+
+          {/* Quick Camera Rotate Button (0° -> 90° -> 180° -> 270°) */}
+          <button
+            type="button"
+            onClick={handleCycleCameraRotation}
+            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95"
+            title="Đổi góc xoay camera (0°, 90°, 180°, 270°)"
+            aria-label="Đổi góc xoay camera"
+          >
+            <RotateCw className="size-3 text-amber-400" />
+            <span>Xoay cam{rotation > 0 ? ` ${rotation}°` : ''}</span>
+          </button>
+
+          {/* Mobile Landscape Fullscreen Toggle */}
           {isLandscape && isViewportPortrait && (
             <button
               type="button"
               onClick={() => setIsLandscapeRotated((prev) => !prev)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] font-medium hover:bg-white/20 transition-all cursor-pointer"
-              title={isLandscapeRotated ? 'Chuyển về xem đứng' : 'Chuyển sang xoay ngang full'}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95"
+              title={isLandscapeRotated ? 'Chuyển về khung đứng' : 'Chuyển sang chế độ cầm ngang full màn hình'}
+              aria-label={isLandscapeRotated ? 'Chuyển về khung đứng' : 'Cầm ngang full'}
             >
-              <RotateCw className="size-3" />
-              <span>{isLandscapeRotated ? 'Xoay ngang' : 'Xem đứng'}</span>
+              <Maximize2 className="size-3 text-primary" />
+              <span>{isLandscapeRotated ? 'Khung đứng' : 'Cầm ngang full'}</span>
             </button>
           )}
         </div>

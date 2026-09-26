@@ -64,8 +64,48 @@ export function preloadSounds(): void {
   }
 }
 
+/**
+ * Mobile Audio Unlock: Permanently resumes AudioContext and pre-warms audio elements
+ * on the first user interaction (touch/click/keypress). Fixes iOS Safari autoplay mute bug.
+ */
+let isAudioUnlocked = false;
+
+export function unlockAudio(): void {
+  if (isAudioUnlocked) return;
+
+  const ctx = getAudioContext();
+  if (ctx) {
+    if (ctx.state === 'suspended') {
+      void ctx.resume();
+    }
+    // Play 1-sample silent buffer to unlock Web Audio in iOS Safari
+    try {
+      const buffer = ctx.createBuffer(1, 1, 22050);
+      const source = ctx.createBufferSource();
+      source.buffer = buffer;
+      source.connect(ctx.destination);
+      source.start(0);
+    } catch {
+      // Ignore
+    }
+    if (ctx.state === 'running') {
+      isAudioUnlocked = true;
+    }
+  }
+
+  preloadSounds();
+}
+
 if (typeof window !== 'undefined') {
   preloadSounds();
+  const unlockEvents = ['touchstart', 'touchend', 'click', 'keydown', 'pointerdown'];
+  const handleUserGesture = () => {
+    unlockAudio();
+    if (isAudioUnlocked) {
+      unlockEvents.forEach((evt) => window.removeEventListener(evt, handleUserGesture));
+    }
+  };
+  unlockEvents.forEach((evt) => window.addEventListener(evt, handleUserGesture, { passive: true }));
 }
 
 /**
@@ -79,6 +119,10 @@ export function playTone(
 ): void {
   const ctx = getAudioContext();
   if (!ctx) return;
+
+  if (ctx.state === 'suspended') {
+    void ctx.resume();
+  }
 
   const oscillator = ctx.createOscillator();
   const gain = ctx.createGain();
@@ -96,6 +140,30 @@ export function playTone(
 
   oscillator.start(ctx.currentTime);
   oscillator.stop(ctx.currentTime + durationMs / 1000);
+}
+
+/**
+ * Stop any active success audio immediately (used when transitioning to warning)
+ */
+export function stopSuccessAudio(): void {
+  if (successAudio) {
+    try {
+      successAudio.pause();
+      successAudio.currentTime = 0;
+    } catch {
+      // Ignore
+    }
+  }
+}
+
+/**
+ * Loud synthesized warning buzzer (2 pulses) for high-noise warehouse environments
+ */
+export function playWarningTone(): void {
+  playTone(400, 200, 0.85, 'sawtooth');
+  setTimeout(() => {
+    playTone(400, 200, 0.85, 'sawtooth');
+  }, 260);
 }
 
 // ---------------------------------------------------------------------------
@@ -128,10 +196,15 @@ export function playSuccessBeep(): void {
 
 /**
  * Warning beep: plays warning_sound_scan.mp3
- * Falls back to dual 400Hz warning tone if audio file playback fails.
+ * Automatically cuts off success sound and falls back to dual warning tone if playback fails.
  */
 export function playWarningBeep(): void {
   if (!useUserSettingsStore.getState().soundBeepEnabled) return;
+
+  // 1. Immediately cut off any running success sound
+  stopSuccessAudio();
+
+  // 2. Play warning sound with fallback
   try {
     const audio = getWarningAudio();
     if (audio) {
@@ -139,8 +212,7 @@ export function playWarningBeep(): void {
       const playPromise = audio.play();
       if (playPromise !== undefined) {
         playPromise.catch(() => {
-          playTone(400, 200, 0.6);
-          setTimeout(() => playTone(400, 200, 0.6), 300);
+          playWarningTone();
         });
       }
       return;
@@ -148,8 +220,7 @@ export function playWarningBeep(): void {
   } catch {
     // Fallback
   }
-  playTone(400, 200, 0.6);
-  setTimeout(() => playTone(400, 200, 0.6), 300);
+  playWarningTone();
 }
 
 /**
