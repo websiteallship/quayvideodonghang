@@ -5,7 +5,7 @@
 // ---------------------------------------------------------------------------
 
 import { useRef, useEffect, useState, useMemo } from 'react';
-import { Square, AlertCircle, ScanLine, Layers } from 'lucide-react';
+import { Square, AlertCircle, ScanLine, Layers, RotateCw } from 'lucide-react';
 import type { OverlayInfo } from '../../hooks/use-media-recorder';
 import type { VideoOrientation, VideoRotation } from '../../stores/user-settings-store';
 import { RecordTimer } from './RecordTimer';
@@ -61,6 +61,24 @@ export function RecordingView({
     width: 0,
     height: 0,
   });
+
+  // Track viewport orientation (portrait vs landscape)
+  const [isViewportPortrait, setIsViewportPortrait] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    return window.innerHeight > window.innerWidth;
+  });
+
+  useEffect(() => {
+    const handleResize = () => {
+      setIsViewportPortrait(window.innerHeight > window.innerWidth);
+    };
+    window.addEventListener('resize', handleResize);
+    window.addEventListener('orientationchange', handleResize);
+    return () => {
+      window.removeEventListener('resize', handleResize);
+      window.removeEventListener('orientationchange', handleResize);
+    };
+  }, []);
 
   useEffect(() => {
     if (videoRef.current && stream) {
@@ -132,9 +150,56 @@ export function RecordingView({
 
   const isLandscape = effectiveOrientation === 'landscape';
 
+  // When setting is landscape on a mobile device whose viewport is portrait:
+  // Automatically rotate 90deg so holding the phone horizontally displays full-screen landscape
+  const [isLandscapeRotated, setIsLandscapeRotated] = useState(true);
+  const shouldRotateForLandscape = isLandscape && isViewportPortrait && isLandscapeRotated;
+
+  const containerStyle = useMemo<React.CSSProperties>(() => {
+    if (shouldRotateForLandscape) {
+      return {
+        position: 'fixed',
+        top: '50%',
+        left: '50%',
+        width: '100dvh',
+        height: '100dvw',
+        transform: 'translate(-50%, -50%) rotate(90deg)',
+        transformOrigin: 'center center',
+        zIndex: 100,
+        margin: 0,
+        borderRadius: 0,
+      };
+    }
+    return {
+      position: 'fixed',
+      inset: 0,
+      width: '100vw',
+      height: '100dvh',
+      zIndex: 100,
+      margin: 0,
+      borderRadius: 0,
+    };
+  }, [shouldRotateForLandscape]);
+
   // Apply rotation and aspect-ratio preservation to match canvas recording exactly
   const isRotated90or270 = rotation === 90 || rotation === 270;
   const videoStyle = useMemo<React.CSSProperties>(() => {
+    if (shouldRotateForLandscape) {
+      if (rotation !== 0) {
+        return {
+          width: '100%',
+          height: '100%',
+          transform: `rotate(${rotation}deg)`,
+          objectFit: 'cover',
+        };
+      }
+      return {
+        width: '100%',
+        height: '100%',
+        objectFit: 'cover',
+      };
+    }
+
     if (isRotated90or270) {
       const w = frameDimensions.height > 0 ? `${frameDimensions.height}px` : '100%';
       const h = frameDimensions.width > 0 ? `${frameDimensions.width}px` : '100%';
@@ -161,12 +226,17 @@ export function RecordingView({
       height: '100%',
       objectFit: 'cover',
     };
-  }, [isRotated90or270, rotation, frameDimensions]);
+  }, [shouldRotateForLandscape, isRotated90or270, rotation, frameDimensions]);
 
   const isDongGoi = overlayInfo.loaiBienBan === 'dong_goi';
 
   return (
-    <div className="recording-view" role="region" aria-label="Màn hình đang quay video">
+    <div
+      className="recording-view flex flex-col justify-between overflow-hidden bg-black select-none"
+      role="region"
+      aria-label="Màn hình đang quay video"
+      style={containerStyle}
+    >
       {/* Top Bar HUD */}
       <div className="w-full z-30 flex items-center justify-between p-3 sm:p-5 pointer-events-auto shrink-0 bg-gradient-to-b from-black/80 to-transparent">
         <div className="flex items-center gap-2">
@@ -180,6 +250,17 @@ export function RecordingView({
             <span>{isLandscape ? '16:9 Ngang' : '9:16 Dọc'}</span>
             {rotation !== 0 && <span className="text-amber-400 font-bold">· {rotation}°</span>}
           </div>
+          {isLandscape && isViewportPortrait && (
+            <button
+              type="button"
+              onClick={() => setIsLandscapeRotated((prev) => !prev)}
+              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] font-medium hover:bg-white/20 transition-all cursor-pointer"
+              title={isLandscapeRotated ? 'Chuyển về xem đứng' : 'Chuyển sang xoay ngang full'}
+            >
+              <RotateCw className="size-3" />
+              <span>{isLandscapeRotated ? 'Xoay ngang' : 'Xem đứng'}</span>
+            </button>
+          )}
         </div>
 
         <div className="shrink-0">
@@ -200,13 +281,17 @@ export function RecordingView({
           ref={frameRef}
           className={cn(
             'relative flex items-center justify-center overflow-hidden transition-all duration-200 shadow-2xl bg-black',
-            isLandscape
+            shouldRotateForLandscape
+              ? 'w-full h-full'
+              : isLandscape
               ? 'w-full aspect-video max-h-full border-y border-white/20'
               : 'h-full aspect-[9/16] max-w-full border-x border-white/20'
           )}
-          style={{
-            aspectRatio: isLandscape ? '16 / 9' : '9 / 16',
-          }}
+          style={
+            shouldRotateForLandscape
+              ? undefined
+              : { aspectRatio: isLandscape ? '16 / 9' : '9 / 16' }
+          }
         >
           {/* Live Video Preview */}
           <video
