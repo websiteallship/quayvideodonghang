@@ -4,6 +4,8 @@ import {
   drawObjectFitCover,
   drawRotatedCameraFrame,
   drawCanvasOverlay,
+  computeAutoRotation,
+  computeEffectiveRotation,
   type OverlayInfo,
 } from '../src/hooks/use-media-recorder';
 
@@ -274,6 +276,60 @@ describe('Canvas Rotation & Math Engine (Step 2.3)', () => {
         expect.any(Number),
         expect.any(Number)
       );
+    });
+  });
+});
+
+describe('Auto-Rotation Compensation', () => {
+  describe('computeAutoRotation', () => {
+    it('returns 270 when landscape forced but stream is portrait (iOS mobile)', () => {
+      expect(computeAutoRotation('landscape', 720, 1280)).toBe(270);
+    });
+
+    it('returns 90 when portrait forced but stream is landscape (desktop webcam)', () => {
+      expect(computeAutoRotation('portrait', 1280, 720)).toBe(90);
+    });
+
+    it('returns 0 when landscape forced and stream is already landscape', () => {
+      expect(computeAutoRotation('landscape', 1280, 720)).toBe(0);
+    });
+
+    it('returns 0 when portrait forced and stream is already portrait', () => {
+      expect(computeAutoRotation('portrait', 720, 1280)).toBe(0);
+    });
+
+    it('returns 0 for auto orientation regardless of stream', () => {
+      expect(computeAutoRotation('auto', 720, 1280)).toBe(0);
+      expect(computeAutoRotation('auto', 1280, 720)).toBe(0);
+    });
+
+    it('returns 0 when stream dimensions are unknown (0x0)', () => {
+      expect(computeAutoRotation('landscape', 0, 0)).toBe(0);
+      expect(computeAutoRotation('portrait', 0, 0)).toBe(0);
+    });
+  });
+
+  describe('computeEffectiveRotation', () => {
+    it('combines auto-compensation 270 with user rotation 0 = 270', () => {
+      expect(computeEffectiveRotation(0, 'landscape', 720, 1280)).toBe(270);
+    });
+
+    it('combines auto-compensation 270 with user rotation 90 = 0', () => {
+      expect(computeEffectiveRotation(90, 'landscape', 720, 1280)).toBe(0);
+    });
+
+    it('combines auto-compensation 270 with user rotation 180 = 90', () => {
+      expect(computeEffectiveRotation(180, 'landscape', 720, 1280)).toBe(90);
+    });
+
+    it('returns raw user rotation when no auto-compensation needed', () => {
+      expect(computeEffectiveRotation(90, 'landscape', 1280, 720)).toBe(90);
+      expect(computeEffectiveRotation(180, 'auto', 720, 1280)).toBe(180);
+    });
+
+    it('returns raw user rotation for auto orientation', () => {
+      expect(computeEffectiveRotation(0, 'auto', 720, 1280)).toBe(0);
+      expect(computeEffectiveRotation(270, 'auto', 1280, 720)).toBe(270);
     });
   });
 });

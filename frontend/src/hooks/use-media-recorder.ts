@@ -131,6 +131,48 @@ export function resolveCanvasSize(
 }
 
 /**
+ * Compute auto-rotation compensation when orientation setting doesn't match stream orientation.
+ * iOS mobile with portrait lock: camera always outputs portrait pixels (720×1280).
+ * When user selects landscape mode and holds phone horizontally (Dynamic Island left),
+ * the stream is portrait but scene needs 270° rotation to appear upright.
+ *
+ * Similarly, if user selects portrait but stream is landscape (desktop webcam),
+ * apply 90° compensation.
+ */
+export function computeAutoRotation(
+  forceOrientation: VideoOrientation,
+  streamWidth: number,
+  streamHeight: number
+): VideoRotation {
+  if (forceOrientation === 'auto' || streamWidth <= 0 || streamHeight <= 0) return 0;
+
+  const isStreamPortrait = streamHeight > streamWidth;
+
+  if (forceOrientation === 'landscape' && isStreamPortrait) {
+    // Portrait stream → landscape output: rotate 270° (= -90°) so upright scene when phone held horizontally
+    return 270;
+  }
+  if (forceOrientation === 'portrait' && !isStreamPortrait) {
+    // Landscape stream → portrait output: rotate 90°
+    return 90;
+  }
+  return 0;
+}
+
+/**
+ * Combine user-set rotation with auto-compensation into a single effective rotation.
+ */
+export function computeEffectiveRotation(
+  userRotation: VideoRotation,
+  forceOrientation: VideoOrientation,
+  streamWidth: number,
+  streamHeight: number
+): VideoRotation {
+  const autoRot = computeAutoRotation(forceOrientation, streamWidth, streamHeight);
+  return ((autoRot + userRotation) % 360) as VideoRotation;
+}
+
+/**
  * Draw video element with aspect-ratio preserving crop (object-fit: cover) into destination rectangle.
  */
 export function drawObjectFitCover(
@@ -530,6 +572,13 @@ export function useMediaRecorder({
           if (ctx && activeVideo) {
             try {
               const elapsedSec = Math.max(0, Math.floor((Date.now() - recordingStartTimeRef.current) / 1000));
+              // Auto-compensate rotation: when landscape is forced but camera stream is portrait (iOS mobile)
+              const effectiveRot = computeEffectiveRotation(
+                rotationRef.current,
+                forceOrientationRef.current,
+                activeVideo.videoWidth || 0,
+                activeVideo.videoHeight || 0
+              );
               // H1: Read overlayInfo from ref — always latest value, no stale closure
               drawCanvasOverlay(
                 ctx,
@@ -539,7 +588,7 @@ export function useMediaRecorder({
                 overlayInfoRef.current,
                 new Date(),
                 elapsedSec,
-                rotationRef.current
+                effectiveRot
               );
             } catch {
               // Ignore frame render errors

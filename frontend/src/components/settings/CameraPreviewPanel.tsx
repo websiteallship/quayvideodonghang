@@ -7,6 +7,7 @@ import { useConfigStore } from '../../stores/config-store';
 import {
   drawCanvasOverlay,
   resolveCanvasSize,
+  computeEffectiveRotation,
   type OverlayInfo,
 } from '../../hooks/use-media-recorder';
 import { Card, CardHeader, CardTitle, CardContent } from '../ui/card';
@@ -212,6 +213,13 @@ export const CameraPreviewPanel: React.FC<CameraPreviewPanelProps> = ({
           }
 
           const elapsedSec = Math.max(0, Math.floor((Date.now() - startTimeRef.current) / 1000));
+          // Auto-compensate rotation for orientation/stream mismatch
+          const effectiveRot = computeEffectiveRotation(
+            rotationRef.current,
+            orientationRef.current,
+            vW,
+            vH
+          );
           drawCanvasOverlay(
             ctx,
             video,
@@ -220,7 +228,7 @@ export const CameraPreviewPanel: React.FC<CameraPreviewPanelProps> = ({
             demoOverlayRef.current,
             new Date(),
             elapsedSec,
-            rotationRef.current
+            effectiveRot
           );
         }
       }

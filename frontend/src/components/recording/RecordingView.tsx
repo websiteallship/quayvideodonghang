@@ -7,6 +7,7 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 import { Square, AlertCircle, ScanLine, Layers, RotateCw, Maximize2 } from 'lucide-react';
 import type { OverlayInfo } from '../../hooks/use-media-recorder';
+import { computeEffectiveRotation } from '../../hooks/use-media-recorder';
 import { useUserSettingsStore, type VideoOrientation, type VideoRotation } from '../../stores/user-settings-store';
 import { RecordTimer } from './RecordTimer';
 import { formatDuration } from '../../utils/format';
@@ -150,6 +151,16 @@ export function RecordingView({
 
   const isLandscape = effectiveOrientation === 'landscape';
 
+  // Auto-compensate rotation: when landscape + portrait stream → auto 270°
+  const effectiveRotation = useMemo(() => {
+    return computeEffectiveRotation(
+      rotation,
+      orientation,
+      streamDimensions.width,
+      streamDimensions.height
+    );
+  }, [rotation, orientation, streamDimensions]);
+
   // When setting is landscape on a mobile device whose viewport is portrait:
   // Default to false so portrait hold stays upright with 16:9 framing, and user can tap button to expand to fullscreen rotated
   const [isLandscapeRotated, setIsLandscapeRotated] = useState(false);
@@ -186,10 +197,10 @@ export function RecordingView({
     };
   }, [shouldRotateForLandscape]);
 
-  // Apply rotation and aspect-ratio preservation to match canvas recording exactly
-  const isRotated90or270 = rotation === 90 || rotation === 270;
+  // Apply effective rotation (user rotation + auto-compensation) to video preview
+  const isEffRotated90or270 = effectiveRotation === 90 || effectiveRotation === 270;
   const videoStyle = useMemo<React.CSSProperties>(() => {
-    if (isRotated90or270) {
+    if (isEffRotated90or270) {
       const w = frameDimensions.height > 0 ? `${frameDimensions.height}px` : '100%';
       const h = frameDimensions.width > 0 ? `${frameDimensions.width}px` : '100%';
       return {
@@ -198,11 +209,11 @@ export function RecordingView({
         left: '50%',
         width: w,
         height: h,
-        transform: `translate(-50%, -50%) rotate(${rotation}deg)`,
+        transform: `translate(-50%, -50%) rotate(${effectiveRotation}deg)`,
         objectFit: 'cover',
       };
     }
-    if (rotation === 180) {
+    if (effectiveRotation === 180) {
       return {
         width: '100%',
         height: '100%',
@@ -215,7 +226,7 @@ export function RecordingView({
       height: '100%',
       objectFit: 'cover',
     };
-  }, [isRotated90or270, rotation, frameDimensions]);
+  }, [isEffRotated90or270, effectiveRotation, frameDimensions]);
 
   const isDongGoi = overlayInfo.loaiBienBan === 'dong_goi';
 
@@ -237,7 +248,7 @@ export function RecordingView({
           )}
           <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] font-mono shadow-sm">
             <span>{isLandscape ? '16:9 Ngang' : '9:16 Dọc'}</span>
-            {rotation !== 0 && <span className="text-amber-400 font-bold">· {rotation}°</span>}
+            {effectiveRotation !== 0 && <span className="text-amber-400 font-bold">· {effectiveRotation}°</span>}
           </div>
 
           {/* Quick Camera Rotate Button (0° -> 90° -> 180° -> 270°) */}
