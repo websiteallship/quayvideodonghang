@@ -85,7 +85,13 @@ async function authFetchJson<T>(url: string, options: RequestInit = {}): Promise
     let message = `HTTP ${res.status}`;
     try {
       const data = await res.json();
-      if (data?.error?.message) message = data.error.message;
+      if (data?.error?.message) {
+        message = data.error.message;
+      } else if (data?.error?.issues && Array.isArray(data.error.issues)) {
+        message = data.error.issues.map((i: any) => `${i.path?.join('.') || 'field'}: ${i.message}`).join(', ');
+      } else if (data?.error) {
+        message = typeof data.error === 'string' ? data.error : JSON.stringify(data.error);
+      }
     } catch {}
     throw new Error(message);
   }
@@ -240,14 +246,14 @@ async function simulateProgress(
 async function initUploadSession(item: QueueItem, signal: AbortSignal): Promise<{ resumable_upload_url: string; target_file_name: string }> {
   const initPayload = {
     id: item.id,
-    ma_van_don: item.ma_van_don,
-    don_vi_vc: item.don_vi_vc,
+    ma_van_don: item.ma_van_don ? item.ma_van_don.trim() : 'UNKNOWN',
+    don_vi_vc: item.don_vi_vc ? item.don_vi_vc.trim() : 'Khac',
     loai_bien_ban: item.loai_bien_ban,
     ma_nhan_vien: item.ma_nhan_vien,
-    thiet_bi: item.thiet_bi,
-    thoi_luong_video: Math.round(item.thoi_luong_video),
+    thiet_bi: item.thiet_bi || 'mobile',
+    thoi_luong_video: Math.round(item.thoi_luong_video || 0),
     kich_thuoc_bytes: item.kich_thuoc_bytes || item.blob?.size || 1,
-    mime_type: item.mime_type || 'video/webm',
+    mime_type: item.mime_type || item.blob?.type || 'video/webm',
     kho_hang_id: item.kho_hang_id || undefined
   };
 
