@@ -148,14 +148,13 @@ export function computeAutoRotation(
 
   const isStreamPortrait = streamHeight > streamWidth;
 
+  // Auto-compensate 270° only when user requests landscape but stream is portrait
+  // (e.g. mobile phone held horizontally with portrait orientation lock on)
   if (forceOrientation === 'landscape' && isStreamPortrait) {
-    // Portrait stream → landscape output: rotate 270° (= -90°) so upright scene when phone held horizontally
     return 270;
   }
-  if (forceOrientation === 'portrait' && !isStreamPortrait) {
-    // Landscape stream → portrait output: rotate 90°
-    return 90;
-  }
+
+  // Portrait mode should NOT auto-rotate 90° as mobile camera is naturally upright
   return 0;
 }
 

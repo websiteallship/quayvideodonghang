@@ -201,6 +201,11 @@ export function RecordingView({
     useUserSettingsStore.getState().setVideoRotation(nextRot);
   }, [rotation]);
 
+  const handleToggleOrientation = useCallback(() => {
+    const nextOrientation: VideoOrientation = isLandscape ? 'portrait' : 'landscape';
+    useUserSettingsStore.getState().setVideoOrientation(nextOrientation);
+  }, [isLandscape]);
+
   // Desktop PC Keyboard shortcuts: Space/Enter to stop, R to rotate camera, F to toggle fullscreen
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -292,8 +297,8 @@ export function RecordingView({
       aria-label="Màn hình đang quay video"
       style={containerStyle}
     >
-      {/* Top Bar HUD */}
-      <div className="w-full z-30 flex items-center justify-between p-3 sm:p-5 pointer-events-auto shrink-0 bg-gradient-to-b from-black/85 via-black/40 to-transparent">
+      {/* Top Bar HUD - Protected by safe-area-inset for iPhone Dynamic Island / Notch */}
+      <div className="w-full z-30 flex items-center justify-between p-3 sm:p-5 pt-[max(env(safe-area-inset-top),14px)] pointer-events-auto shrink-0 bg-gradient-to-b from-black/85 via-black/40 to-transparent">
         <div className="flex items-center gap-2 flex-wrap">
           {sessionCount && sessionCount > 1 && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/70 backdrop-blur-md text-white border border-white/15 text-xs font-bold shadow-lg">
@@ -302,16 +307,23 @@ export function RecordingView({
             </div>
           )}
 
-          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] sm:text-xs font-mono shadow-sm">
+          {/* Nút Đổi Khung hình trên Top bar (16:9 ⟷ 9:16) */}
+          <button
+            type="button"
+            onClick={handleToggleOrientation}
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/15 text-[11px] sm:text-xs font-mono shadow-sm hover:bg-white/20 active:scale-95 transition-all cursor-pointer min-h-[36px]"
+            title="Bấm để đổi khung hình (16:9 Ngang ⟷ 9:16 Dọc)"
+            aria-label="Đổi tỷ lệ khung hình"
+          >
             <span>{isLandscape ? '16:9 Ngang' : '9:16 Dọc'}</span>
             {effectiveRotation !== 0 && <span className="text-amber-400 font-bold">· {effectiveRotation}°</span>}
-          </div>
+          </button>
 
           {/* Quick Camera Rotate Button (0° -> 90° -> 180° -> 270°) */}
           <button
             type="button"
             onClick={handleCycleCameraRotation}
-            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] sm:text-xs font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/15 text-[11px] sm:text-xs font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95 min-h-[36px]"
             title="Đổi góc xoay camera [Phím R] (0°, 90°, 180°, 270°)"
             aria-label="Đổi góc xoay camera"
           >
@@ -322,11 +334,11 @@ export function RecordingView({
             </kbd>
           </button>
 
-          {/* Browser Fullscreen Toggle (Desktop PC) */}
+          {/* Browser Fullscreen Toggle */}
           <button
             type="button"
             onClick={handleToggleFullscreen}
-            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] sm:text-xs font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95"
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/15 text-[11px] sm:text-xs font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95 min-h-[36px]"
             title={isFullscreen ? 'Thu nhỏ [Phím F]' : 'Toàn màn hình không viền [Phím F]'}
             aria-label={isFullscreen ? 'Thu nhỏ màn hình' : 'Toàn màn hình'}
           >
@@ -346,7 +358,7 @@ export function RecordingView({
             <button
               type="button"
               onClick={() => setIsLandscapeRotated((prev) => !prev)}
-              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/15 text-[11px] font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95 min-h-[36px]"
               title={isLandscapeRotated ? 'Chuyển về khung đứng' : 'Chuyển sang chế độ cầm ngang full màn hình'}
               aria-label={isLandscapeRotated ? 'Chuyển về khung đứng' : 'Cầm ngang full'}
             >
@@ -489,7 +501,7 @@ export function RecordingView({
       )}
 
       {/* Bottom Controls: Prominent STOP button */}
-      <div className="w-full z-30 flex items-center justify-center p-3 sm:p-5 pointer-events-auto shrink-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent">
+      <div className="w-full z-30 flex items-center justify-center p-3 sm:p-5 pb-[max(env(safe-area-inset-bottom),16px)] pointer-events-auto shrink-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent">
         <button
           type="button"
           className="btn-recording-stop flex items-center justify-center gap-3 px-8 py-3.5 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-red-600 text-white font-bold text-base sm:text-lg shadow-[0_0_28px_rgba(239,68,68,0.7)] border-2 border-white/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"

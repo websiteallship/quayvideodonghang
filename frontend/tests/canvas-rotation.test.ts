@@ -286,8 +286,8 @@ describe('Auto-Rotation Compensation', () => {
       expect(computeAutoRotation('landscape', 720, 1280)).toBe(270);
     });
 
-    it('returns 90 when portrait forced but stream is landscape (desktop webcam)', () => {
-      expect(computeAutoRotation('portrait', 1280, 720)).toBe(90);
+    it('returns 0 when portrait forced even if stream is landscape (user controls rotation manually)', () => {
+      expect(computeAutoRotation('portrait', 1280, 720)).toBe(0);
     });
 
     it('returns 0 when landscape forced and stream is already landscape', () => {
