@@ -4,8 +4,18 @@
 // Rules: .agents/rules/01-ui-ux.md (Nút Dừng >= 56px, pulse animation)
 // ---------------------------------------------------------------------------
 
-import { useRef, useEffect, useState, useMemo } from 'react';
-import { Square, AlertCircle, ScanLine, Layers, RotateCw, Maximize2 } from 'lucide-react';
+import { useRef, useEffect, useState, useMemo, useCallback } from 'react';
+import { createPortal } from 'react-dom';
+import {
+  Square,
+  AlertCircle,
+  ScanLine,
+  Layers,
+  RotateCw,
+  Maximize2,
+  Minimize2,
+  Keyboard,
+} from 'lucide-react';
 import type { OverlayInfo } from '../../hooks/use-media-recorder';
 import { computeEffectiveRotation } from '../../hooks/use-media-recorder';
 import { useUserSettingsStore, type VideoOrientation, type VideoRotation } from '../../stores/user-settings-store';
@@ -63,6 +73,8 @@ export function RecordingView({
     height: 0,
   });
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+
   // Track viewport orientation (portrait vs landscape)
   const [isViewportPortrait, setIsViewportPortrait] = useState(() => {
     if (typeof window === 'undefined') return true;
@@ -79,6 +91,24 @@ export function RecordingView({
       window.removeEventListener('resize', handleResize);
       window.removeEventListener('orientationchange', handleResize);
     };
+  }, []);
+
+  // Monitor browser fullscreen state
+  useEffect(() => {
+    const handleFsChange = () => {
+      setIsFullscreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFsChange);
+    return () => document.removeEventListener('fullscreenchange', handleFsChange);
+  }, []);
+
+  const handleToggleFullscreen = useCallback(() => {
+    if (typeof document === 'undefined') return;
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch(() => {});
+    } else {
+      document.exitFullscreen().catch(() => {});
+    }
   }, []);
 
   useEffect(() => {
@@ -116,7 +146,7 @@ export function RecordingView({
     }
   };
 
-  // Lock body scroll on mobile during recording
+  // Lock body scroll during recording
   useEffect(() => {
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -166,10 +196,35 @@ export function RecordingView({
   const [isLandscapeRotated, setIsLandscapeRotated] = useState(false);
   const shouldRotateForLandscape = isLandscape && isViewportPortrait && isLandscapeRotated;
 
-  const handleCycleCameraRotation = () => {
+  const handleCycleCameraRotation = useCallback(() => {
     const nextRot = ((rotation + 90) % 360) as VideoRotation;
     useUserSettingsStore.getState().setVideoRotation(nextRot);
-  };
+  }, [rotation]);
+
+  // Desktop PC Keyboard shortcuts: Space/Enter to stop, R to rotate camera, F to toggle fullscreen
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      const target = e.target as HTMLElement | null;
+      const tag = target?.tagName?.toLowerCase();
+      if (tag === 'input' || tag === 'textarea' || target?.isContentEditable) {
+        return;
+      }
+
+      if (e.code === 'Space' || e.key === ' ' || e.key === 'Enter') {
+        e.preventDefault();
+        onStopRecording();
+      } else if (e.key === 'r' || e.key === 'R') {
+        e.preventDefault();
+        handleCycleCameraRotation();
+      } else if (e.key === 'f' || e.key === 'F') {
+        e.preventDefault();
+        handleToggleFullscreen();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [onStopRecording, handleCycleCameraRotation, handleToggleFullscreen]);
 
   const containerStyle = useMemo<React.CSSProperties>(() => {
     if (shouldRotateForLandscape) {
@@ -181,7 +236,7 @@ export function RecordingView({
         height: '100dvw',
         transform: 'translate(-50%, -50%) rotate(90deg)',
         transformOrigin: 'center center',
-        zIndex: 100,
+        zIndex: 9999,
         margin: 0,
         borderRadius: 0,
       };
@@ -191,7 +246,7 @@ export function RecordingView({
       inset: 0,
       width: '100vw',
       height: '100dvh',
-      zIndex: 100,
+      zIndex: 9999,
       margin: 0,
       borderRadius: 0,
     };
@@ -230,23 +285,24 @@ export function RecordingView({
 
   const isDongGoi = overlayInfo.loaiBienBan === 'dong_goi';
 
-  return (
+  const content = (
     <div
-      className="recording-view flex flex-col justify-between overflow-hidden bg-black select-none"
+      className="recording-view fixed inset-0 z-[9999] flex flex-col justify-between overflow-hidden bg-black select-none text-white w-screen h-[100dvh]"
       role="region"
       aria-label="Màn hình đang quay video"
       style={containerStyle}
     >
       {/* Top Bar HUD */}
-      <div className="w-full z-30 flex items-center justify-between p-3 sm:p-5 pointer-events-auto shrink-0 bg-gradient-to-b from-black/80 to-transparent">
-        <div className="flex items-center gap-2">
+      <div className="w-full z-30 flex items-center justify-between p-3 sm:p-5 pointer-events-auto shrink-0 bg-gradient-to-b from-black/85 via-black/40 to-transparent">
+        <div className="flex items-center gap-2 flex-wrap">
           {sessionCount && sessionCount > 1 && (
             <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-black/70 backdrop-blur-md text-white border border-white/15 text-xs font-bold shadow-lg">
               <Layers size={14} className="text-primary" />
               <span>Phiên: {sessionCount} đơn</span>
             </div>
           )}
-          <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] font-mono shadow-sm">
+
+          <div className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] sm:text-xs font-mono shadow-sm">
             <span>{isLandscape ? '16:9 Ngang' : '9:16 Dọc'}</span>
             {effectiveRotation !== 0 && <span className="text-amber-400 font-bold">· {effectiveRotation}°</span>}
           </div>
@@ -255,12 +311,34 @@ export function RecordingView({
           <button
             type="button"
             onClick={handleCycleCameraRotation}
-            className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95"
-            title="Đổi góc xoay camera (0°, 90°, 180°, 270°)"
+            className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] sm:text-xs font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95"
+            title="Đổi góc xoay camera [Phím R] (0°, 90°, 180°, 270°)"
             aria-label="Đổi góc xoay camera"
           >
-            <RotateCw className="size-3 text-amber-400" />
+            <RotateCw className="size-3.5 text-amber-400" />
             <span>Xoay cam{rotation > 0 ? ` ${rotation}°` : ''}</span>
+            <kbd className="hidden md:inline-block px-1 py-0.2 rounded bg-white/15 text-[10px] text-white/70 font-mono">
+              R
+            </kbd>
+          </button>
+
+          {/* Browser Fullscreen Toggle (Desktop PC) */}
+          <button
+            type="button"
+            onClick={handleToggleFullscreen}
+            className="hidden sm:flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] sm:text-xs font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95"
+            title={isFullscreen ? 'Thu nhỏ [Phím F]' : 'Toàn màn hình không viền [Phím F]'}
+            aria-label={isFullscreen ? 'Thu nhỏ màn hình' : 'Toàn màn hình'}
+          >
+            {isFullscreen ? (
+              <Minimize2 className="size-3.5 text-sky-400" />
+            ) : (
+              <Maximize2 className="size-3.5 text-sky-400" />
+            )}
+            <span>{isFullscreen ? 'Thu nhỏ' : 'Toàn màn hình'}</span>
+            <kbd className="hidden md:inline-block px-1 py-0.2 rounded bg-white/15 text-[10px] text-white/70 font-mono">
+              F
+            </kbd>
           </button>
 
           {/* Mobile Landscape Fullscreen Toggle */}
@@ -268,7 +346,7 @@ export function RecordingView({
             <button
               type="button"
               onClick={() => setIsLandscapeRotated((prev) => !prev)}
-              className="flex items-center gap-1 px-2.5 py-1 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95"
+              className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl bg-black/60 backdrop-blur-md text-white/90 border border-white/10 text-[11px] font-medium hover:bg-white/20 transition-all cursor-pointer active:scale-95"
               title={isLandscapeRotated ? 'Chuyển về khung đứng' : 'Chuyển sang chế độ cầm ngang full màn hình'}
               aria-label={isLandscapeRotated ? 'Chuyển về khung đứng' : 'Cầm ngang full'}
             >
@@ -278,15 +356,25 @@ export function RecordingView({
           )}
         </div>
 
-        <div className="shrink-0">
-          <RecordTimer duration={duration} isRecording={isRecording} />
+        <div className="flex items-center gap-3 shrink-0">
+          {/* PC Keyboard Shortcut Hint */}
+          <div className="hidden xl:flex items-center gap-2 px-3 py-1.5 rounded-xl bg-black/50 backdrop-blur-md text-white/60 border border-white/10 text-xs font-mono">
+            <Keyboard size={13} className="text-white/40" />
+            <span>
+              Phím tắt: <strong className="text-white/80">Space/Enter</strong> dừng
+            </span>
+          </div>
+
+          <div className="shrink-0">
+            <RecordTimer duration={duration} isRecording={isRecording} />
+          </div>
         </div>
       </div>
 
       {/* Center Viewfinder Stage (Exact Aspect Ratio 16:9 or 9:16) */}
       <div className="relative flex-1 w-full flex items-center justify-center overflow-hidden min-h-0">
         {nextBarcode && (
-          <div className="absolute top-2 left-1/2 -translate-x-1/2 z-30 bg-primary/95 text-primary-foreground px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 font-bold text-sm animate-pulse border border-primary-foreground/20">
+          <div className="absolute top-3 left-1/2 -translate-x-1/2 z-30 bg-primary/95 text-primary-foreground px-4 py-2 rounded-xl shadow-2xl flex items-center gap-2 font-bold text-sm animate-pulse border border-primary-foreground/20">
             <ScanLine size={18} />
             <span>Chuyển sang: {nextBarcode}...</span>
           </div>
@@ -299,8 +387,8 @@ export function RecordingView({
             shouldRotateForLandscape
               ? 'w-full h-full'
               : isLandscape
-              ? 'w-full aspect-video max-h-full border-y border-white/20'
-              : 'h-full aspect-[9/16] max-w-full border-x border-white/20'
+              ? 'w-full h-full max-w-full max-h-full aspect-video border-y border-white/10'
+              : 'h-full aspect-[9/16] max-w-full border-x border-white/10'
           )}
           style={
             shouldRotateForLandscape
@@ -327,30 +415,66 @@ export function RecordingView({
             <div className="guide-corner guide-corner--br" />
           </div>
 
-          {/* Minimal Bottom Left HUD (Matches Canvas output coordinates) */}
-          <div className="absolute bottom-2.5 sm:bottom-3 left-2.5 sm:left-3 right-2.5 sm:right-3 z-20 flex flex-col gap-0.5 text-white font-mono text-[10px] sm:text-[11px] leading-[1.35] pointer-events-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.9)]">
-            <div className="font-bold text-[12px] sm:text-[13px]">
-              [{isDongGoi ? 'ĐÓNG GÓI' : 'KHUI HÀNG'}] {overlayInfo.maVanDon}
-            </div>
-            <div>
-              NV: {overlayInfo.maNhanVien} | {overlayInfo.donViVc}
-            </div>
-            <div>
-              {overlayInfo.gpsCoords 
-                ? `${overlayInfo.gpsCoords.lat.toFixed(5)}, ${overlayInfo.gpsCoords.lng.toFixed(5)}${overlayInfo.gpsAddress ? ` · ${overlayInfo.gpsAddress}` : ''}`
-                : 'GPS: đang tìm...'}
-            </div>
-            <div className="text-amber-400">
-              {overlayInfo.warehouseName || 'Kho: chưa cấu hình'}
-            </div>
-            <div className="flex items-center gap-2 pt-0.5">
-              <span className="opacity-80">
-                {now.toLocaleTimeString('vi-VN')} {now.toLocaleDateString('vi-VN')}
-              </span>
-              <span className="text-red-400 font-bold font-mono text-[10px] sm:text-[11px] flex items-center gap-1 bg-black/60 px-1.5 py-0.5 rounded border border-red-500/30">
-                <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                REC {formatDuration(duration)}
-              </span>
+          {/* Subtle Viewfinder Centering Guide Label */}
+          <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10 select-none">
+            <span className="text-white/20 font-semibold text-xs sm:text-sm tracking-widest uppercase">
+              Căn kiện hàng & tem vận đơn
+            </span>
+          </div>
+
+          {/* Bottom Left Watermark HUD Card (Matches Canvas output coordinates) */}
+          <div className="absolute bottom-3 left-3 sm:bottom-4 sm:left-4 z-20 pointer-events-none max-w-[92vw] sm:max-w-md lg:max-w-lg">
+            <div className="bg-black/75 backdrop-blur-md border border-white/20 rounded-2xl p-2.5 sm:p-3.5 text-white font-mono shadow-2xl flex flex-col gap-1 drop-shadow-[0_2px_4px_rgba(0,0,0,0.9)]">
+              {/* Mã vận đơn & Chế độ */}
+              <div className="flex items-center gap-2 flex-wrap">
+                <span
+                  className={cn(
+                    'px-2 py-0.5 rounded-lg text-xs font-bold tracking-wide uppercase',
+                    isDongGoi
+                      ? 'bg-emerald-500/25 text-emerald-400 border border-emerald-500/40'
+                      : 'bg-amber-500/25 text-amber-400 border border-amber-500/40'
+                  )}
+                >
+                  [{isDongGoi ? 'ĐÓNG GÓI' : 'KHUI HÀNG'}]
+                </span>
+                <span className="text-sm sm:text-base font-bold tracking-wider text-white">
+                  {overlayInfo.maVanDon || 'Chưa có mã'}
+                </span>
+              </div>
+
+              {/* Thông tin nhân viên & ĐVVC */}
+              <div className="text-[11px] sm:text-xs text-slate-300 flex items-center gap-1.5 flex-wrap">
+                <span>
+                  NV: <strong className="text-white">{overlayInfo.maNhanVien}</strong>
+                </span>
+                <span className="opacity-40">|</span>
+                <span>
+                  ĐVVC: <strong className="text-white">{overlayInfo.donViVc}</strong>
+                </span>
+              </div>
+
+              {/* Địa chỉ GPS & Tên kho */}
+              <div className="text-[10px] sm:text-[11px] text-slate-400 truncate">
+                {overlayInfo.gpsCoords
+                  ? `${overlayInfo.gpsCoords.lat.toFixed(5)}, ${overlayInfo.gpsCoords.lng.toFixed(5)}${
+                      overlayInfo.gpsAddress ? ` · ${overlayInfo.gpsAddress}` : ''
+                    }`
+                  : 'GPS: đang tìm...'}
+              </div>
+              <div className="text-[11px] sm:text-xs text-amber-400 font-semibold truncate">
+                {overlayInfo.warehouseName || 'Kho: chưa cấu hình'}
+              </div>
+
+              {/* Thời gian realtime & REC badge */}
+              <div className="flex items-center gap-2 pt-1 border-t border-white/10 text-[10px] sm:text-xs">
+                <span className="text-slate-300">
+                  {now.toLocaleTimeString('vi-VN')} {now.toLocaleDateString('vi-VN')}
+                </span>
+                <span className="text-red-400 font-bold flex items-center gap-1.5 bg-red-500/15 px-2 py-0.5 rounded-md border border-red-500/30">
+                  <span className="inline-block size-2 rounded-full bg-red-500 animate-pulse" />
+                  REC {formatDuration(duration)}
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -365,19 +489,28 @@ export function RecordingView({
       )}
 
       {/* Bottom Controls: Prominent STOP button */}
-      <div className="w-full z-30 flex items-center justify-center p-3 sm:p-5 pointer-events-auto shrink-0 bg-gradient-to-t from-black/80 to-transparent">
+      <div className="w-full z-30 flex items-center justify-center p-3 sm:p-5 pointer-events-auto shrink-0 bg-gradient-to-t from-black/85 via-black/40 to-transparent">
         <button
           type="button"
-          className="btn-recording-stop"
+          className="btn-recording-stop flex items-center justify-center gap-3 px-8 py-3.5 rounded-full bg-gradient-to-r from-red-600 via-rose-600 to-red-600 text-white font-bold text-base sm:text-lg shadow-[0_0_28px_rgba(239,68,68,0.7)] border-2 border-white/40 hover:scale-105 active:scale-95 transition-all cursor-pointer"
           onClick={onStopRecording}
-          aria-label="Dừng quay video"
+          aria-label="Dừng quay video (Phím Space hoặc Enter)"
         >
-          <div className="btn-recording-stop__icon-wrap">
-            <Square size={24} fill="currentColor" aria-hidden="true" />
+          <div className="btn-recording-stop__icon-wrap size-6 rounded-md bg-white text-red-600 flex items-center justify-center shrink-0">
+            <Square size={16} fill="currentColor" aria-hidden="true" />
           </div>
           <span className="btn-recording-stop__label">DỪNG QUAY</span>
+          <kbd className="hidden sm:inline-flex items-center gap-1 px-2 py-0.5 rounded-md bg-black/40 text-white/90 border border-white/20 text-xs font-mono font-normal">
+            Space
+          </kbd>
         </button>
       </div>
     </div>
   );
+
+  if (typeof document !== 'undefined') {
+    return createPortal(content, document.body);
+  }
+  return content;
 }
+

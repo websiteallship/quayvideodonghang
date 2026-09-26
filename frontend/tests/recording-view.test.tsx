@@ -172,4 +172,54 @@ describe('RecordingView Component', () => {
     fireEvent.click(toggleButton);
     expect(screen.getByText('Cầm ngang full')).toBeTruthy();
   });
+
+  it('triggers onStopRecording when Space key is pressed', () => {
+    const onStopRecording = vi.fn();
+
+    render(
+      <RecordingView
+        stream={mockStream}
+        overlayInfo={mockOverlay}
+        duration={5}
+        isRecording={true}
+        onStopRecording={onStopRecording}
+      />
+    );
+
+    fireEvent.keyDown(window, { code: 'Space', key: ' ' });
+    expect(onStopRecording).toHaveBeenCalledTimes(1);
+  });
+
+  it('triggers onStopRecording when Enter key is pressed', () => {
+    const onStopRecording = vi.fn();
+
+    render(
+      <RecordingView
+        stream={mockStream}
+        overlayInfo={mockOverlay}
+        duration={5}
+        isRecording={true}
+        onStopRecording={onStopRecording}
+      />
+    );
+
+    fireEvent.keyDown(window, { code: 'Enter', key: 'Enter' });
+    expect(onStopRecording).toHaveBeenCalledTimes(1);
+  });
+
+  it('renders desktop fullscreen toggle button and keyboard hint', () => {
+    render(
+      <RecordingView
+        stream={mockStream}
+        overlayInfo={mockOverlay}
+        duration={5}
+        isRecording={true}
+        onStopRecording={vi.fn()}
+      />
+    );
+
+    expect(screen.getByRole('button', { name: /toàn màn hình/i })).toBeTruthy();
+    expect(screen.getByText(/Space\/Enter/i)).toBeTruthy();
+  });
 });
+

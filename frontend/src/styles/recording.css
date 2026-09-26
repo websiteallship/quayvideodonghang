@@ -60,18 +60,21 @@
    --------------------------------------------------------------------------- */
 
 .recording-view {
-  position: relative;
-  width: 100%;
-  min-height: 520px;
-  height: calc(100vh - 190px);
-  max-height: 840px;
-  border-radius: var(--radius-xl, 1rem);
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  min-height: 100dvh;
+  max-height: 100dvh;
+  border-radius: 0;
   overflow: hidden;
   background: #000000;
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  box-shadow: var(--shadow-xl, 0 20px 25px -5px rgba(0, 0, 0, 0.3));
+  z-index: 9999;
+  margin: 0;
+  box-shadow: none;
 }
 
 @media (max-width: 768px) {
@@ -84,9 +87,9 @@
     width: 100vw;
     height: 100dvh;
     max-height: 100dvh;
-    min-height: unset;
+    min-height: 100dvh;
     border-radius: 0;
-    z-index: 100;
+    z-index: 9999;
     margin: 0;
     box-shadow: none;
   }
@@ -111,46 +114,54 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: min(78vw, 360px);
-  height: min(44vh, 260px);
+  width: min(85vw, 680px);
+  height: min(60vh, 420px);
   pointer-events: none;
   z-index: 5;
 }
 
+@media (max-width: 640px) {
+  .recording-view__guide-corners {
+    width: min(80vw, 340px);
+    height: min(45vh, 240px);
+  }
+}
+
 .guide-corner {
   position: absolute;
-  width: 24px;
-  height: 24px;
-  border-color: rgba(255, 255, 255, 0.5);
+  width: 32px;
+  height: 32px;
+  border-color: rgba(255, 255, 255, 0.7);
   border-style: solid;
+  filter: drop-shadow(0 0 4px rgba(0, 0, 0, 0.8));
 }
 
 .guide-corner--tl {
   top: 0;
   left: 0;
-  border-width: 3px 0 0 3px;
-  border-top-left-radius: 6px;
+  border-width: 3.5px 0 0 3.5px;
+  border-top-left-radius: 8px;
 }
 
 .guide-corner--tr {
   top: 0;
   right: 0;
-  border-width: 3px 3px 0 0;
-  border-top-right-radius: 6px;
+  border-width: 3.5px 3.5px 0 0;
+  border-top-right-radius: 8px;
 }
 
 .guide-corner--bl {
   bottom: 0;
   left: 0;
-  border-width: 0 0 3px 3px;
-  border-bottom-left-radius: 6px;
+  border-width: 0 0 3.5px 3.5px;
+  border-bottom-left-radius: 8px;
 }
 
 .guide-corner--br {
   bottom: 0;
   right: 0;
-  border-width: 0 3px 3px 0;
-  border-bottom-right-radius: 6px;
+  border-width: 0 3.5px 3.5px 0;
+  border-bottom-right-radius: 8px;
 }
 
 /* Top HUD overlay */
